@@ -1,0 +1,243 @@
+.container {
+  padding: 20rpx;
+  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  background-color: #f6f6f6;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* 日历头部 */
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fff;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+  border-radius: 10rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.header-date {
+  font-size: 32rpx;
+  font-weight: 500;
+}
+
+.arrow {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.arrow-icon {
+  font-size: 28rpx;
+  color: #666;
+}
+
+/* 星期几标题 */
+.weekday-header {
+  display: flex;
+  background-color: #fff;
+  border-top-left-radius: 10rpx;
+  border-top-right-radius: 10rpx;
+  overflow: hidden;
+}
+
+.weekday {
+  flex: 1;
+  text-align: center;
+  font-size: 26rpx;
+  color: #666;
+  padding: 15rpx 0;
+}
+
+/* 日历主体 */
+.calendar-body {
+  display: flex;
+  flex-wrap: wrap;
+  background-color: #fff;
+  border-bottom-left-radius: 10rpx;
+  border-bottom-right-radius: 10rpx;
+  overflow: hidden;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.day {
+  width: calc(100% / 7);
+  height: 100rpx;
+  text-align: center;
+  padding-top: 10rpx;
+  box-sizing: border-box;
+  border-right: 1rpx solid #f5f5f5;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.day-number {
+  font-size: 28rpx;
+}
+
+.other-month .day-number {
+  color: #ccc;
+}
+
+.today {
+  background-color: #f9f9f9;
+}
+
+.today .day-number {
+  background-color: #4CAF50;
+  color: #fff;
+  width: 50rpx;
+  height: 50rpx;
+  line-height: 50rpx;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+
+.has-appointment {
+  position: relative;
+}
+
+.dot-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 10rpx;
+}
+
+.meal-dot {
+  width: 10rpx;
+  height: 10rpx;
+  border-radius: 50%;
+  margin: 0 2rpx;
+}
+
+.breakfast {
+  background-color: #2196F3;
+}
+
+.lunch {
+  background-color: #FF9800;
+}
+
+.dinner {
+  background-color: #9C27B0;
+}
+
+/* 今日预约 */
+.today-appointments {
+  background-color: #fff;
+  border-radius: 10rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 500;
+  margin-bottom: 20rpx;
+  padding-bottom: 15rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+/* 餐次卡片 */
+.meal-card {
+  background-color: #f9f9f9;
+  border-radius: 10rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+}
+
+.meal-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15rpx;
+}
+
+.meal-type {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.meal-actions {
+  display: flex;
+}
+
+.action-btn {
+  font-size: 24rpx;
+  padding: 5rpx 15rpx;
+  border-radius: 20rpx;
+  margin-left: 10rpx;
+}
+
+.action-btn.edit {
+  color: #2196F3;
+  background-color: #e3f2fd;
+}
+
+.action-btn.delete {
+  color: #f44336;
+  background-color: #ffebee;
+}
+
+/* 菜品列表 */
+.dishes-list {
+  display: flex;
+  overflow-x: auto;
+  padding-bottom: 10rpx;
+}
+
+.dish-item {
+  margin-right: 20rpx;
+  text-align: center;
+  width: 160rpx;
+}
+
+.dish-image {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 8rpx;
+  margin-bottom: 10rpx;
+  background-color: #f0f0f0;
+}
+
+.dish-name {
+  font-size: 24rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 空提示 */
+.empty-tip {
+  display: flex;
+  justify-content: center;
+  padding: 40rpx 0;
+}
+
+.empty-text {
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* 添加预约按钮 */
+.add-btn {
+  position: fixed;
+  right: 30rpx;
+  bottom: calc(120rpx + env(safe-area-inset-bottom));
+  width: 100rpx;
+  height: 100rpx;
+  background-color: #4CAF50;
+  color: #fff;
+  font-size: 60rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+  z-index: 100;
+} 

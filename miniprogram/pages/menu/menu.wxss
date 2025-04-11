@@ -1,0 +1,154 @@
+.container {
+  position: relative;
+  height: 100vh;
+  padding: 0;
+  background-color: #f6f6f6;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 类型选择器 */
+.type-selector {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  background-color: #ffffff;
+  padding: 20rpx 10rpx;
+  border-radius: 0 0 10rpx 10rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.type-item {
+  flex: 1;
+  min-width: 160rpx;
+  height: 80rpx;
+  font-size: 28rpx;
+  border-radius: 8rpx;
+  color: #666;
+  margin: 0 5rpx;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-bottom: 3rpx solid transparent;
+}
+
+.type-item.active {
+  color: #4CAF50;
+  font-weight: 500;
+  border-bottom: 3rpx solid #4CAF50;
+}
+
+/* 菜品列表 */
+.dish-list {
+  flex: 1;
+  padding: 20rpx;
+  padding-top: 120rpx; /* 为固定定位的类型选择器留出空间 */
+  width: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* 增加 iOS 滚动流畅度 */
+}
+
+.dish-item {
+  display: flex;
+  width: 100%;
+  background-color: #ffffff;
+  margin-bottom: 20rpx;
+  padding: 20rpx;
+  border-radius: 10rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
+}
+
+.dish-image {
+  width: 160rpx;
+  height: 160rpx;
+  min-width: 160rpx; /* 防止图片被压缩 */
+  border-radius: 8rpx;
+  margin-right: 20rpx;
+  background-color: #f0f0f0;
+}
+
+.dish-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: calc(100% - 180rpx); /* 减去图片宽度和右边距 */
+  overflow: hidden; /* 防止长文本溢出 */
+}
+
+.dish-name {
+  font-size: 32rpx;
+  font-weight: 500;
+  margin-bottom: 10rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* 过长文本显示省略号 */
+}
+
+.dish-tags {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.dish-tag {
+  font-size: 24rpx;
+  padding: 4rpx 16rpx;
+  border-radius: 20rpx;
+  margin-right: 10rpx;
+  margin-bottom: 10rpx;
+}
+
+.dish-tag.type {
+  background-color: #e8f5e9;
+  color: #4CAF50;
+}
+
+.dish-tag.spicy {
+  background-color: #ffebee;
+  color: #f44336;
+}
+
+/* 空列表提示 */
+.empty-tip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 100rpx;
+}
+
+.empty-text {
+  font-size: 30rpx;
+  color: #999;
+  margin-top: 20rpx;
+}
+
+/* 添加按钮 */
+.add-btn {
+  position: fixed;
+  right: 30rpx;
+  bottom: calc(120rpx + env(safe-area-inset-bottom));
+  width: 100rpx;
+  height: 100rpx;
+  background-color: #4CAF50;
+  color: #fff;
+  font-size: 60rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+  z-index: 100;
+} 

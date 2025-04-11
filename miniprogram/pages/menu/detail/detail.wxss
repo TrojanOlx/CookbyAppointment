@@ -1,0 +1,159 @@
+.container {
+  background-color: #f6f6f6;
+  min-height: 100vh;
+  padding-bottom: 40rpx;
+}
+
+/* 轮播图样式 */
+.dish-swiper {
+  height: 500rpx;
+}
+
+.swiper-image {
+  width: 100%;
+  height: 100%;
+}
+
+/* 基本信息 */
+.info-section {
+  padding: 30rpx;
+  background-color: #fff;
+  margin-bottom: 20rpx;
+}
+
+.dish-name {
+  font-size: 38rpx;
+  font-weight: bold;
+  margin-bottom: 20rpx;
+}
+
+.dish-tags {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.dish-tag {
+  font-size: 24rpx;
+  padding: 6rpx 20rpx;
+  border-radius: 20rpx;
+  margin-right: 20rpx;
+}
+
+.dish-tag.type {
+  background-color: #e8f5e9;
+  color: #4CAF50;
+}
+
+.dish-tag.spicy {
+  background-color: #ffebee;
+  color: #f44336;
+}
+
+/* 详情内容 */
+.detail-section {
+  padding: 30rpx;
+  background-color: #fff;
+  margin-bottom: 20rpx;
+}
+
+.section-title {
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 20rpx;
+  border-left: 8rpx solid #4CAF50;
+  padding-left: 20rpx;
+}
+
+.section-content {
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #666;
+}
+
+.reference {
+  color: #2196F3;
+  text-decoration: underline;
+}
+
+/* 食材列表 */
+.ingredients-container {
+  margin-top: 10rpx;
+}
+
+.ingredient-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.ingredient-name {
+  font-size: 28rpx;
+  color: #333;
+}
+
+.ingredient-amount {
+  font-size: 28rpx;
+  color: #666;
+}
+
+/* 制作步骤 */
+.steps-list {
+  margin-top: 10rpx;
+}
+
+.step-item {
+  display: flex;
+  margin-bottom: 30rpx;
+}
+
+.step-number {
+  width: 50rpx;
+  height: 50rpx;
+  background-color: #4CAF50;
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 28rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.step-content {
+  flex: 1;
+  font-size: 28rpx;
+  line-height: 1.6;
+  color: #333;
+  padding-top: 8rpx;
+}
+
+/* 按钮区域 */
+.action-buttons {
+  display: flex;
+  padding: 30rpx;
+  justify-content: space-between;
+}
+
+.action-btn {
+  width: 45%;
+  height: 88rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 44rpx;
+  font-size: 30rpx;
+}
+
+.action-btn.edit {
+  background-color: #4CAF50;
+  color: #fff;
+}
+
+.action-btn.delete {
+  background-color: #f5f5f5;
+  color: #ff5252;
+  border: 1rpx solid #ff5252;
+} 

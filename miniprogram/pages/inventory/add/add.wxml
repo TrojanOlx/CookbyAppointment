@@ -1,0 +1,45 @@
+<view class="container">
+  <form bindsubmit="submitForm">
+    <!-- 基本信息部分 -->
+    <view class="form-section">
+      <view class="section-title">食材信息</view>
+      <view class="form-item">
+        <view class="form-label">食材名称</view>
+        <input class="form-input" name="name" placeholder="请输入食材名称" value="{{item.name}}" />
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">数量/重量</view>
+        <input class="form-input" name="amount" placeholder="如: 500g、2个" value="{{item.amount}}" />
+      </view>
+    </view>
+
+    <!-- 日期信息部分 -->
+    <view class="form-section">
+      <view class="section-title">日期信息</view>
+      <view class="form-item">
+        <view class="form-label">放入日期</view>
+        <picker mode="date" value="{{item.putInDate}}" bindchange="putInDateChange">
+          <view class="picker {{item.putInDate ? '' : 'placeholder'}}">
+            {{item.putInDate || '请选择放入日期'}}
+          </view>
+        </picker>
+      </view>
+
+      <view class="form-item">
+        <view class="form-label">保质期</view>
+        <picker mode="date" value="{{item.expiryDate}}" bindchange="expiryDateChange">
+          <view class="picker {{item.expiryDate ? '' : 'placeholder'}}">
+            {{item.expiryDate || '请选择保质期'}}
+          </view>
+        </picker>
+      </view>
+    </view>
+
+    <!-- 提交按钮 -->
+    <view class="form-actions">
+      <button class="cancel-btn" bindtap="cancel">取消</button>
+      <button class="submit-btn" form-type="submit">保存</button>
+    </view>
+  </form>
+</view> 

@@ -1,0 +1,100 @@
+<view class="container">
+  <view class="header">
+    <view class="title">{{date}} 预约菜品</view>
+  </view>
+
+  <!-- 选择餐次 -->
+  <view class="meal-section">
+    <view class="section-title">选择餐次</view>
+    <view class="meal-types">
+      <view 
+        class="meal-type-item {{selectedMealType === '早餐' ? 'active' : ''}}" 
+        data-type="早餐" 
+        bindtap="selectMealType"
+      >
+        早餐
+      </view>
+      <view 
+        class="meal-type-item {{selectedMealType === '午餐' ? 'active' : ''}}" 
+        data-type="午餐" 
+        bindtap="selectMealType"
+      >
+        午餐
+      </view>
+      <view 
+        class="meal-type-item {{selectedMealType === '晚餐' ? 'active' : ''}}" 
+        data-type="晚餐" 
+        bindtap="selectMealType"
+      >
+        晚餐
+      </view>
+    </view>
+  </view>
+
+  <!-- 筛选菜品 -->
+  <view class="filter-section">
+    <view class="search-box">
+      <input 
+        class="search-input" 
+        placeholder="搜索菜品" 
+        value="{{searchKeyword}}" 
+        bindinput="onSearchInput" 
+      />
+      <view class="search-icon">🔍</view>
+    </view>
+    <view class="filter-tags">
+      <view 
+        class="filter-tag {{selectedType === '' ? 'active' : ''}}" 
+        data-type="" 
+        bindtap="filterByType"
+      >全部</view>
+      <view 
+        class="filter-tag {{selectedType === '炒菜' ? 'active' : ''}}" 
+        data-type="炒菜" 
+        bindtap="filterByType"
+      >炒菜</view>
+      <view 
+        class="filter-tag {{selectedType === '青菜' ? 'active' : ''}}" 
+        data-type="青菜" 
+        bindtap="filterByType"
+      >青菜</view>
+      <view 
+        class="filter-tag {{selectedType === '炖汤' ? 'active' : ''}}" 
+        data-type="炖汤" 
+        bindtap="filterByType"
+      >炖汤</view>
+    </view>
+  </view>
+
+  <!-- 菜品列表 -->
+  <view class="dish-list">
+    <block wx:if="{{filteredDishes.length > 0}}">
+      <view 
+        class="dish-item {{selectedDishes.includes(item.id) ? 'selected' : ''}}" 
+        wx:for="{{filteredDishes}}" 
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="toggleSelectDish"
+      >
+        <image class="dish-image" src="{{item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
+        <view class="dish-info">
+          <view class="dish-name">{{item.name}}</view>
+          <view class="dish-tags">
+            <view class="dish-tag type">{{item.type}}</view>
+            <view class="dish-tag spicy" wx:if="{{item.spicy !== '不辣'}}">{{item.spicy}}</view>
+          </view>
+        </view>
+        <view class="check-icon" wx:if="{{selectedDishes.includes(item.id)}}">✓</view>
+      </view>
+    </block>
+    <view class="empty-tip" wx:else>
+      <view class="empty-text">未找到符合条件的菜品</view>
+    </view>
+  </view>
+
+  <!-- 预约按钮 -->
+  <view class="action-buttons">
+    <button class="cancel-btn" bindtap="cancel">取消</button>
+    <button class="submit-btn" bindtap="saveAppointment">保存预约</button>
+  </view>
+</view> 

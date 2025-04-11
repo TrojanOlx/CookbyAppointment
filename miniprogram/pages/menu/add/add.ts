@@ -1,0 +1,248 @@
+import { DishType, Dish, Ingredient, SpicyLevel } from '../../../utils/model';
+import { dishService, generateId } from '../../../utils/storage';
+import { showSuccess, showError } from '../../../utils/util';
+
+// 默认菜品数据结构
+const DEFAULT_DISH: Dish = {
+  id: '',
+  name: '',
+  type: DishType.Stir,
+  spicy: SpicyLevel.None,
+  images: [],
+  ingredients: [],
+  steps: [],
+  notice: '',
+  remark: '',
+  reference: '',
+  createTime: 0
+};
+
+Page({
+  data: {
+    dish: {} as Dish,
+    dishTypes: [DishType.Stir, DishType.Vegetable, DishType.Soup],
+    spicyLevels: [SpicyLevel.None, SpicyLevel.Mild, SpicyLevel.Medium, SpicyLevel.Hot],
+    editMode: false,  // 是否是编辑模式
+  },
+
+  onLoad(options) {
+    // 如果有传入ID，则是编辑模式
+    if (options.id) {
+      const dish = dishService.getDishById(options.id);
+      if (dish) {
+        this.setData({
+          dish,
+          editMode: true
+        });
+        wx.setNavigationBarTitle({
+          title: '编辑菜品'
+        });
+      }
+    } else {
+      // 新建模式，初始化默认数据结构
+      this.setData({
+        dish: {
+          ...DEFAULT_DISH,
+          ingredients: [this.createEmptyIngredient()],
+          steps: ['']
+        }
+      });
+    }
+  },
+
+  // 选择菜品类型
+  typeChange(e: any) {
+    const index = e.detail.value;
+    const type = this.data.dishTypes[index];
+    this.setData({
+      'dish.type': type
+    });
+  },
+
+  // 选择辣度
+  spicyChange(e: any) {
+    const index = e.detail.value;
+    const spicy = this.data.spicyLevels[index];
+    this.setData({
+      'dish.spicy': spicy
+    });
+  },
+
+  // 选择图片
+  chooseImage() {
+    wx.chooseImage({
+      count: 9 - this.data.dish.images.length,
+      sizeType: ['compressed'],
+      sourceType: ['album', 'camera'],
+      success: (res) => {
+        // 将选择的图片添加到列表中
+        const images = this.data.dish.images.concat(res.tempFilePaths);
+        this.setData({
+          'dish.images': images
+        });
+      }
+    });
+  },
+
+  // 删除图片
+  deleteImage(e: any) {
+    const index = e.currentTarget.dataset.index;
+    const images = this.data.dish.images;
+    images.splice(index, 1);
+    this.setData({
+      'dish.images': images
+    });
+  },
+
+  // 创建空的食材对象
+  createEmptyIngredient(): Ingredient {
+    return {
+      id: generateId(),
+      name: '',
+      amount: ''
+    };
+  },
+
+  // 添加食材
+  addIngredient() {
+    const ingredients = this.data.dish.ingredients;
+    ingredients.push(this.createEmptyIngredient());
+    this.setData({
+      'dish.ingredients': ingredients
+    });
+  },
+
+  // 删除食材
+  deleteIngredient(e: any) {
+    const index = e.currentTarget.dataset.index;
+    const ingredients = this.data.dish.ingredients;
+    if (ingredients.length > 1) {
+      ingredients.splice(index, 1);
+      this.setData({
+        'dish.ingredients': ingredients
+      });
+    } else {
+      showError('至少保留一项食材');
+    }
+  },
+
+  // 食材名称输入
+  ingredientNameInput(e: any) {
+    const index = e.currentTarget.dataset.index;
+    const value = e.detail.value;
+    this.setData({
+      [`dish.ingredients[${index}].name`]: value
+    });
+  },
+
+  // 食材数量输入
+  ingredientAmountInput(e: any) {
+    const index = e.currentTarget.dataset.index;
+    const value = e.detail.value;
+    this.setData({
+      [`dish.ingredients[${index}].amount`]: value
+    });
+  },
+
+  // 添加步骤
+  addStep() {
+    const steps = this.data.dish.steps;
+    steps.push('');
+    this.setData({
+      'dish.steps': steps
+    });
+  },
+
+  // 删除步骤
+  deleteStep(e: any) {
+    const index = e.currentTarget.dataset.index;
+    const steps = this.data.dish.steps;
+    if (steps.length > 1) {
+      steps.splice(index, 1);
+      this.setData({
+        'dish.steps': steps
+      });
+    } else {
+      showError('至少保留一个步骤');
+    }
+  },
+
+  // 步骤内容输入
+  stepInput(e: any) {
+    const index = e.currentTarget.dataset.index;
+    const value = e.detail.value;
+    this.setData({
+      [`dish.steps[${index}]`]: value
+    });
+  },
+
+  // 取消操作
+  cancel() {
+    wx.navigateBack();
+  },
+
+  // 提交表单
+  submitForm(e: any) {
+    const formData = e.detail.value;
+    const { dish } = this.data;
+
+    // 验证必填字段
+    if (!formData.name) {
+      showError('请输入菜品名称');
+      return;
+    }
+
+    if (!dish.type) {
+      showError('请选择菜品类型');
+      return;
+    }
+
+    if (!dish.spicy) {
+      showError('请选择辣度');
+      return;
+    }
+
+    // 验证食材
+    const validIngredients = dish.ingredients.filter(item => item.name && item.amount);
+    if (validIngredients.length === 0) {
+      showError('请至少添加一种食材');
+      return;
+    }
+
+    // 验证步骤
+    const validSteps = dish.steps.filter(step => step.trim() !== '');
+    if (validSteps.length === 0) {
+      showError('请至少添加一个步骤');
+      return;
+    }
+
+    // 构建保存的数据对象
+    const saveDish: Dish = {
+      id: dish.id || generateId(),
+      name: formData.name,
+      type: dish.type,
+      spicy: dish.spicy,
+      images: dish.images,
+      ingredients: validIngredients,
+      steps: validSteps,
+      notice: formData.notice || '',
+      remark: formData.remark || '',
+      reference: formData.reference || '',
+      createTime: dish.createTime || Date.now()
+    };
+
+    // 保存或更新菜品
+    if (this.data.editMode) {
+      dishService.updateDish(saveDish);
+      showSuccess('菜品更新成功');
+    } else {
+      dishService.addDish(saveDish);
+      showSuccess('菜品添加成功');
+    }
+
+    // 返回上一页
+    setTimeout(() => {
+      wx.navigateBack();
+    }, 1500);
+  }
+}); 

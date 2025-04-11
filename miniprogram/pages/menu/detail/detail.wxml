@@ -1,0 +1,68 @@
+<view class="container">
+  <!-- 轮播图 -->
+  <swiper class="dish-swiper" indicator-dots="{{true}}" autoplay="{{true}}" interval="4000" duration="500">
+    <block wx:if="{{dish.images && dish.images.length > 0}}">
+      <swiper-item wx:for="{{dish.images}}" wx:key="*this">
+        <image src="{{item}}" mode="aspectFill" class="swiper-image"></image>
+      </swiper-item>
+    </block>
+    <swiper-item wx:else>
+      <image src="/images/default-dish.png" mode="aspectFill" class="swiper-image"></image>
+    </swiper-item>
+  </swiper>
+
+  <!-- 基本信息 -->
+  <view class="info-section">
+    <view class="dish-name">{{dish.name}}</view>
+    <view class="dish-tags">
+      <view class="dish-tag type">{{dish.type}}</view>
+      <view class="dish-tag spicy" wx:if="{{dish.spicy !== '不辣'}}">{{dish.spicy}}</view>
+    </view>
+  </view>
+
+  <!-- 食材部分 -->
+  <view class="detail-section">
+    <view class="section-title">食材</view>
+    <view class="ingredients-container">
+      <view class="ingredient-row" wx:for="{{dish.ingredients}}" wx:key="id">
+        <text class="ingredient-name">{{item.name}}</text>
+        <text class="ingredient-amount">{{item.amount}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 制作步骤 -->
+  <view class="detail-section">
+    <view class="section-title">制作步骤</view>
+    <view class="steps-list">
+      <view class="step-item" wx:for="{{dish.steps}}" wx:key="index">
+        <view class="step-number">{{index + 1}}</view>
+        <view class="step-content">{{item}}</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 注意事项 -->
+  <view class="detail-section" wx:if="{{dish.notice}}">
+    <view class="section-title">注意事项</view>
+    <view class="section-content">{{dish.notice}}</view>
+  </view>
+
+  <!-- 备注 -->
+  <view class="detail-section" wx:if="{{dish.remark}}">
+    <view class="section-title">备注</view>
+    <view class="section-content">{{dish.remark}}</view>
+  </view>
+
+  <!-- 参考链接 -->
+  <view class="detail-section" wx:if="{{dish.reference}}">
+    <view class="section-title">参考链接</view>
+    <view class="section-content reference">{{dish.reference}}</view>
+  </view>
+
+  <!-- 操作按钮 -->
+  <view class="action-buttons">
+    <button class="action-btn edit" bindtap="editDish">编辑</button>
+    <button class="action-btn delete" bindtap="deleteDish">删除</button>
+  </view>
+</view> 

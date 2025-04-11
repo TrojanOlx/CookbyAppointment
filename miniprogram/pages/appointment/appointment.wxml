@@ -1,0 +1,65 @@
+<view class="container">
+  <!-- 日历头部 -->
+  <view class="calendar-header">
+    <view class="arrow" bindtap="prevMonth">
+      <text class="arrow-icon">《</text>
+    </view>
+    <view class="header-date">{{year}}年{{month + 1}}月</view>
+    <view class="arrow" bindtap="nextMonth">
+      <text class="arrow-icon">》</text>
+    </view>
+  </view>
+
+  <!-- 星期几的标题 -->
+  <view class="weekday-header">
+    <view class="weekday" wx:for="{{weekdays}}" wx:key="*this">{{item}}</view>
+  </view>
+
+  <!-- 日历主体 -->
+  <view class="calendar-body">
+    <view 
+      wx:for="{{days}}" 
+      wx:key="date" 
+      class="day {{item.currentMonth ? '' : 'other-month'}} {{item.today ? 'today' : ''}} {{item.hasAppointment ? 'has-appointment' : ''}}"
+      data-date="{{item.date}}"
+      bindtap="selectDate"
+    >
+      <view class="day-number">{{item.day}}</view>
+      <view class="dot-container">
+        <view class="meal-dot breakfast" wx:if="{{item.meals.breakfast}}"></view>
+        <view class="meal-dot lunch" wx:if="{{item.meals.lunch}}"></view>
+        <view class="meal-dot dinner" wx:if="{{item.meals.dinner}}"></view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 今日预约 -->
+  <view class="today-appointments">
+    <view class="section-title">{{selectedDateDisplay}} 预约</view>
+
+    <block wx:if="{{todayAppointments.length > 0}}">
+      <view class="meal-card" wx:for="{{todayAppointments}}" wx:key="id">
+        <view class="meal-header">
+          <view class="meal-type">{{item.mealType}}</view>
+          <view class="meal-actions">
+            <view class="action-btn edit" bindtap="editAppointment" data-id="{{item.id}}">修改</view>
+            <view class="action-btn delete" bindtap="deleteAppointment" data-id="{{item.id}}">删除</view>
+          </view>
+        </view>
+        <view class="dishes-list">
+          <view class="dish-item" wx:for="{{item.dishList}}" wx:key="id" wx:for-item="dish">
+            <image class="dish-image" src="{{dish.images[0] || '/images/default-dish.png'}}"></image>
+            <view class="dish-name">{{dish.name}}</view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="empty-tip" wx:else>
+      <view class="empty-text">暂无预约，请添加</view>
+    </view>
+  </view>
+
+  <!-- 添加预约按钮 -->
+  <view class="add-btn" bindtap="addAppointment">+</view>
+</view> 

@@ -1,0 +1,32 @@
+<!--index.wxml-->
+<view class="container">
+  <view class="header">
+    <!-- <image class="logo" src="/images/logo.png" mode="aspectFit"></image> -->
+    <view class="app-name">家庭菜单预约</view>
+    <view class="app-desc">让美食规划更简单</view>
+  </view>
+  
+  <view class="features">
+    <navigator url="/pages/menu/menu" open-type="switchTab" class="feature-item">
+      <view class="feature-icon menu-icon">🍳</view>
+      <view class="feature-name">菜单</view>
+      <view class="feature-desc">管理您喜爱的菜品</view>
+    </navigator>
+    
+    <navigator url="/pages/appointment/appointment" open-type="switchTab" class="feature-item">
+      <view class="feature-icon calendar-icon">📅</view>
+      <view class="feature-name">预约</view>
+      <view class="feature-desc">规划每日餐饮</view>
+    </navigator>
+    
+    <navigator url="/pages/inventory/inventory" open-type="switchTab" class="feature-item">
+      <view class="feature-icon fridge-icon">🧊</view>
+      <view class="feature-name">库存</view>
+      <view class="feature-desc">管理冰箱食材</view>
+    </navigator>
+  </view>
+  
+  <view class="footer">
+    <view class="version">版本 1.0.0</view>
+  </view>
+</view>

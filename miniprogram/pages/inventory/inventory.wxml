@@ -1,0 +1,45 @@
+<view class="container">
+  <!-- 搜索区域 -->
+  <view class="search-bar">
+    <view class="search-box">
+      <input 
+        class="search-input" 
+        placeholder="搜索食材" 
+        value="{{searchKeyword}}" 
+        bindinput="onSearchInput" 
+        confirm-type="search"
+      />
+      <view class="search-icon">🔍</view>
+    </view>
+  </view>
+
+  <!-- 库存列表 -->
+  <view class="inventory-list">
+    <block wx:if="{{items.length > 0}}">
+      <view class="inventory-item" wx:for="{{items}}" wx:key="id" bindtap="editItem" data-id="{{item.id}}">
+        <view class="item-info">
+          <view class="item-name">{{item.name}}</view>
+          <view class="item-amount">{{item.amount}}</view>
+          <view class="item-dates">
+            <text>放入: {{item.putInDate}}</text>
+            <text class="expiry{{item.isExpired ? ' expired' : item.isExpiringSoon ? ' expiring-soon' : ''}}">
+              到期: {{item.expiryDate}}
+              <text wx:if="{{item.daysLeft !== null}}">
+                {{item.isExpired ? '(已过期)' : '(剩' + item.daysLeft + '天)'}}
+              </text>
+            </text>
+          </view>
+        </view>
+        <view class="item-actions">
+          <view class="delete-btn" catchtap="deleteItem" data-id="{{item.id}}">×</view>
+        </view>
+      </view>
+    </block>
+    <view class="empty-tip" wx:else>
+      <view class="empty-text">暂无库存，请添加</view>
+    </view>
+  </view>
+
+  <!-- 添加按钮 -->
+  <view class="add-btn" bindtap="addItem">+</view>
+</view> 
