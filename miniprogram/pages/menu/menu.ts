@@ -80,9 +80,31 @@ Page({
     if (dishes.length === 0) {
       // 生成更多测试数据
       const dishNames = [
-        { name: '宫保鸡丁', type: DishType.Stir, spicy: SpicyLevel.Medium },
-        { name: '清炒小白菜', type: DishType.Vegetable, spicy: SpicyLevel.None },
-        { name: '番茄牛肉汤', type: DishType.Soup, spicy: SpicyLevel.None },
+        { 
+          name: '宫保鸡丁', 
+          type: DishType.Stir, 
+          spicy: SpicyLevel.Medium,
+          images: [
+            '/images/dishImages/gbjd/gbjd1.jpeg'
+          ]
+        },
+        { 
+          name: '清炒小白菜', 
+          type: DishType.Vegetable, 
+          spicy: SpicyLevel.None,
+          images: [
+            '/images/dishImages/qcxbc/qcxbc1.jpeg',
+            '/images/dishImages/qcxbc/qcxbc2.jpeg'
+          ]
+        },
+        { 
+          name: '番茄牛肉汤', 
+          type: DishType.Soup, 
+          spicy: SpicyLevel.None,
+          images: [
+            '/images/dishImages/fqnrt/fqnrt1.jpeg'
+          ]
+        },
         { name: '麻婆豆腐', type: DishType.Stir, spicy: SpicyLevel.Hot },
         { name: '水煮鱼', type: DishType.Stir, spicy: SpicyLevel.Hot },
         { name: '青椒土豆丝', type: DishType.Vegetable, spicy: SpicyLevel.Mild },
@@ -103,7 +125,7 @@ Page({
         name: item.name,
         type: item.type,
         spicy: item.spicy,
-        images: [],
+        images: item.images || [],
         ingredients: [
           { id: generateId(), name: '主料', amount: '300克' },
           { id: generateId(), name: '配料', amount: '适量' }

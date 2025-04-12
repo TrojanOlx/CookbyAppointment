@@ -52,7 +52,8 @@
 .dish-list {
   flex: 1;
   padding: 20rpx;
-  padding-top: 120rpx; /* 为固定定位的类型选择器留出空间 */
+  padding-top: 130rpx; /* 为固定定位的类型选择器留出空间 */
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部导航栏和安全区域留出空间 */
   width: 100%;
   box-sizing: border-box;
   overflow-y: auto;

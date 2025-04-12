@@ -1,12 +1,24 @@
 <view class="container">
   <!-- 轮播图 -->
-  <swiper class="dish-swiper" indicator-dots="{{true}}" autoplay="{{true}}" interval="4000" duration="500">
+  <swiper 
+    class="dish-swiper" 
+    indicator-dots="{{true}}" 
+    autoplay="{{true}}" 
+    interval="3500" 
+    duration="800"
+    circular="{{true}}"
+    easing-function="easeInOutCubic"
+    previous-margin="0rpx"
+    next-margin="0rpx"
+    indicator-color="rgba(255, 255, 255, 0.5)"
+    indicator-active-color="#ffffff"
+  >
     <block wx:if="{{dish.images && dish.images.length > 0}}">
-      <swiper-item wx:for="{{dish.images}}" wx:key="*this">
-        <image src="{{item}}" mode="aspectFill" class="swiper-image"></image>
+      <swiper-item wx:for="{{dish.images}}" wx:key="*this" class="swiper-item">
+        <image src="{{item}}" mode="aspectFill" class="swiper-image" lazy-load="{{true}}"></image>
       </swiper-item>
     </block>
-    <swiper-item wx:else>
+    <swiper-item wx:else class="swiper-item">
       <image src="/images/default-dish.png" mode="aspectFill" class="swiper-image"></image>
     </swiper-item>
   </swiper>
