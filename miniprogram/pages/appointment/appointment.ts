@@ -2,8 +2,8 @@ import { Appointment, Dish, MealType } from '../../utils/model';
 import { appointmentService, dishService } from '../../utils/storage';
 import { formatDate, getCurrentDate, getDaysInMonth, showConfirm, showSuccess } from '../../utils/util';
 // 引入wx-calendar和农历插件
-import { WxCalendar } from '@lspriv/wx-calendar/lib';
-import * as LunarPlugin from '@lspriv/wc-plugin-lunar';
+const WxCalendar = require('@lspriv/wx-calendar/lib').WxCalendar;
+const LunarPlugin = require('@lspriv/wc-plugin-lunar');
 
 // 初始化日历插件
 WxCalendar.use(LunarPlugin);
