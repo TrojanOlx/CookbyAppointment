@@ -2,6 +2,9 @@ import { Dish, MealType, Appointment } from '../../../utils/model';
 import { dishService, appointmentService, generateId } from '../../../utils/storage';
 import { formatDate, showError, showSuccess, showToast } from '../../../utils/util';
 
+// 每页加载的菜品数量
+const PAGE_SIZE = 10;
+
 Page({
   data: {
     date: '', // YYYY-MM-DD 格式的日期
@@ -14,7 +17,13 @@ Page({
     editMode: false, // 是否是编辑模式
     appointmentId: '', // 编辑的预约ID
     isLoading: true, // 加载状态
-    selectedCount: 0 // 已选择的菜品数量
+    selectedCount: 0, // 已选择的菜品数量
+    isRefreshing: false, // 是否正在刷新
+    isLoadingMore: false, // 是否正在加载更多
+    currentPage: 1, // 当前页码
+    hasMoreData: true, // 是否还有更多数据
+    headerHeight: 0, // 顶部固定区域的高度
+    filteredTotal: 0, // 筛选后的总菜品数量
   },
 
   onLoad(options) {
@@ -39,7 +48,7 @@ Page({
             selectedMealType: appointment.mealType,
             selectedDishes: [...appointment.dishes],
             dishes,
-            filteredDishes: dishes,
+            filteredTotal: dishes.length,
             editMode: true,
             appointmentId: options.id,
             selectedCount: appointment.dishes.length
@@ -60,7 +69,7 @@ Page({
         this.setData({
           date: options.date,
           dishes,
-          filteredDishes: dishes
+          filteredTotal: dishes.length
         });
       } else {
         showError('参数错误');
@@ -70,7 +79,8 @@ Page({
         return;
       }
       
-      this.applyFilters();
+      // 分页加载第一页数据
+      this.loadPageData(1);
     } catch (error) {
       console.error('加载数据失败', error);
       showError('加载数据失败');
@@ -78,6 +88,150 @@ Page({
       this.setData({
         isLoading: false
       });
+    }
+
+    // 计算固定顶部区域的高度
+    this.calculateHeaderHeight();
+  },
+
+  onReady() {
+    // 页面渲染完成后再次计算顶部高度
+    setTimeout(() => {
+      this.calculateHeaderHeight();
+    }, 300);
+  },
+
+  // 计算顶部固定区域的高度并设置CSS变量
+  calculateHeaderHeight() {
+    const query = wx.createSelectorQuery();
+    query.select('.fixed-top').boundingClientRect();
+    query.exec(res => {
+      if (res && res[0]) {
+        const headerHeight = res[0].height;
+        this.setData({
+          headerHeight
+        });
+        
+        // 设置 CSS 变量，添加一个小偏移量确保内容不会被遮挡
+        wx.getSystemInfo({
+          success: (sysInfo) => {
+            const ratio = sysInfo.windowWidth / 750; // rpx 到 px 的转换比例
+            const headerHeightRpx = headerHeight / ratio;
+            // 修改为更小的偏移，适应更紧凑的界面
+            const styleString = `--header-height: ${headerHeightRpx}rpx`;
+            
+            wx.nextTick(() => {
+              this.setData({
+                cssVars: styleString
+              });
+            });
+          }
+        });
+      }
+    });
+  },
+
+  // 分页加载数据
+  loadPageData(page: number) {
+    const { dishes, selectedType, searchKeyword } = this.data;
+    let filtered = [...dishes];
+    
+    // 按类型筛选
+    if (selectedType) {
+      filtered = filtered.filter(dish => dish.type === selectedType);
+    }
+    
+    // 按关键词搜索
+    if (searchKeyword) {
+      filtered = filtered.filter(dish => 
+        dish.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        dish.ingredients.some(ing => ing.name.toLowerCase().includes(searchKeyword.toLowerCase()))
+      );
+    }
+    
+    // 记录筛选后的总数量
+    const filteredTotal = filtered.length;
+    
+    // 分页截取
+    const start = (page - 1) * PAGE_SIZE;
+    const end = page * PAGE_SIZE;
+    const pageData = filtered.slice(start, end);
+    
+    // 是否还有更多数据
+    const hasMoreData = end < filteredTotal;
+    
+    // 更新数据
+    if (page === 1) {
+      // 第一页直接替换
+      this.setData({
+        filteredDishes: pageData,
+        currentPage: page,
+        hasMoreData,
+        filteredTotal
+      });
+    } else {
+      // 追加到现有数据
+      this.setData({
+        filteredDishes: [...this.data.filteredDishes, ...pageData],
+        currentPage: page,
+        hasMoreData
+      });
+    }
+  },
+
+  // 下拉刷新
+  onRefresh() {
+    if (this.data.isRefreshing) return;
+    
+    this.setData({
+      isRefreshing: true
+    });
+    
+    try {
+      // 重新获取菜品数据
+      const dishes = dishService.getAllDishes();
+      dishes.sort((a, b) => b.createTime - a.createTime);
+      
+      this.setData({
+        dishes,
+        currentPage: 1
+      });
+      
+      // 重新加载第一页
+      this.loadPageData(1);
+      
+      showToast('刷新成功');
+    } catch (error) {
+      console.error('刷新失败', error);
+      showError('刷新失败');
+    } finally {
+      setTimeout(() => {
+        this.setData({
+          isRefreshing: false
+        });
+      }, 800); // 稍微延迟停止刷新状态，以便用户看到刷新效果
+    }
+  },
+
+  // 加载更多
+  onLoadMore() {
+    if (this.data.isLoadingMore || !this.data.hasMoreData) return;
+    
+    this.setData({
+      isLoadingMore: true
+    });
+    
+    try {
+      const nextPage = this.data.currentPage + 1;
+      this.loadPageData(nextPage);
+    } catch (error) {
+      console.error('加载更多失败', error);
+    } finally {
+      setTimeout(() => {
+        this.setData({
+          isLoadingMore: false
+        });
+      }, 500);
     }
   },
 
@@ -108,42 +262,21 @@ Page({
     const type = e.currentTarget.dataset.type;
     
     this.setData({
-      selectedType: type
+      selectedType: type,
+      currentPage: 1
     });
 
-    this.applyFilters();
+    this.loadPageData(1);
   },
 
   // 搜索输入
   onSearchInput(e: any) {
     this.setData({
-      searchKeyword: e.detail.value
+      searchKeyword: e.detail.value,
+      currentPage: 1
     });
     
-    this.applyFilters();
-  },
-
-  // 应用筛选条件
-  applyFilters() {
-    const { dishes, selectedType, searchKeyword } = this.data;
-    let filtered = [...dishes];
-    
-    // 按类型筛选
-    if (selectedType) {
-      filtered = filtered.filter(dish => dish.type === selectedType);
-    }
-    
-    // 按关键词搜索
-    if (searchKeyword) {
-      filtered = filtered.filter(dish => 
-        dish.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-        dish.ingredients.some(ing => ing.name.toLowerCase().includes(searchKeyword.toLowerCase()))
-      );
-    }
-    
-    this.setData({
-      filteredDishes: filtered
-    });
+    this.loadPageData(1);
   },
 
   // 清除筛选条件
@@ -151,8 +284,10 @@ Page({
     this.setData({
       selectedType: '',
       searchKeyword: '',
-      filteredDishes: this.data.dishes
+      currentPage: 1
     });
+
+    this.loadPageData(1);
   },
 
   // 切换菜品选择状态

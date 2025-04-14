@@ -1,15 +1,29 @@
-.container {
-  padding: 20rpx;
+.page-container {
+  position: relative;
+  width: 100%;
+  height: 100vh;
   background-color: #f6f6f6;
-  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* 固定顶部区域 */
+.fixed-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+  background-color: #f6f6f6;
 }
 
 /* 头部 */
 .header {
+  width: 100%;
   background-color: #fff;
-  padding: 30rpx;
-  border-radius: 10rpx;
-  margin-bottom: 20rpx;
+  padding: 20rpx;
+  border-radius: 0 0 10rpx 10rpx;
+  margin-bottom: 10rpx;
+  box-sizing: border-box;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
@@ -22,27 +36,30 @@
 
 /* 餐次选择区域 */
 .meal-section {
+  width: 100%;
   background-color: #fff;
-  padding: 30rpx;
+  padding: 20rpx;
   border-radius: 10rpx;
-  margin-bottom: 20rpx;
+  margin-bottom: 10rpx;
+  box-sizing: border-box;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
 .section-title {
   font-size: 28rpx;
   color: #666;
-  margin-bottom: 20rpx;
+  margin-bottom: 15rpx;
 }
 
 .meal-types {
   display: flex;
   justify-content: space-between;
+  width: 100%;
 }
 
 .meal-type-item {
   flex: 1;
-  height: 80rpx;
+  height: 70rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,24 +77,29 @@
 
 /* 筛选区域 */
 .filter-section {
+  width: 100%;
   background-color: #fff;
-  padding: 30rpx;
+  padding: 20rpx;
   border-radius: 10rpx;
-  margin-bottom: 20rpx;
+  margin-bottom: 10rpx;
+  box-sizing: border-box;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
 .search-box {
   position: relative;
-  margin-bottom: 20rpx;
+  margin-bottom: 15rpx;
+  width: 100%;
 }
 
 .search-input {
-  height: 80rpx;
+  height: 70rpx;
+  width: 100%;
   background-color: #f5f5f5;
   border-radius: 40rpx;
   padding: 0 80rpx 0 30rpx;
   font-size: 28rpx;
+  box-sizing: border-box;
 }
 
 .search-icon {
@@ -91,14 +113,15 @@
 .filter-tags {
   display: flex;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .filter-tag {
-  padding: 10rpx 20rpx;
+  padding: 8rpx 16rpx;
   background-color: #f5f5f5;
   border-radius: 30rpx;
   margin-right: 15rpx;
-  margin-bottom: 15rpx;
+  margin-bottom: 10rpx;
   font-size: 24rpx;
   color: #666;
 }
@@ -112,13 +135,14 @@
 .filter-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 20rpx;
+  margin-top: 10rpx;
+  width: 100%;
 }
 
 .clear-filter {
   font-size: 24rpx;
   color: #4CAF50;
-  padding: 8rpx 16rpx;
+  padding: 6rpx 16rpx;
   border: 1rpx solid #4CAF50;
   border-radius: 30rpx;
 }
@@ -129,10 +153,11 @@
   justify-content: space-between;
   align-items: center;
   background-color: #e8f5e9;
-  padding: 20rpx 30rpx;
+  padding: 12rpx 20rpx;
   border-radius: 10rpx;
-  margin-bottom: 20rpx;
+  margin: 0 10rpx 10rpx 10rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
 }
 
 .selected-count {
@@ -148,9 +173,20 @@
 .clear-selection {
   font-size: 24rpx;
   color: #f44336;
-  padding: 6rpx 16rpx;
+  padding: 4rpx 14rpx;
   border: 1rpx solid #f44336;
   border-radius: 30rpx;
+}
+
+/* 滚动内容区域 */
+.scroll-content {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding-bottom: 0rpx;
+  box-sizing: border-box;
 }
 
 /* 加载状态 */
@@ -159,7 +195,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60rpx 0;
+  padding: 40rpx 0;
+  width: 100%;
 }
 
 .loading-spinner {
@@ -169,7 +206,15 @@
   border-top: 6rpx solid #4CAF50;
   border-radius: 50%;
   animation: spin 1s linear infinite;
-  margin-bottom: 20rpx;
+  margin-bottom: 15rpx;
+}
+
+.loading-spinner.small {
+  width: 40rpx;
+  height: 40rpx;
+  border-width: 4rpx;
+  margin-bottom: 0;
+  margin-right: 15rpx;
 }
 
 @keyframes spin {
@@ -184,18 +229,22 @@
 
 /* 菜品列表 */
 .dish-list {
-  margin-bottom: 120rpx;
+  padding: 0 10rpx;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dish-item {
   display: flex;
   background-color: #fff;
-  margin-bottom: 15rpx;
-  padding: 20rpx;
+  margin-bottom: 10rpx;
+  padding: 15rpx;
   border-radius: 10rpx;
   position: relative;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
   transition: all 0.3s;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .dish-item.selected {
@@ -204,11 +253,12 @@
 }
 
 .dish-image {
-  width: 160rpx;
-  height: 160rpx;
+  width: 150rpx;
+  height: 150rpx;
   border-radius: 8rpx;
-  margin-right: 20rpx;
+  margin-right: 15rpx;
   background-color: #f0f0f0;
+  flex-shrink: 0;
 }
 
 .dish-info {
@@ -216,12 +266,17 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  min-width: 0;
 }
 
 .dish-name {
-  font-size: 32rpx;
+  font-size: 30rpx;
   font-weight: 500;
-  margin-bottom: 10rpx;
+  margin-bottom: 8rpx;
+  width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .dish-tags {
@@ -230,11 +285,11 @@
 }
 
 .dish-tag {
-  font-size: 24rpx;
-  padding: 4rpx 16rpx;
-  border-radius: 20rpx;
-  margin-right: 10rpx;
-  margin-bottom: 10rpx;
+  font-size: 22rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 16rpx;
+  margin-right: 8rpx;
+  margin-bottom: 8rpx;
 }
 
 .dish-tag.type {
@@ -249,8 +304,8 @@
 
 .check-icon {
   position: absolute;
-  right: 20rpx;
-  top: 20rpx;
+  right: 15rpx;
+  top: 15rpx;
   width: 40rpx;
   height: 40rpx;
   background-color: #4CAF50;
@@ -264,13 +319,32 @@
 
 /* 空状态 */
 .empty-tip {
-  padding: 60rpx 0;
+  padding: 40rpx 0;
   text-align: center;
+  width: 100%;
 }
 
 .empty-text {
   color: #999;
   font-size: 28rpx;
+}
+
+/* 加载更多和无更多数据提示 */
+.load-more-tip, .no-more-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20rpx 0;
+  width: 100%;
+  text-align: center;
+  color: #999;
+  font-size: 24rpx;
+}
+
+/* 底部安全区域 */
+.bottom-safe-area {
+  width: 100%;
+  height: 120rpx;
 }
 
 /* 底部操作按钮 */
@@ -280,9 +354,12 @@
   left: 0;
   right: 0;
   display: flex;
-  padding: 20rpx;
+  padding: 15rpx;
   background-color: #fff;
   box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
+  z-index: 100;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .cancel-btn, .submit-btn {
