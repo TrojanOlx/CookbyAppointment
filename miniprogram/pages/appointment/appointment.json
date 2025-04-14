@@ -2,5 +2,6 @@
   "navigationBarTitleText": "预约日历",
   "usingComponents": {
     "calendar": "@lspriv/wx-calendar"
-  }
+  },
+  "styleIsolation": "apply-shared"
 } 

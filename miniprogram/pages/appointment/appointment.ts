@@ -36,7 +36,6 @@ Page({
     selectedDateDisplay: '今日', // 选中的日期显示文本
     todayAppointments: [] as DisplayAppointment[], // 当前选中日期的预约
     plugins: [LunarPlugin],  // 使用农历插件
-    showLunar: true, // 是否显示农历
   },
 
   onLoad() {
@@ -306,11 +305,4 @@ Page({
     // 日历加载完成后，确保标记已更新
     this.updateCalendarMarks();
   },
-
-  // 切换农历显示
-  toggleLunar() {
-    this.setData({
-      showLunar: !this.data.showLunar
-    });
-  }
 }); 

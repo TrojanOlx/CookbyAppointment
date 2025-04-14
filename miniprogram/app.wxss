@@ -4,10 +4,10 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 200rpx 0;
+  justify-content: flex-start;
   box-sizing: border-box;
-} 
+  background-color: var(--wc-bg-color);
+}
 
 /* 通用样式 */
 page {
@@ -17,6 +17,15 @@ page {
   --text-color: #333333;
   --text-color-light: #666666;
   --background-color: #f6f6f6;
+  --wc-bg-color: #ffffff;
+  --wc-text-color: #333333;
+  --wc-placeholder-color: #999999;
+  --wc-holiday-color: #ff4d4f;
+  --wc-selected-color: #4CAF50;
+  --wc-normal-color: #333333;
+  --wc-weekend-color: #333333;
+  --wc-dot-color: #4CAF50;
+  --wc-solar-color: #fa8c16;
   
   background-color: var(--background-color);
   color: var(--text-color);
@@ -73,4 +82,42 @@ button::after {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/* 日历组件全局样式 */
+.wc-calendar {
+  width: 100%;
+  background: var(--wc-bg-color);
+}
+
+/* 农历文字样式 */
+.wc-calendar .wc-lunar {
+  font-size: 20rpx;
+  color: var(--wc-placeholder-color);
+}
+
+/* 节日样式 */
+.wc-calendar .wc-festival {
+  color: var(--wc-holiday-color);
+}
+
+/* 选中日期样式 */
+.wc-calendar .wc-selected {
+  background-color: var(--wc-selected-color);
+  color: #ffffff;
+}
+
+/* 今天日期样式 */
+.wc-calendar .wc-today {
+  color: var(--wc-selected-color);
+}
+
+/* 周末样式 */
+.wc-calendar .wc-weekend {
+  color: var(--wc-weekend-color);
+}
+
+/* 节气样式 */
+.wc-calendar .wc-solar {
+  color: var(--wc-solar-color);
 } 
