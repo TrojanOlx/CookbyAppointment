@@ -39,9 +39,7 @@
     ]
   },
   "style": "v2",
-  "componentFramework": "glass-easel",
   "lazyCodeLoading": "requiredComponents",
   "usingComponents": {},
-  "resizable": true,
-  "deviceOrientation": "portrait"
+  "resizable": true
 }

@@ -5,7 +5,7 @@
     mode="{{calendarMode}}"
     date="{{selectedDate}}"
     marks="{{markedDates}}"
-    lunar="{{true}}"
+    lunar="{{showLunar}}"
     plugins="{{plugins}}"
     header="{{true}}"
     fold="{{false}}"
@@ -14,6 +14,13 @@
     bindchange="onCalendarChange"
     bindviewchange="onViewChange"
   />
+
+  <!-- 农历显示控制 -->
+  <view class="lunar-control">
+    <view class="lunar-toggle" bindtap="toggleLunar">
+      <text>{{showLunar ? '隐藏农历' : '显示农历'}}</text>
+    </view>
+  </view>
 
   <!-- 今日预约 -->
   <view class="today-appointments">

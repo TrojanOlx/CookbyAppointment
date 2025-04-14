@@ -1,6 +1,6 @@
 {
   "navigationBarTitleText": "预约日历",
   "usingComponents": {
-    "calendar": "../../miniprogram_npm/@lspriv/wx-calendar/index"
+    "calendar": "@lspriv/wx-calendar"
   }
 } 

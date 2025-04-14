@@ -31,7 +31,18 @@ Component({
     // 获取当前页面对应的TabBar索引
     getTabBarIndex() {
       const pages = getCurrentPages();
+      // 添加安全检查，确保pages不为空且currentPage存在
+      if (!pages || pages.length === 0) {
+        console.warn('getCurrentPages()返回空数组');
+        return 0;
+      }
+      
       const currentPage = pages[pages.length - 1];
+      if (!currentPage || !currentPage.route) {
+        console.warn('当前页面信息不完整:', currentPage);
+        return 0;
+      }
+      
       const url = `/${currentPage.route}`;
       const list = this.data.list;
       

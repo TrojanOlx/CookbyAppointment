@@ -1,9 +1,18 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@lspriv/wx-calendar/*": [
+        "./node_modules/@lspriv/wx-calendar/dist/*"
+      ],
+      "@lspriv/wc-plugin-lunar/*": [
+        "./node_modules/@lspriv/wc-plugin-lunar/dist/*"
+      ],
+    },
     "strictNullChecks": true,
     "noImplicitAny": true,
     "module": "CommonJS",
-    "target": "ES2020",
+    "target": "ES2017",
     "allowJs": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -16,9 +25,10 @@
     "noUnusedParameters": true,
     "strict": true,
     "strictPropertyInitialization": true,
-    "lib": ["ES2020"],
+    "lib": ["ES2017"],
     "typeRoots": [
-      "./typings"
+      "./typings",
+      "./node_modules/miniprogram-api-typings"
     ]
   },
   "include": [
