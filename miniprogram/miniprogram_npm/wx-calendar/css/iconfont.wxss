@@ -1,0 +1,37 @@
+@font-face {font-family: "iconfont";
+  src: url('iconfont.eot?t=1582444722838'); /* IE9 */
+  src: url('iconfont.eot?t=1582444722838#iefix') format('embedded-opentype'), /* IE6-IE8 */
+  url('data:application/x-font-woff2;charset=utf-8;base64,d09GMgABAAAAAAM8AAsAAAAAB8QAAALvAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHEIGVgCDOAqCKIISATYCJAMYCw4ABCAFhG0HdRvVBhEVlLtkXxTYzWQx4lSYilvcw1cY4s1V1Ex1kOdB8FT7la975s/OEaq9U4gKmB1gQAGgupSPIvJosyoENixTkbvtaB5ntjXKwvcu6l7A1AOJKF++NdtXLwqEijA9JePBwz/0Hi/bpUc6abgCIIcOwn64n+myAPPZtwkOJaqwk6oBJ7YBdeNoZJvQ7AT9FvVGJPWsi48hQCzZlCDtnc6DxwKrBJDNtVXBV3xYrJP0CK7joEWuEeD1vL6Cq/L78rtKPCiBATYOL9sOzd/bvu8xx6LH5jkK2XZuwDkGBigBLMhmp3cZk8VKMMRG0y21gMejsFVs8PueaNTA9dvhwv/ieeIBxWAJEBAHFMYD0K/HA/jeRhEofO9HYOD7AAIL3welU3V7dPntGN2GC0JAM7ALoJUQFQQ1rWGnb547fvviTd6+De/fp3fv4oVbVXWcw3rzxs/fjWnw36afgFz4/EZ54m8z/5GRtcn3aGJKOCVRN69e3VQU6WImLaRtaWf1yRM9iyIuZuIiwrExkgkZERF4vWOKdHE1XJz59QuWPJ3JkZ0hYcWrtkOYD5hmfQboCb0OYFTS9CXZlP1CAIGeG9P/l5Lq/3llAfi0b+RoVss2cY/CZNmPkE3ssbECbM6GjWkZAjjCm0QUiEUH/IIUpPJtK2PGnSUET0YBSogsMHhy0BZfAgFx1IDD0wSxFNN1PI409mIQGwMUcVoDIZn7oCTyFAzJRNAW/xUCMvkLjmQxEMukpF0YR55wiqPwhkThSyXKysRhThXfkJ+z17JCsv+gewlS33T15BUrdIst+ysPZkysstBFew7zLLSpPBCtGc22c9ty15uaKEvloPCGROFLJcrKfLi5xudvyM/Z60DDSPAPupfxqW+6Ceirdp3U8Cqv7K88mDGxykIXbR7mWWjrnvdAtGZcENnOLQ7iqdrmeP3yACVOC/B3nKgYsRKIkxBtik9lzW5Vedcz2I5JnmFG3dAd8pFa8minAWndUlUA') format('woff2'),
+  url('iconfont.woff?t=1582444722838') format('woff'),
+  url('iconfont.ttf?t=1582444722838') format('truetype'), /* chrome, firefox, opera, Safari, Android, iOS 4.2+ */
+  url('iconfont.svg?t=1582444722838#iconfont') format('svg'); /* iOS 4.1- */
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-loading:before {
+  content: "\e771";
+}
+
+.icon-arrow-left:before {
+  content: "\e743";
+}
+
+.icon-double-arrow-left:before {
+  content: "\e74c";
+}
+
+.icon-arrow-right:before {
+  content: "\e74d";
+}
+
+.icon-double-arrow-right:before {
+  content: "\e74e";
+}
+

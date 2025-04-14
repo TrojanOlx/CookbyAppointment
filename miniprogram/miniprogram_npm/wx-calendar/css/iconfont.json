@@ -1,0 +1,44 @@
+{
+  "id": "1650498",
+  "name": "wx-plugin-calendar",
+  "font_family": "iconfont",
+  "css_prefix_text": "icon-",
+  "description": "",
+  "glyphs": [
+    {
+      "icon_id": "4074003",
+      "name": "loading",
+      "font_class": "loading",
+      "unicode": "e771",
+      "unicode_decimal": 59249
+    },
+    {
+      "icon_id": "11487978",
+      "name": "arrow-lift",
+      "font_class": "arrow-left",
+      "unicode": "e743",
+      "unicode_decimal": 59203
+    },
+    {
+      "icon_id": "11488028",
+      "name": "double-arrow-left",
+      "font_class": "double-arrow-left",
+      "unicode": "e74c",
+      "unicode_decimal": 59212
+    },
+    {
+      "icon_id": "13125522",
+      "name": "arrow-lift",
+      "font_class": "arrow-right",
+      "unicode": "e74d",
+      "unicode_decimal": 59213
+    },
+    {
+      "icon_id": "13125523",
+      "name": "double-arrow-left",
+      "font_class": "double-arrow-right",
+      "unicode": "e74e",
+      "unicode_decimal": 59214
+    }
+  ]
+}

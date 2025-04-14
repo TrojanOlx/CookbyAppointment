@@ -1,0 +1,57 @@
+<!-- plugin/components/lxf-calendar.wxml -->
+<wxs module="tools">
+  function single(v) {
+  return parseInt(v)
+  }
+  module.exports.single = single
+</wxs>
+<view class="lc-header">
+  <view class="lc-previous-year lc-switch-btn" bind:tap="previousYear">
+    <text class="iconfont icon-double-arrow-left"></text>
+  </view>
+  <view class="lc-previous-month lc-switch-btn" bind:tap="previousMonth">
+    <text class="iconfont icon-arrow-left"></text>
+    <text>{{previousM.m}}月</text>
+  </view>
+
+  <view class="lc-header-main">{{year}}年{{month}}月</view>
+
+  <view class="lc-next-year lc-switch-btn" bind:tap="nextMonth">
+    <text>{{nextM.m}}月</text>
+    <text class="iconfont icon-arrow-right"></text>
+  </view>
+  <view class="lc-next-month lc-switch-btn" bind:tap="nextYear">
+    <text class="iconfont icon-double-arrow-right"></text>
+  </view>
+</view>
+<view class="lc-body">
+  <view class="lc-weeks">
+    <view class="lc-week" wx:for="{{weeks}}" wx:key="*this">{{item}}</view>
+  </view>
+  <view class="lc-dates">
+    <view class="lc-dates-mask {{loading?'loading':''}}">
+      <view class="iconfont icon-loading"></view>
+    </view>
+    <view
+      class="lc-date-row"
+      wx:for="{{datesForRender}}"
+      wx:for-item="row"
+      wx:for-index="rowI"
+      wx:key="rowI"
+    >
+      <view
+        bind:tap="select"
+        data-selected-date="{{date}}"
+        data-x="{{rowI}}"
+        data-y="{{dateI}}"
+        class="lc-date-item {{date.visible ? '':'invisible'}} {{date.type==='on'?'':'others'}} {{date.disabled?'disabled':''}} {{date.selected? 'selected':''}} {{date.isToday?'today' : ''}} {{date.class}}"
+        wx:for="{{row}}"
+        wx:for-index="dateI"
+        wx:for-item="date"
+        wx:key="dateI"
+      >
+        <view class="lc-date-text">{{props.single? tools.single(date.d): date.d}}</view>
+      </view>
+    </view>
+  </view>
+</view>

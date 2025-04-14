@@ -1,37 +1,19 @@
 <view class="container">
-  <!-- 日历头部 -->
-  <view class="calendar-header">
-    <view class="arrow" bindtap="prevMonth">
-      <text class="arrow-icon">《</text>
-    </view>
-    <view class="header-date">{{year}}年{{month + 1}}月</view>
-    <view class="arrow" bindtap="nextMonth">
-      <text class="arrow-icon">》</text>
-    </view>
-  </view>
-
-  <!-- 星期几的标题 -->
-  <view class="weekday-header">
-    <view class="weekday" wx:for="{{weekdays}}" wx:key="*this">{{item}}</view>
-  </view>
-
-  <!-- 日历主体 -->
-  <view class="calendar-body">
-    <view 
-      wx:for="{{days}}" 
-      wx:key="date" 
-      class="day {{item.currentMonth ? '' : 'other-month'}} {{item.today ? 'today' : ''}} {{item.hasAppointment ? 'has-appointment' : ''}}"
-      data-date="{{item.date}}"
-      bindtap="selectDate"
-    >
-      <view class="day-number">{{item.day}}</view>
-      <view class="dot-container">
-        <view class="meal-dot breakfast" wx:if="{{item.meals.breakfast}}"></view>
-        <view class="meal-dot lunch" wx:if="{{item.meals.lunch}}"></view>
-        <view class="meal-dot dinner" wx:if="{{item.meals.dinner}}"></view>
-      </view>
-    </view>
-  </view>
+  <!-- 使用 @lspriv/wx-calendar 组件 -->
+  <calendar 
+    id="calendar"
+    mode="{{calendarMode}}"
+    date="{{selectedDate}}"
+    marks="{{markedDates}}"
+    lunar="{{true}}"
+    plugins="{{plugins}}"
+    header="{{true}}"
+    fold="{{false}}"
+    bindload="onCalendarLoad"
+    bindclick="onCalendarSelect"
+    bindchange="onCalendarChange"
+    bindviewchange="onViewChange"
+  />
 
   <!-- 今日预约 -->
   <view class="today-appointments">

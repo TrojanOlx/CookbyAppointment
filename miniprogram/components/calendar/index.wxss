@@ -1,0 +1,108 @@
+/* plugin/components/lxf-calendar.wxss */
+@import "../css/iconfont.wxss";
+.lc-header {
+  height: 80rpx;
+  display: flex;
+  padding: 0 20rpx;
+  border-bottom: 1rpx solid #f5f5f5;
+}
+
+.lc-switch-btn {
+  min-width: 50rpx;
+  text-align: center;
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+.lc-switch-btn .iconfont {
+  font-size: 40rpx;
+}
+.lc-header-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lc-weeks {
+  /* background-color: #f5f5f5; */
+  display: flex;
+}
+.lc-week {
+  flex: 1;
+  text-align: center;
+  line-height: 60rpx;
+}
+
+.lc-dates {
+  border-bottom: 1rpx solid #f5f5f5;
+  position: relative;
+}
+.lc-date-row {
+  display: flex;
+}
+.lc-date-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80rpx;
+}
+.lc-date-text {
+  height: 70rpx;
+  width: 70rpx;
+  border-radius: 50%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 不可点击 样式 */
+.disabled {
+  color: #999;
+}
+/* 其他月份 样式 */
+.others {
+  color: #999;
+}
+/* 选中 样式 */
+.selected .lc-date-text {
+  background-color: #2b83ff;
+  color: #fff;
+}
+/* 今日 样式 */
+.today .lc-date-text {
+  border: 1rpx solid #409eff;
+}
+/* 不显示 样式 */
+.invisible .lc-date-text {
+  display: none;
+}
+
+/* 加载中 */
+.lc-dates-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  visibility: hidden;
+}
+.lc-dates-mask .iconfont {
+  font-size: 80rpx;
+  animation: roll infinite 1.5s linear;
+}
+.loading {
+  visibility: visible;
+}
+@keyframes roll {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

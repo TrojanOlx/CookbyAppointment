@@ -6,126 +6,6 @@
   box-sizing: border-box;
 }
 
-/* 日历头部 */
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #fff;
-  padding: 20rpx;
-  margin-bottom: 20rpx;
-  border-radius: 10rpx;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
-}
-
-.header-date {
-  font-size: 32rpx;
-  font-weight: 500;
-}
-
-.arrow {
-  width: 60rpx;
-  height: 60rpx;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.arrow-icon {
-  font-size: 28rpx;
-  color: #666;
-}
-
-/* 星期几标题 */
-.weekday-header {
-  display: flex;
-  background-color: #fff;
-  border-top-left-radius: 10rpx;
-  border-top-right-radius: 10rpx;
-  overflow: hidden;
-}
-
-.weekday {
-  flex: 1;
-  text-align: center;
-  font-size: 26rpx;
-  color: #666;
-  padding: 15rpx 0;
-}
-
-/* 日历主体 */
-.calendar-body {
-  display: flex;
-  flex-wrap: wrap;
-  background-color: #fff;
-  border-bottom-left-radius: 10rpx;
-  border-bottom-right-radius: 10rpx;
-  overflow: hidden;
-  margin-bottom: 20rpx;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
-}
-
-.day {
-  width: calc(100% / 7);
-  height: 100rpx;
-  text-align: center;
-  padding-top: 10rpx;
-  box-sizing: border-box;
-  border-right: 1rpx solid #f5f5f5;
-  border-bottom: 1rpx solid #f5f5f5;
-}
-
-.day-number {
-  font-size: 28rpx;
-}
-
-.other-month .day-number {
-  color: #ccc;
-}
-
-.today {
-  background-color: #f9f9f9;
-}
-
-.today .day-number {
-  background-color: #4CAF50;
-  color: #fff;
-  width: 50rpx;
-  height: 50rpx;
-  line-height: 50rpx;
-  border-radius: 50%;
-  margin: 0 auto;
-}
-
-.has-appointment {
-  position: relative;
-}
-
-.dot-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 10rpx;
-}
-
-.meal-dot {
-  width: 10rpx;
-  height: 10rpx;
-  border-radius: 50%;
-  margin: 0 2rpx;
-}
-
-.breakfast {
-  background-color: #2196F3;
-}
-
-.lunch {
-  background-color: #FF9800;
-}
-
-.dinner {
-  background-color: #9C27B0;
-}
-
 /* 今日预约 */
 .today-appointments {
   background-color: #fff;
@@ -133,6 +13,7 @@
   padding: 20rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  margin-top: 20rpx;
 }
 
 .section-title {
@@ -240,4 +121,40 @@
   justify-content: center;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
   z-index: 100;
-} 
+}
+
+/* 自定义日历样式 */
+calendar {
+  /* 基础颜色 */
+  --wc-primary-color: #4CAF50;
+  --wc-primary-color-opacity: rgba(76, 175, 80, 0.1);
+  --wc-text-color: #333333;
+  --wc-text-color-second: #666666;
+  --wc-text-color-disabled: #dddddd;
+  --wc-bg-color: #ffffff;
+  --wc-bg-color-hover: #f5f5f5;
+  --wc-border-color: #f0f0f0;
+  --wc-holiday-color: #F56C6C;
+  --wc-btn-reset-color: #F56C6C;
+  --wc-switch-btn-disabled-color: #cccccc;
+  
+  /* 农历样式 */
+  --wc-lunar-color: #F56C6C;  /* 农历文字颜色 */
+  --wc-lunar-size: 20rpx;     /* 农历文字大小 */
+  --wc-lunar-weight: normal;  /* 农历文字粗细 */
+  
+  /* 节日样式 */
+  --wc-festival-color: #F56C6C;  /* 节日颜色 */
+  --wc-festival-size: 20rpx;     /* 节日文字大小 */
+  --wc-festival-weight: normal;  /* 节日文字粗细 */
+  
+  /* 布局样式 */
+  --wc-date-height: 90rpx;       /* 日期单元格高度 */
+  --wc-date-lunar-space: 4rpx;   /* 公历和农历之间的间距 */
+  
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  padding: 20rpx 0;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+}
