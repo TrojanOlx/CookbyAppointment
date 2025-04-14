@@ -1,5 +1,5 @@
 ---
-description: 
+description: 微信小程序规则
 globs: 
 alwaysApply: true
 ---
@@ -54,4 +54,4 @@ alwaysApply: true
     - 优化小程序性能，包括启动时间、页面切换、网络请求等。
     - 实现适当的数据安全和用户隐私保护措施。
 
-    在整个过程中，始终参考[微信小程序官方文档](mdc:https:/developers.weixin.qq.com/miniprogram/dev/framework)，确保使用最新的微信小程序开发最佳实践。
+    在整个过程中，始终参考@微信小程序官方文档，确保使用最新的微信小程序开发最佳实践。

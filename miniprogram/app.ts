@@ -1,4 +1,6 @@
 // app.ts
+import { initTestData } from './utils/storage';
+
 interface GlobalData {
   systemInfo?: WechatMiniprogram.SystemInfo;
 }
@@ -16,5 +18,8 @@ App<{
         console.log('系统信息:', res);
       }
     });
+    
+    // 初始化测试数据
+    initTestData();
   },
 })

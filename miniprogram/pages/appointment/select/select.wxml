@@ -36,7 +36,7 @@
     <view class="search-box">
       <input 
         class="search-input" 
-        placeholder="搜索菜品" 
+        placeholder="搜索菜品名称或食材" 
         value="{{searchKeyword}}" 
         bindinput="onSearchInput" 
       />
@@ -64,10 +64,27 @@
         bindtap="filterByType"
       >炖汤</view>
     </view>
+    <view class="filter-actions" wx:if="{{selectedType !== '' || searchKeyword !== ''}}">
+      <view class="clear-filter" bindtap="clearFilters">清除筛选</view>
+    </view>
+  </view>
+
+  <!-- 已选菜品计数 -->
+  <view class="selected-count-section" wx:if="{{selectedCount > 0}}">
+    <view class="selected-count">
+      已选择 <text class="count-num">{{selectedCount}}</text> 个菜品
+    </view>
+    <view class="clear-selection" bindtap="clearAllSelection">清空选择</view>
+  </view>
+
+  <!-- 加载状态 -->
+  <view class="loading-container" wx:if="{{isLoading}}">
+    <view class="loading-spinner"></view>
+    <view class="loading-text">加载中...</view>
   </view>
 
   <!-- 菜品列表 -->
-  <view class="dish-list">
+  <view class="dish-list" wx:else>
     <block wx:if="{{filteredDishes.length > 0}}">
       <view 
         class="dish-item {{selectedDishes.includes(item.id) ? 'selected' : ''}}" 
@@ -95,6 +112,6 @@
   <!-- 预约按钮 -->
   <view class="action-buttons">
     <button class="cancel-btn" bindtap="cancel">取消</button>
-    <button class="submit-btn" bindtap="saveAppointment">保存预约</button>
+    <button class="submit-btn" bindtap="saveAppointment" disabled="{{selectedDishes.length === 0}}">保存预约</button>
   </view>
 </view> 

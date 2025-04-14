@@ -40,6 +40,15 @@ export const showError = (title: string): void => {
   });
 }
 
+// 显示普通提示
+export const showToast = (title: string): void => {
+  wx.showToast({
+    title,
+    icon: 'none',
+    duration: 2000
+  });
+}
+
 // 显示加载中
 export const showLoading = (title: string): void => {
   wx.showLoading({
