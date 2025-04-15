@@ -248,13 +248,13 @@
 
 /* 滚动内容区域 */
 .scroll-content {
-  position: absolute;
-  top: 0;
-  left: 0;
+  position: relative;
   width: 100%;
   height: 100vh;
   box-sizing: border-box;
+  overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  transition: padding-bottom 0.3s ease;
 }
 
 /* 加载状态 */

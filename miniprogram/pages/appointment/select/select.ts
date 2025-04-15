@@ -111,11 +111,13 @@ Page({
       }
     });
 
-    // 计算底部固定区域高度
+    // 计算底部固定区域高度，考虑已选菜品计数区域
     query.select('.bottom-fixed-area').boundingClientRect(rect => {
       if (rect) {
+        // 获取实际的底部区域高度
+        const actualHeight = rect.height;
         this.setData({
-          bottomHeight: rect.height
+          bottomHeight: actualHeight
         });
       }
     });
@@ -331,15 +333,15 @@ Page({
     this.setData({
       selectedDishes: newSelectedDishes,
       selectedCount: newSelectedDishes.length
+    }, () => {
+      // 在更新选中状态后重新计算布局高度
+      this.updateLayoutHeight();
+      
+      // 如果选择了超过 10 个菜品，提示用户
+      if (newSelectedDishes.length > 10) {
+        showToast('已选择较多菜品，请注意合理安排用餐');
+      }
     });
-    
-    // 如果选择了超过 10 个菜品，提示用户
-    if (newSelectedDishes.length > 10) {
-      showToast('已选择较多菜品，请注意合理安排用餐');
-    }
-    
-    // 更新布局高度
-    this.updateLayoutHeight();
   },
 
   // 取消预约
@@ -447,13 +449,13 @@ Page({
           this.setData({
             selectedDishes: [],
             selectedCount: 0
+          }, () => {
+            // 在清空选择后重新计算布局高度
+            this.updateLayoutHeight();
           });
         }
       }
     });
-    
-    // 更新布局高度
-    this.updateLayoutHeight();
   },
   
   // 页面分享功能
