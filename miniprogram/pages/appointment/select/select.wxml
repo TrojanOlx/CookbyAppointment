@@ -70,14 +70,6 @@
         <view class="clear-filter" bindtap="clearFilters">清除筛选</view>
       </view>
     </view>
-
-    <!-- 已选菜品计数 -->
-    <view class="selected-count-section" wx:if="{{selectedCount > 0}}">
-      <view class="selected-count">
-        已选择 <text class="count-num">{{selectedCount}}</text> 个菜品
-      </view>
-      <view class="clear-selection" bindtap="clearAllSelection">清空选择</view>
-    </view>
   </view>
 
   <!-- 主体内容可滚动区域 -->
@@ -92,7 +84,7 @@
     refresher-triggered="{{isRefreshing}}"
     bindrefresherrefresh="onRefresh"
     bindscrolltolower="onLoadMore"
-    style="padding-top: {{headerHeight}}px;"
+    style="padding-top: {{headerHeight}}px; padding-bottom: {{bottomHeight}}px;"
   >
     <!-- 加载状态 -->
     <view class="loading-container" wx:if="{{isLoading}}">
@@ -141,9 +133,23 @@
     </view>
   </scroll-view>
 
-  <!-- 预约按钮 -->
-  <view class="action-buttons">
-    <button class="cancel-btn" bindtap="cancel">取消</button>
-    <button class="submit-btn" bindtap="saveAppointment" disabled="{{selectedDishes.length === 0}}">保存预约</button>
+  <!-- 底部固定区域 -->
+  <view class="bottom-fixed-area">
+    <!-- 已选菜品计数 -->
+    <view class="selected-count-section" wx:if="{{selectedCount > 0}}">
+      <view class="selected-count">
+        已选择 <text class="count-num">{{selectedCount}}</text> 个菜品
+      </view>
+      <view class="clear-selection" bindtap="clearAllSelection">清空选择</view>
+    </view>
+
+    <!-- 预约按钮 -->
+    <view class="action-buttons">
+      <view class="button-wrapper">
+        <button class="cancel-btn" bindtap="cancel">取消</button>
+        <button class="submit-btn" bindtap="saveAppointment" disabled="{{selectedDishes.length === 0}}">保存预约</button>
+      </view>
+      <view class="safe-area-bottom"></view>
+    </view>
   </view>
 </view> 

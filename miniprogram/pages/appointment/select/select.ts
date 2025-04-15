@@ -23,6 +23,7 @@ Page({
     currentPage: 1, // 当前页码
     hasMoreData: true, // 是否还有更多数据
     headerHeight: 0, // 顶部固定区域的高度
+    bottomHeight: 0, // 底部固定区域的高度
     filteredTotal: 0, // 筛选后的总菜品数量
   },
 
@@ -95,10 +96,31 @@ Page({
   },
 
   onReady() {
-    // 页面渲染完成后再次计算顶部高度
-    setTimeout(() => {
-      this.calculateHeaderHeight();
-    }, 300);
+    this.updateLayoutHeight();
+  },
+
+  updateLayoutHeight() {
+    const query = wx.createSelectorQuery();
+    
+    // 计算顶部固定区域高度
+    query.select('.fixed-top').boundingClientRect(rect => {
+      if (rect) {
+        this.setData({
+          headerHeight: rect.height
+        });
+      }
+    });
+
+    // 计算底部固定区域高度
+    query.select('.bottom-fixed-area').boundingClientRect(rect => {
+      if (rect) {
+        this.setData({
+          bottomHeight: rect.height
+        });
+      }
+    });
+
+    query.exec();
   },
 
   // 计算顶部固定区域的高度并设置CSS变量
@@ -315,6 +337,9 @@ Page({
     if (newSelectedDishes.length > 10) {
       showToast('已选择较多菜品，请注意合理安排用餐');
     }
+    
+    // 更新布局高度
+    this.updateLayoutHeight();
   },
 
   // 取消预约
@@ -426,6 +451,9 @@ Page({
         }
       }
     });
+    
+    // 更新布局高度
+    this.updateLayoutHeight();
   },
   
   // 页面分享功能
