@@ -1,11 +1,14 @@
 /* 页面容器 */
-.page-container {
-  min-height: 100vh;
+.container {
+  position: relative;
+  height: 100vh;
   background-color: #f8f9fa;
+  padding: 0;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部导航栏和安全区域留出空间 */
-  box-sizing: border-box;
+  padding-bottom: constant(safe-area-inset-bottom); /* iOS 11.0 */
+  padding-bottom: env(safe-area-inset-bottom); /* iOS 11.2+ */
 }
 
 /* 日历部分 */
@@ -22,6 +25,8 @@
   width: 100%;
   box-sizing: border-box;
   padding: 0 20rpx;
+  padding-bottom: calc(20rpx + constant(safe-area-inset-bottom)); /* iOS 11.0 */
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom)); /* iOS 11.2+ */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch; /* 增加 iOS 滚动流畅度 */
 }
