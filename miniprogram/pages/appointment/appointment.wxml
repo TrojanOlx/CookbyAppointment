@@ -3,6 +3,7 @@
   <view class="calendar-section">
     <calendar 
       id="calendar"
+      view="week"
       mode="{{calendarMode}}"
       date="{{selectedDate}}"
       marks="{{markedDates}}"
