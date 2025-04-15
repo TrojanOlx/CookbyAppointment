@@ -254,7 +254,12 @@
   box-sizing: border-box;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  transition: padding-bottom 0.3s ease;
+  transition: all 0.3s ease-out;
+  scroll-behavior: smooth;
+}
+
+.dish-list {
+  transition: transform 0.3s ease-out;
 }
 
 /* 加载状态 */

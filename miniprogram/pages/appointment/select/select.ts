@@ -25,6 +25,9 @@ Page({
     headerHeight: 0, // 顶部固定区域的高度
     bottomHeight: 0, // 底部固定区域的高度
     filteredTotal: 0, // 筛选后的总菜品数量
+    scrollTop: 0,
+    lastScrollTop: 0,
+    isNearBottom: false,
   },
 
   onLoad(options) {
@@ -111,13 +114,19 @@ Page({
       }
     });
 
-    // 计算底部固定区域高度，考虑已选菜品计数区域
+    // 计算底部固定区域高度
     query.select('.bottom-fixed-area').boundingClientRect(rect => {
       if (rect) {
-        // 获取实际的底部区域高度
         const actualHeight = rect.height;
         this.setData({
           bottomHeight: actualHeight
+        }, () => {
+          // 如果在底部，自动调整滚动位置
+          if (this.data.isNearBottom && this.data.selectedCount > 0) {
+            this.setData({
+              scrollTop: this.data.lastScrollTop + 100
+            });
+          }
         });
       }
     });
@@ -314,10 +323,29 @@ Page({
     this.loadPageData(1);
   },
 
+  // 监听滚动事件
+  onScroll(e: any) {
+    const { scrollTop, scrollHeight } = e.detail;
+    const query = wx.createSelectorQuery();
+    
+    query.select('.scroll-content').boundingClientRect(rect => {
+      if (rect) {
+        const viewportHeight = rect.height;
+        // 判断是否接近底部（距离底部100px以内）
+        const isNearBottom = scrollTop + viewportHeight >= scrollHeight - 100;
+        
+        this.setData({
+          lastScrollTop: scrollTop,
+          isNearBottom
+        });
+      }
+    }).exec();
+  },
+
   // 切换菜品选择状态
   toggleSelectDish(e: any) {
     const dishId = e.currentTarget.dataset.id;
-    const { selectedDishes } = this.data;
+    const { selectedDishes, isNearBottom, lastScrollTop } = this.data;
     
     const index = selectedDishes.indexOf(dishId);
     let newSelectedDishes = [...selectedDishes];
@@ -329,12 +357,17 @@ Page({
       // 如果未选中，则添加
       newSelectedDishes.push(dishId);
     }
+
+    // 如果是第一次选择菜品且在底部，需要自动滚动
+    const needsScroll = newSelectedDishes.length === 1 && isNearBottom;
     
     this.setData({
       selectedDishes: newSelectedDishes,
-      selectedCount: newSelectedDishes.length
+      selectedCount: newSelectedDishes.length,
+      // 如果需要滚动，设置新的scrollTop
+      scrollTop: needsScroll ? lastScrollTop + 100 : lastScrollTop
     }, () => {
-      // 在更新选中状态后重新计算布局高度
+      // 更新布局高度
       this.updateLayoutHeight();
       
       // 如果选择了超过 10 个菜品，提示用户

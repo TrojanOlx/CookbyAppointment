@@ -66,9 +66,6 @@
           bindtap="filterByType"
         >炖汤</view>
       </view>
-      <view class="filter-actions" wx:if="{{selectedType !== '' || searchKeyword !== ''}}">
-        <view class="clear-filter" bindtap="clearFilters">清除筛选</view>
-      </view>
     </view>
   </view>
 
@@ -84,6 +81,9 @@
     refresher-triggered="{{isRefreshing}}"
     bindrefresherrefresh="onRefresh"
     bindscrolltolower="onLoadMore"
+    scroll-top="{{scrollTop}}"
+    scroll-with-animation="{{true}}"
+    bindscroll="onScroll"
     style="padding-top: {{headerHeight}}px; padding-bottom: {{bottomHeight}}px;"
   >
     <!-- 加载状态 -->
