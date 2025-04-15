@@ -10,7 +10,7 @@ Page({
     date: '', // YYYY-MM-DD 格式的日期
     dishes: [] as Dish[], // 所有菜品列表
     filteredDishes: [] as Dish[], // 过滤后的菜品列表
-    selectedDishes: [] as string[], // 已选择的菜品ID列表
+    selectedDishes: {} as Record<string, boolean>, // 已选择的菜品ID映射
     selectedType: '', // 当前选择的菜品类型
     selectedMealType: MealType.Lunch, // 当前选择的餐次
     searchKeyword: '', // 搜索关键词
@@ -47,10 +47,16 @@ Page({
         const appointment = appointmentService.getAppointmentById(options.id);
         
         if (appointment) {
+          // 将选中的菜品ID数组转换为映射对象
+          const selectedDishes = appointment.dishes.reduce((acc, id) => {
+            acc[id] = true;
+            return acc;
+          }, {} as Record<string, boolean>);
+
           this.setData({
             date: appointment.date,
             selectedMealType: appointment.mealType,
-            selectedDishes: [...appointment.dishes],
+            selectedDishes,
             dishes,
             filteredTotal: dishes.length,
             editMode: true,
@@ -73,7 +79,8 @@ Page({
         this.setData({
           date: options.date,
           dishes,
-          filteredTotal: dishes.length
+          filteredTotal: dishes.length,
+          selectedDishes: {}
         });
       } else {
         showError('参数错误');
@@ -121,10 +128,12 @@ Page({
         this.setData({
           bottomHeight: actualHeight
         }, () => {
-          // 如果在底部，自动调整滚动位置
+          // 只有在底部且有选中项时才调整滚动位置
           if (this.data.isNearBottom && this.data.selectedCount > 0) {
-            this.setData({
-              scrollTop: this.data.lastScrollTop + 100
+            wx.nextTick(() => {
+              this.setData({
+                scrollTop: this.data.lastScrollTop + actualHeight
+              });
             });
           }
         });
@@ -331,13 +340,21 @@ Page({
     query.select('.scroll-content').boundingClientRect(rect => {
       if (rect) {
         const viewportHeight = rect.height;
-        // 判断是否接近底部（距离底部100px以内）
-        const isNearBottom = scrollTop + viewportHeight >= scrollHeight - 100;
+        // 判断是否接近底部（距离底部20px以内）
+        const isNearBottom = scrollTop + viewportHeight >= scrollHeight - 120;
         
-        this.setData({
-          lastScrollTop: scrollTop,
-          isNearBottom
-        });
+        // 只有当滚动状态改变时才更新
+        if (this.data.isNearBottom !== isNearBottom) {
+          this.setData({
+            lastScrollTop: scrollTop,
+            isNearBottom
+          }, () => {
+            // 如果滚动到底部且有选中的菜品，更新布局
+            if (isNearBottom && this.data.selectedCount > 0) {
+              this.updateLayoutHeight();
+            }
+          });
+        }
       }
     }).exec();
   },
@@ -345,34 +362,34 @@ Page({
   // 切换菜品选择状态
   toggleSelectDish(e: any) {
     const dishId = e.currentTarget.dataset.id;
-    const { selectedDishes, isNearBottom, lastScrollTop } = this.data;
+    const { selectedDishes } = this.data;
     
-    const index = selectedDishes.indexOf(dishId);
-    let newSelectedDishes = [...selectedDishes];
+    // 创建新的选中状态对象
+    const newSelectedDishes = { ...selectedDishes };
     
-    if (index > -1) {
+    if (selectedDishes[dishId]) {
       // 如果已经选中，则移除
-      newSelectedDishes.splice(index, 1);
+      delete newSelectedDishes[dishId];
     } else {
       // 如果未选中，则添加
-      newSelectedDishes.push(dishId);
+      newSelectedDishes[dishId] = true;
     }
-
-    // 如果是第一次选择菜品且在底部，需要自动滚动
-    const needsScroll = newSelectedDishes.length === 1 && isNearBottom;
     
+    const selectedCount = Object.keys(newSelectedDishes).length;
+    
+    // 更新选中状态
     this.setData({
       selectedDishes: newSelectedDishes,
-      selectedCount: newSelectedDishes.length,
-      // 如果需要滚动，设置新的scrollTop
-      scrollTop: needsScroll ? lastScrollTop + 100 : lastScrollTop
+      selectedCount
     }, () => {
-      // 更新布局高度
-      this.updateLayoutHeight();
-      
       // 如果选择了超过 10 个菜品，提示用户
-      if (newSelectedDishes.length > 10) {
+      if (selectedCount > 10) {
         showToast('已选择较多菜品，请注意合理安排用餐');
+      }
+
+      // 只有在底部时才更新布局高度
+      if (this.data.isNearBottom) {
+        this.updateLayoutHeight();
       }
     });
   },
@@ -380,7 +397,7 @@ Page({
   // 取消预约
   cancel() {
     // 如果有修改，询问用户是否放弃
-    if (this.data.selectedDishes.length > 0) {
+    if (this.data.selectedCount > 0) {
       wx.showModal({
         title: '提示',
         content: '确定放弃当前选择吗？',
@@ -399,8 +416,11 @@ Page({
   saveAppointment() {
     const { date, selectedMealType, selectedDishes, editMode, appointmentId } = this.data;
     
+    // 获取选中的菜品ID列表
+    const selectedDishIds = Object.keys(selectedDishes);
+    
     // 验证是否选择了菜品
-    if (selectedDishes.length === 0) {
+    if (selectedDishIds.length === 0) {
       showError('请至少选择一个菜品');
       return;
     }
@@ -417,7 +437,7 @@ Page({
           id: appointmentId,
           date,
           mealType: selectedMealType,
-          dishes: selectedDishes,
+          dishes: selectedDishIds,
           createTime: Date.now()
         });
         
@@ -449,7 +469,7 @@ Page({
           id: generateId(),
           date,
           mealType: selectedMealType,
-          dishes: selectedDishes,
+          dishes: selectedDishIds,
           createTime: Date.now()
         };
         
@@ -470,7 +490,7 @@ Page({
   
   // 清空所有选择
   clearAllSelection() {
-    if (this.data.selectedDishes.length === 0) {
+    if (this.data.selectedCount === 0) {
       return;
     }
     
@@ -480,7 +500,7 @@ Page({
       success: (res) => {
         if (res.confirm) {
           this.setData({
-            selectedDishes: [],
+            selectedDishes: {},
             selectedCount: 0
           }, () => {
             // 在清空选择后重新计算布局高度

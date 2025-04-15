@@ -96,9 +96,9 @@
     <view class="dish-list" wx:else>
       <block wx:if="{{filteredDishes.length > 0}}">
         <view 
-          class="dish-item {{selectedDishes.includes(item.id) ? 'selected' : ''}}" 
           wx:for="{{filteredDishes}}" 
           wx:key="id"
+          class="dish-item {{selectedDishes[item.id] ? 'selected' : ''}}"
           data-id="{{item.id}}"
           bindtap="toggleSelectDish"
         >
@@ -110,7 +110,7 @@
               <view class="dish-tag spicy" wx:if="{{item.spicy !== '不辣'}}">{{item.spicy}}</view>
             </view>
           </view>
-          <view class="check-icon" wx:if="{{selectedDishes.includes(item.id)}}">✓</view>
+          <view class="check-icon" wx:if="{{selectedDishes[item.id]}}">✓</view>
         </view>
       </block>
       <view class="empty-tip" wx:else>
