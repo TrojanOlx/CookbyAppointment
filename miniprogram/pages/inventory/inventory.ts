@@ -1,5 +1,5 @@
 import { InventoryItem } from '../../utils/model';
-import { inventoryService } from '../../utils/storage';
+import { inventoryService, generateId } from '../../utils/storage';
 import { showConfirm, showSuccess, getCurrentDate, isDateExpired, dateDiff } from '../../utils/util';
 
 interface DisplayInventoryItem extends InventoryItem {
@@ -12,14 +12,18 @@ Page({
   data: {
     items: [] as DisplayInventoryItem[],
     searchKeyword: '',
+    pageSize: 10,
+    currentPage: 1,
+    hasMore: true,
+    loading: false
   },
 
   onLoad() {
-    this.loadInventory();
+    this.loadInventory(true);
   },
 
   onShow() {
-    this.loadInventory();
+    this.loadInventory(true);
     
     // 更新TabBar选中状态
     if (typeof this.getTabBar === 'function') {
@@ -30,16 +34,18 @@ Page({
   },
 
   // 加载库存数据
-  loadInventory() {
-    const { searchKeyword } = this.data;
+  loadInventory(refresh = false) {
+    if (this.data.loading) return;
+    
+    this.setData({ loading: true });
     
     // 根据搜索关键词决定获取全部库存还是进行搜索
-    const inventoryItems = searchKeyword 
-      ? inventoryService.searchInventoryByName(searchKeyword)
+    const inventoryItems = this.data.searchKeyword 
+      ? inventoryService.searchInventoryByName(this.data.searchKeyword)
       : inventoryService.getAllInventory();
 
     // 处理数据，添加过期信息
-    const displayItems: DisplayInventoryItem[] = [];
+    const allItems: DisplayInventoryItem[] = [];
     const today = getCurrentDate();
     
     for (const item of inventoryItems) {
@@ -50,7 +56,7 @@ Page({
         daysLeft = dateDiff(today, item.expiryDate);
       }
       
-      displayItems.push({
+      allItems.push({
         ...item,
         isExpired: expired,
         isExpiringSoon: !expired && daysLeft !== null && daysLeft <= 3,
@@ -59,7 +65,7 @@ Page({
     }
     
     // 按过期情况排序：已过期 > 即将过期 > 正常
-    displayItems.sort((a, b) => {
+    allItems.sort((a, b) => {
       if (a.isExpired && !b.isExpired) return -1;
       if (!a.isExpired && b.isExpired) return 1;
       if (a.isExpiringSoon && !b.isExpiringSoon) return -1;
@@ -72,18 +78,31 @@ Page({
       return a.name.localeCompare(b.name);
     });
     
+    // 计算分页数据
+    const start = refresh ? 0 : (this.data.currentPage - 1) * this.data.pageSize;
+    const end = start + this.data.pageSize;
+    const items = allItems.slice(start, end);
+    
     this.setData({
-      items: displayItems
+      items: refresh ? items : [...this.data.items, ...items],
+      currentPage: refresh ? 1 : this.data.currentPage + 1,
+      hasMore: end < allItems.length,
+      loading: false
     });
+    
+    if (refresh && wx.stopPullDownRefresh) {
+      wx.stopPullDownRefresh();
+    }
   },
 
   // 搜索输入
   onSearchInput(e: any) {
     this.setData({
-      searchKeyword: e.detail.value
+      searchKeyword: e.detail.value,
+      currentPage: 1
     });
     
-    this.loadInventory();
+    this.loadInventory(true);
   },
 
   // 添加食材
@@ -110,8 +129,20 @@ Page({
       const success = inventoryService.deleteInventory(id);
       if (success) {
         showSuccess('删除成功');
-        this.loadInventory();
+        this.loadInventory(true);
       }
+    }
+  },
+  
+  // 下拉刷新
+  onPullDownRefresh() {
+    this.loadInventory(true);
+  },
+
+  // 上拉加载更多
+  onReachBottom() {
+    if (this.data.hasMore && !this.data.loading) {
+      this.loadInventory();
     }
   }
 }); 

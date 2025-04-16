@@ -32,7 +32,17 @@ Page({
         wx.setNavigationBarTitle({
           title: '编辑食材'
         });
+      } else {
+        showError('未找到指定食材');
+        setTimeout(() => {
+          wx.navigateBack();
+        }, 1500);
       }
+    } else {
+      // 新增模式，设置默认放入日期为今天
+      this.setData({
+        'item.putInDate': getCurrentDate()
+      });
     }
   },
 
@@ -61,12 +71,12 @@ Page({
     const { item, editMode } = this.data;
     
     // 验证必填字段
-    if (!formData.name) {
+    if (!formData.name || formData.name.trim() === '') {
       showError('请输入食材名称');
       return;
     }
     
-    if (!formData.amount) {
+    if (!formData.amount || formData.amount.trim() === '') {
       showError('请输入数量/重量');
       return;
     }
@@ -89,31 +99,36 @@ Page({
     
     // 构建保存数据
     const saveItem: InventoryItem = {
-      id: item.id || generateId(),
-      name: formData.name,
-      amount: formData.amount,
+      id: editMode ? item.id : generateId(),
+      name: formData.name.trim(),
+      amount: formData.amount.trim(),
       putInDate: item.putInDate,
       expiryDate: item.expiryDate,
-      createTime: item.createTime || Date.now()
+      createTime: editMode ? item.createTime : Date.now()
     };
     
-    if (editMode) {
-      // 更新食材
-      const success = inventoryService.updateInventory(saveItem);
-      if (success) {
-        showSuccess('食材更新成功');
+    try {
+      if (editMode) {
+        // 更新食材
+        const success = inventoryService.updateInventory(saveItem);
+        if (success) {
+          showSuccess('食材更新成功');
+        } else {
+          showError('食材更新失败');
+          return;
+        }
       } else {
-        showError('食材更新失败');
+        // 添加食材
+        inventoryService.addInventory(saveItem);
+        showSuccess('食材添加成功');
       }
-    } else {
-      // 添加食材
-      inventoryService.addInventory(saveItem);
-      showSuccess('食材添加成功');
+      
+      // 返回上一页
+      setTimeout(() => {
+        wx.navigateBack();
+      }, 1000);
+    } catch (error) {
+      showError('操作失败：' + (error as Error).message);
     }
-    
-    // 返回上一页
-    setTimeout(() => {
-      wx.navigateBack();
-    }, 1500);
   }
 }); 

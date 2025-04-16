@@ -16,7 +16,13 @@
   <!-- 库存列表 -->
   <view class="inventory-list">
     <block wx:if="{{items.length > 0}}">
-      <view class="inventory-item" wx:for="{{items}}" wx:key="id" bindtap="editItem" data-id="{{item.id}}">
+      <view 
+        class="inventory-item" 
+        wx:for="{{items}}" 
+        wx:key="id" 
+        bindtap="editItem" 
+        data-id="{{item.id}}"
+      >
         <view class="item-info">
           <view class="item-name">{{item.name}}</view>
           <view class="item-amount">{{item.amount}}</view>

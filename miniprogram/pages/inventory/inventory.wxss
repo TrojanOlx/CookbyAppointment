@@ -1,17 +1,23 @@
 .container {
-  padding: 20rpx;
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom));
+  position: relative;
+  height: 100vh;
+  padding: 0;
   background-color: #f6f6f6;
-  min-height: 100vh;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 搜索区域 */
 .search-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
   background-color: #fff;
   padding: 20rpx;
-  border-radius: 10rpx;
-  margin-bottom: 20rpx;
+  border-radius: 0 0 10rpx 10rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
@@ -37,7 +43,14 @@
 
 /* 库存列表 */
 .inventory-list {
-  margin-bottom: 100rpx;
+  flex: 1;
+  padding: 20rpx;
+  padding-top: 130rpx; /* 为固定定位的搜索栏留出空间 */
+  padding-bottom: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部导航栏和安全区域留出空间 */
+  width: 100%;
+  box-sizing: border-box;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* 增加 iOS 滚动流畅度 */
 }
 
 .inventory-item {
@@ -52,12 +65,16 @@
 
 .item-info {
   flex: 1;
+  overflow: hidden;
 }
 
 .item-name {
   font-size: 32rpx;
   font-weight: 500;
   margin-bottom: 10rpx;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-amount {
@@ -90,6 +107,7 @@
 .item-actions {
   display: flex;
   align-items: flex-start;
+  margin-left: 10rpx;
 }
 
 .delete-btn {
@@ -102,17 +120,27 @@
   justify-content: center;
   align-items: center;
   font-size: 30rpx;
+  transition: all 0.3s;
+}
+
+.delete-btn:active {
+  background-color: #f44336;
+  color: #fff;
 }
 
 /* 空提示 */
 .empty-tip {
-  padding: 60rpx 0;
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 100rpx;
 }
 
 .empty-text {
+  font-size: 30rpx;
   color: #999;
-  font-size: 28rpx;
+  margin-top: 20rpx;
 }
 
 /* 添加按钮 */
@@ -131,4 +159,9 @@
   justify-content: center;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
   z-index: 100;
+  transition: all 0.2s;
+}
+
+.add-btn:active {
+  transform: scale(0.95);
 } 
