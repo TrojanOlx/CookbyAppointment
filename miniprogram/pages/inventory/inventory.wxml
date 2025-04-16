@@ -13,8 +13,62 @@
     </view>
   </view>
 
-  <!-- 库存列表 -->
-  <view class="inventory-list">
+  <!-- 筛选组件 -->
+  <view class="filter-bar">
+    <view 
+      class="filter-item {{filterStatus === '' ? 'active' : ''}}" 
+      bindtap="filterByStatus" 
+      data-status=""
+    >
+      <text>全部</text>
+      <text class="count">{{totalCount}}</text>
+    </view>
+    <view 
+      class="filter-item {{filterStatus === 'normal' ? 'active' : ''}}" 
+      bindtap="filterByStatus" 
+      data-status="normal"
+    >
+      <text>未到期</text>
+      <text class="count">{{normalCount}}</text>
+    </view>
+    <view 
+      class="filter-item {{filterStatus === 'expiring' ? 'active' : ''}}" 
+      bindtap="filterByStatus" 
+      data-status="expiring"
+    >
+      <text>即将过期</text>
+      <text class="count">{{expiringCount}}</text>
+    </view>
+    <view 
+      class="filter-item {{filterStatus === 'expired' ? 'active' : ''}}" 
+      bindtap="filterByStatus" 
+      data-status="expired"
+    >
+      <text>已过期</text>
+      <text class="count">{{expiredCount}}</text>
+    </view>
+  </view>
+
+  <!-- 库存列表（滚动区域） -->
+  <scroll-view 
+    class="inventory-list" 
+    scroll-y 
+    enable-back-to-top
+    refresher-enabled
+    refresher-threshold="50"
+    refresher-default-style="black"
+    refresher-background="#f6f6f6"
+    refresher-triggered="{{isRefreshing}}"
+    bindrefresherrefresh="onRefresh"
+    bindscrolltolower="onReachBottom"
+  >
+    <!-- 加载状态 -->
+    <view class="loading-container" wx:if="{{loading && items.length === 0}}">
+      <view class="loading-spinner"></view>
+      <view class="loading-text">加载中...</view>
+    </view>
+
+    <!-- 列表内容 -->
     <block wx:if="{{items.length > 0}}">
       <view 
         class="inventory-item" 
@@ -40,11 +94,22 @@
           <view class="delete-btn" catchtap="deleteItem" data-id="{{item.id}}">×</view>
         </view>
       </view>
+
+      <!-- 底部加载更多提示 -->
+      <view class="load-more-tip" wx:if="{{isLoadingMore}}">
+        <view class="loading-spinner small"></view>
+        <text class="loading-text">加载更多...</text>
+      </view>
+      
+      <!-- 底部无更多数据提示 -->
+      <view class="no-more-tip" wx:if="{{!isLoadingMore && !hasMore && filteredTotal > pageSize}}">
+        <text>没有更多了</text>
+      </view>
     </block>
-    <view class="empty-tip" wx:else>
+    <view class="empty-tip" wx:elif="{{!loading}}">
       <view class="empty-text">暂无库存，请添加</view>
     </view>
-  </view>
+  </scroll-view>
 
   <!-- 添加按钮 -->
   <view class="add-btn" bindtap="addItem">+</view>

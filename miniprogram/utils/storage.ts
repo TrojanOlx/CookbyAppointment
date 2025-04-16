@@ -205,7 +205,7 @@ export function initTestData(): void {
       amount: '10个',
       putInDate: formatDateStr(new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)), // 前天
       expiryDate: formatDateStr(new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000)), // 10天后
-      createTime: Date.now()
+      createTime: Date.now() - 100000
     },
     {
       id: 'inv2',
@@ -213,7 +213,7 @@ export function initTestData(): void {
       amount: '5个',
       putInDate: formatDateStr(today),
       expiryDate: formatDateStr(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)), // 7天后
-      createTime: Date.now()
+      createTime: Date.now() - 200000
     },
     {
       id: 'inv3',
@@ -221,7 +221,79 @@ export function initTestData(): void {
       amount: '2块',
       putInDate: formatDateStr(yesterday),
       expiryDate: formatDateStr(new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)), // 3天后
-      createTime: Date.now()
+      createTime: Date.now() - 300000
+    },
+    {
+      id: 'inv4',
+      name: '排骨',
+      amount: '500g',
+      putInDate: formatDateStr(new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000)),
+      expiryDate: formatDateStr(new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000)), // 2天后
+      createTime: Date.now() - 400000
+    },
+    {
+      id: 'inv5',
+      name: '油麦菜',
+      amount: '1把',
+      putInDate: formatDateStr(yesterday),
+      expiryDate: formatDateStr(today), // 今天到期
+      createTime: Date.now() - 500000
+    },
+    {
+      id: 'inv6',
+      name: '葱',
+      amount: '5根',
+      putInDate: formatDateStr(new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000)),
+      expiryDate: formatDateStr(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000)), // 昨天过期
+      createTime: Date.now() - 600000
+    },
+    {
+      id: 'inv7',
+      name: '冬瓜',
+      amount: '1个',
+      putInDate: formatDateStr(new Date(today.getTime() - 4 * 24 * 60 * 60 * 1000)),
+      expiryDate: formatDateStr(new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000)), // 5天后
+      createTime: Date.now() - 700000
+    },
+    {
+      id: 'inv8',
+      name: '牛肉',
+      amount: '300g',
+      putInDate: formatDateStr(yesterday),
+      expiryDate: formatDateStr(new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)), // 3天后
+      createTime: Date.now() - 800000
+    },
+    {
+      id: 'inv9',
+      name: '花椒',
+      amount: '小袋',
+      putInDate: formatDateStr(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)),
+      expiryDate: formatDateStr(new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000)), // 半年后
+      createTime: Date.now() - 900000
+    },
+    {
+      id: 'inv10',
+      name: '草鱼',
+      amount: '1条',
+      putInDate: formatDateStr(today),
+      expiryDate: formatDateStr(new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000)), // 明天到期
+      createTime: Date.now() - 1000000
+    },
+    {
+      id: 'inv11',
+      name: '大米',
+      amount: '5kg',
+      putInDate: formatDateStr(new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000)),
+      expiryDate: formatDateStr(new Date(today.getTime() + 300 * 24 * 60 * 60 * 1000)), // 300天后
+      createTime: Date.now() - 1100000
+    },
+    {
+      id: 'inv12',
+      name: '酱油',
+      amount: '1瓶',
+      putInDate: formatDateStr(new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000)),
+      expiryDate: formatDateStr(new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)), // 前天过期
+      createTime: Date.now() - 1200000
     }
   ];
   

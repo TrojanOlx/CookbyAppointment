@@ -41,16 +41,65 @@
   color: #999;
 }
 
+/* 筛选组件 */
+.filter-bar {
+  position: fixed;
+  top: 120rpx;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  background-color: #ffffff;
+  padding: 10rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.filter-item {
+  flex: 1;
+  min-width: 160rpx;
+  height: 70rpx;
+  font-size: 28rpx;
+  border-radius: 8rpx;
+  color: #666;
+  margin: 0 5rpx;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-bottom: 3rpx solid transparent;
+}
+
+.filter-item.active {
+  color: #4CAF50;
+  font-weight: 500;
+  border-bottom: 3rpx solid #4CAF50;
+}
+
+.filter-item .count {
+  font-size: 20rpx;
+  color: #999;
+  margin-top: 4rpx;
+}
+
+.filter-item.active .count {
+  color: #4CAF50;
+}
+
 /* 库存列表 */
 .inventory-list {
   flex: 1;
   padding: 20rpx;
-  padding-top: 130rpx; /* 为固定定位的搜索栏留出空间 */
+  padding-top: 220rpx; /* 为固定定位的搜索栏和筛选栏留出空间 */
   padding-bottom: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部导航栏和安全区域留出空间 */
   width: 100%;
   box-sizing: border-box;
-  overflow-y: auto;
   -webkit-overflow-scrolling: touch; /* 增加 iOS 滚动流畅度 */
+  height: 100%;
 }
 
 .inventory-item {
@@ -141,6 +190,59 @@
   font-size: 30rpx;
   color: #999;
   margin-top: 20rpx;
+}
+
+/* 加载状态 */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 0;
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 6rpx solid #f3f3f3;
+  border-top: 6rpx solid #4CAF50;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner.small {
+  width: 30rpx;
+  height: 30rpx;
+  border-width: 4rpx;
+}
+
+.loading-text {
+  margin-top: 20rpx;
+  font-size: 28rpx;
+  color: #999;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* 加载更多和无更多数据提示 */
+.load-more-tip, .no-more-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30rpx 0;
+}
+
+.load-more-tip {
+  color: #999;
+}
+
+.no-more-tip {
+  color: #bbb;
+  font-size: 24rpx;
+  padding: 20rpx 0 40rpx;
 }
 
 /* 添加按钮 */
