@@ -9,7 +9,8 @@ const DEFAULT_ITEM: InventoryItem = {
   amount: '',
   putInDate: getCurrentDate(),
   expiryDate: '',
-  createTime: 0
+  createTime: 0,
+  image: ''
 };
 
 Page({
@@ -44,6 +45,24 @@ Page({
         'item.putInDate': getCurrentDate()
       });
     }
+  },
+
+  // 选择图片
+  chooseImage() {
+    wx.chooseMedia({
+      count: 1,
+      mediaType: ['image'],
+      sourceType: ['album', 'camera'],
+      camera: 'back',
+      success: (res) => {
+        const tempFilePath = res.tempFiles[0].tempFilePath;
+        
+        // 将临时路径设置到数据中
+        this.setData({
+          'item.image': tempFilePath
+        });
+      }
+    });
   },
 
   // 放入日期选择
@@ -104,7 +123,8 @@ Page({
       amount: formData.amount.trim(),
       putInDate: item.putInDate,
       expiryDate: item.expiryDate,
-      createTime: editMode ? item.createTime : Date.now()
+      createTime: editMode ? item.createTime : Date.now(),
+      image: item.image || '/images/default-food.png'
     };
     
     try {

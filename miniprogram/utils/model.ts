@@ -59,4 +59,5 @@ export interface InventoryItem {
   putInDate: string; // 放入日期，格式：YYYY-MM-DD
   expiryDate: string; // 保质期，格式：YYYY-MM-DD
   createTime: number; // 创建时间
+  image?: string; // 食材图片，可选字段
 } 
