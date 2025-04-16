@@ -7,7 +7,8 @@ const INVENTORY_KEY = 'inventories';
 
 // 生成唯一ID
 export function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  // 加入当前时间戳和随机数，确保唯一性
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '-' + Math.random().toString(36).substr(2, 5);
 }
 
 // 通用存储函数
@@ -33,10 +34,47 @@ export function initTestData(): void {
     return;
   }
   
+  // 在添加测试数据前，先检查是否已经存在相同ID的测试数据
+  // 食材库存测试数据
+  if (existingInventory.length > 0) {
+    // 过滤掉已有的测试数据ID
+    const existingIds = existingInventory.map(item => item.id);
+    for (let i = 1; i <= 12; i++) {
+      if (existingIds.includes(`test-inv${i}`)) {
+        console.log(`测试数据 test-inv${i} 已存在，跳过添加`);
+        return; // 如果发现任何一个测试ID已存在，则认为测试数据已被添加过
+      }
+    }
+  }
+  
+  // 菜品测试数据
+  if (existingDishes.length > 0) {
+    // 过滤掉已有的测试数据ID
+    const existingIds = existingDishes.map(item => item.id);
+    for (let i = 1; i <= 5; i++) {
+      if (existingIds.includes(`test-dish${i}`)) {
+        console.log(`测试数据 test-dish${i} 已存在，跳过添加`);
+        return; // 如果发现任何一个测试ID已存在，则认为测试数据已被添加过
+      }
+    }
+  }
+  
+  // 预约测试数据
+  if (existingAppointments.length > 0) {
+    // 过滤掉已有的测试数据ID
+    const existingIds = existingAppointments.map(item => item.id);
+    for (let i = 1; i <= 3; i++) {
+      if (existingIds.includes(`test-app${i}`)) {
+        console.log(`测试数据 test-app${i} 已存在，跳过添加`);
+        return; // 如果发现任何一个测试ID已存在，则认为测试数据已被添加过
+      }
+    }
+  }
+  
   // 添加测试菜品
   const testDishes: Dish[] = [
     {
-      id: 'dish1',
+      id: 'test-dish1',
       name: '西红柿炒鸡蛋',
       type: DishType.Stir,
       spicy: SpicyLevel.None,
@@ -60,7 +98,7 @@ export function initTestData(): void {
       createTime: Date.now()
     },
     {
-      id: 'dish2',
+      id: 'test-dish2',
       name: '麻婆豆腐',
       type: DishType.Stir,
       spicy: SpicyLevel.Medium,
@@ -87,7 +125,7 @@ export function initTestData(): void {
       createTime: Date.now()
     },
     {
-      id: 'dish3',
+      id: 'test-dish3',
       name: '清炒油麦菜',
       type: DishType.Vegetable,
       spicy: SpicyLevel.None,
@@ -109,7 +147,7 @@ export function initTestData(): void {
       createTime: Date.now()
     },
     {
-      id: 'dish4',
+      id: 'test-dish4',
       name: '排骨冬瓜汤',
       type: DishType.Soup,
       spicy: SpicyLevel.None,
@@ -134,7 +172,7 @@ export function initTestData(): void {
       createTime: Date.now()
     },
     {
-      id: 'dish5',
+      id: 'test-dish5',
       name: '水煮鱼',
       type: DishType.Stir,
       spicy: SpicyLevel.Hot,
@@ -175,24 +213,24 @@ export function initTestData(): void {
   
   const testAppointments: Appointment[] = [
     {
-      id: 'app1',
+      id: 'test-app1',
       date: formatDateStr(today),
       mealType: MealType.Breakfast,
-      dishes: ['dish3'],
+      dishes: ['test-dish3'],
       createTime: Date.now()
     },
     {
-      id: 'app2',
+      id: 'test-app2',
       date: formatDateStr(today),
       mealType: MealType.Dinner,
-      dishes: ['dish1', 'dish2'],
+      dishes: ['test-dish1', 'test-dish2'],
       createTime: Date.now()
     },
     {
-      id: 'app3',
+      id: 'test-app3',
       date: formatDateStr(new Date(today.getTime() + 24 * 60 * 60 * 1000)), // 明天
       mealType: MealType.Lunch,
-      dishes: ['dish4', 'dish5'],
+      dishes: ['test-dish4', 'test-dish5'],
       createTime: Date.now()
     }
   ];
@@ -200,7 +238,7 @@ export function initTestData(): void {
   // 添加测试库存
   const testInventory: InventoryItem[] = [
     {
-      id: 'inv1',
+      id: 'test-inv1',
       name: '鸡蛋',
       amount: '10个',
       putInDate: formatDateStr(new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)), // 前天
@@ -209,7 +247,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv2',
+      id: 'test-inv2',
       name: '西红柿',
       amount: '5个',
       putInDate: formatDateStr(today),
@@ -218,7 +256,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv3',
+      id: 'test-inv3',
       name: '豆腐',
       amount: '2块',
       putInDate: formatDateStr(yesterday),
@@ -227,7 +265,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv4',
+      id: 'test-inv4',
       name: '排骨',
       amount: '500g',
       putInDate: formatDateStr(new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000)),
@@ -236,7 +274,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv5',
+      id: 'test-inv5',
       name: '油麦菜',
       amount: '1把',
       putInDate: formatDateStr(yesterday),
@@ -245,7 +283,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv6',
+      id: 'test-inv6',
       name: '葱',
       amount: '5根',
       putInDate: formatDateStr(new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000)),
@@ -254,7 +292,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv7',
+      id: 'test-inv7',
       name: '冬瓜',
       amount: '1个',
       putInDate: formatDateStr(new Date(today.getTime() - 4 * 24 * 60 * 60 * 1000)),
@@ -263,7 +301,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv8',
+      id: 'test-inv8',
       name: '牛肉',
       amount: '300g',
       putInDate: formatDateStr(yesterday),
@@ -272,7 +310,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv9',
+      id: 'test-inv9',
       name: '花椒',
       amount: '小袋',
       putInDate: formatDateStr(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)),
@@ -281,7 +319,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv10',
+      id: 'test-inv10',
       name: '草鱼',
       amount: '1条',
       putInDate: formatDateStr(today),
@@ -290,7 +328,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv11',
+      id: 'test-inv11',
       name: '大米',
       amount: '5kg',
       putInDate: formatDateStr(new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000)),
@@ -299,7 +337,7 @@ export function initTestData(): void {
       image: '/images/default-food.png'
     },
     {
-      id: 'inv12',
+      id: 'test-inv12',
       name: '酱油',
       amount: '1瓶',
       putInDate: formatDateStr(new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000)),
@@ -320,6 +358,18 @@ export function initTestData(): void {
   
   if (existingInventory.length === 0) {
     setData(INVENTORY_KEY, testInventory);
+  } else {
+    // 如果已有一些库存数据，但不是全部测试数据，需要检查并添加不重复的测试数据
+    let updatedInventory = [...existingInventory];
+    const existingIds = existingInventory.map(item => item.id);
+    
+    for (const testItem of testInventory) {
+      if (!existingIds.includes(testItem.id)) {
+        updatedInventory.push(testItem);
+      }
+    }
+    
+    setData(INVENTORY_KEY, updatedInventory);
   }
 }
 
@@ -327,7 +377,29 @@ export function initTestData(): void {
 export const dishService = {
   // 获取所有菜品
   getAllDishes(): Dish[] {
-    return getData<Dish>(DISHES_KEY);
+    let dishes = getData<Dish>(DISHES_KEY);
+    
+    // 检查并去除重复ID
+    const uniqueDishes: Dish[] = [];
+    const idSet = new Set<string>();
+    
+    for (const dish of dishes) {
+      if (!idSet.has(dish.id)) {
+        idSet.add(dish.id);
+        uniqueDishes.push(dish);
+      } else {
+        console.warn(`菜品中发现重复ID: ${dish.id}，已过滤`);
+      }
+    }
+    
+    // 如果有重复项，更新存储
+    if (uniqueDishes.length !== dishes.length) {
+      console.warn(`菜品中共有 ${dishes.length - uniqueDishes.length} 个重复项已被移除`);
+      setData(DISHES_KEY, uniqueDishes);
+      dishes = uniqueDishes;
+    }
+    
+    return dishes;
   },
 
   // 按类型获取菜品
@@ -345,6 +417,13 @@ export const dishService = {
   // 添加菜品
   addDish(dish: Dish): void {
     const dishes = this.getAllDishes();
+    
+    // 检查是否已存在相同ID
+    if (dishes.some(existingDish => existingDish.id === dish.id)) {
+      console.warn(`尝试添加的菜品ID: ${dish.id} 已存在，将自动生成新ID`);
+      dish.id = generateId(); // 重新生成ID
+    }
+    
     dishes.push(dish);
     setData(DISHES_KEY, dishes);
   },
@@ -378,7 +457,29 @@ export const dishService = {
 export const appointmentService = {
   // 获取所有预约
   getAllAppointments(): Appointment[] {
-    return getData<Appointment>(APPOINTMENTS_KEY);
+    let appointments = getData<Appointment>(APPOINTMENTS_KEY);
+    
+    // 检查并去除重复ID
+    const uniqueAppointments: Appointment[] = [];
+    const idSet = new Set<string>();
+    
+    for (const appointment of appointments) {
+      if (!idSet.has(appointment.id)) {
+        idSet.add(appointment.id);
+        uniqueAppointments.push(appointment);
+      } else {
+        console.warn(`预约中发现重复ID: ${appointment.id}，已过滤`);
+      }
+    }
+    
+    // 如果有重复项，更新存储
+    if (uniqueAppointments.length !== appointments.length) {
+      console.warn(`预约中共有 ${appointments.length - uniqueAppointments.length} 个重复项已被移除`);
+      setData(APPOINTMENTS_KEY, uniqueAppointments);
+      appointments = uniqueAppointments;
+    }
+    
+    return appointments;
   },
 
   // 获取指定日期的预约
@@ -396,6 +497,13 @@ export const appointmentService = {
   // 添加预约
   addAppointment(appointment: Appointment): void {
     const appointments = this.getAllAppointments();
+    
+    // 检查是否已存在相同ID
+    if (appointments.some(existingAppointment => existingAppointment.id === appointment.id)) {
+      console.warn(`尝试添加的预约ID: ${appointment.id} 已存在，将自动生成新ID`);
+      appointment.id = generateId(); // 重新生成ID
+    }
+    
     appointments.push(appointment);
     setData(APPOINTMENTS_KEY, appointments);
   },
@@ -429,7 +537,29 @@ export const appointmentService = {
 export const inventoryService = {
   // 获取所有库存
   getAllInventory(): InventoryItem[] {
-    return getData<InventoryItem>(INVENTORY_KEY);
+    let items = getData<InventoryItem>(INVENTORY_KEY);
+    
+    // 检查并去除重复ID
+    const uniqueItems: InventoryItem[] = [];
+    const idSet = new Set<string>();
+    
+    for (const item of items) {
+      if (!idSet.has(item.id)) {
+        idSet.add(item.id);
+        uniqueItems.push(item);
+      } else {
+        console.warn(`库存中发现重复ID: ${item.id}，已过滤`);
+      }
+    }
+    
+    // 如果有重复项，更新存储
+    if (uniqueItems.length !== items.length) {
+      console.warn(`库存中共有 ${items.length - uniqueItems.length} 个重复项已被移除`);
+      setData(INVENTORY_KEY, uniqueItems);
+      items = uniqueItems;
+    }
+    
+    return items;
   },
 
   // 根据名称搜索库存
@@ -447,6 +577,13 @@ export const inventoryService = {
   // 添加库存
   addInventory(item: InventoryItem): void {
     const items = this.getAllInventory();
+    
+    // 检查是否已存在相同ID
+    if (items.some(existingItem => existingItem.id === item.id)) {
+      console.warn(`尝试添加的库存ID: ${item.id} 已存在，将自动生成新ID`);
+      item.id = generateId(); // 重新生成ID
+    }
+    
     items.push(item);
     setData(INVENTORY_KEY, items);
   },

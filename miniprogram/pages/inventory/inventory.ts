@@ -33,7 +33,8 @@ Page({
     totalCount: 0,    // 总数量
     normalCount: 0,   // 未到期数量
     expiringCount: 0, // 即将过期数量
-    expiredCount: 0   // 已过期数量
+    expiredCount: 0,   // 已过期数量
+    allFilteredItems: [] as DisplayInventoryItem[] // 存储全部筛选后的数据
   },
 
   onLoad() {
@@ -94,71 +95,91 @@ Page({
       isLoadingMore: !refresh && !this.data.isRefreshing
     });
     
-    // 获取所有库存数据
-    const inventoryItems = inventoryService.getAllInventory();
-    
-    // 计算各状态计数
-    const counts = this.calculateCounts(inventoryItems);
-    
-    // 根据搜索关键词筛选
-    let filteredItems = this.data.searchKeyword 
-      ? inventoryService.searchInventoryByName(this.data.searchKeyword)
-      : inventoryItems;
-    
-    // 处理数据，添加过期信息
-    const allItems: DisplayInventoryItem[] = [];
-    const today = getCurrentDate();
-    
-    for (const item of filteredItems) {
-      const expired = isDateExpired(item.expiryDate);
-      let daysLeft = null;
+    // 只有刷新时才重新获取全部数据
+    if (refresh) {
+      // 获取所有库存数据
+      let inventoryItems = inventoryService.getAllInventory();
       
-      if (!expired) {
-        daysLeft = dateDiff(today, item.expiryDate);
+      // 确保没有重复ID的数据
+      const uniqueIds = new Set<string>();
+      inventoryItems = inventoryItems.filter(item => {
+        if (uniqueIds.has(item.id)) {
+          console.warn(`发现重复ID: ${item.id}，已过滤`);
+          return false;
+        }
+        uniqueIds.add(item.id);
+        return true;
+      });
+      
+      // 计算各状态计数
+      const counts = this.calculateCounts(inventoryItems);
+      
+      // 根据搜索关键词筛选
+      let filteredItems = this.data.searchKeyword 
+        ? inventoryService.searchInventoryByName(this.data.searchKeyword).filter(item => uniqueIds.has(item.id))
+        : inventoryItems;
+      
+      // 处理数据，添加过期信息
+      const allItems: DisplayInventoryItem[] = [];
+      const today = getCurrentDate();
+      
+      for (const item of filteredItems) {
+        const expired = isDateExpired(item.expiryDate);
+        let daysLeft = null;
+        
+        if (!expired) {
+          daysLeft = dateDiff(today, item.expiryDate);
+        }
+        
+        const displayItem = {
+          ...item,
+          isExpired: expired,
+          isExpiringSoon: !expired && daysLeft !== null && daysLeft <= 3,
+          daysLeft
+        };
+        
+        // 根据筛选条件过滤
+        if (this.data.filterStatus === '') {
+          // 全部
+          allItems.push(displayItem);
+        } else if (this.data.filterStatus === 'normal' && !displayItem.isExpired && !displayItem.isExpiringSoon) {
+          // 未到期（不包括即将过期）
+          allItems.push(displayItem);
+        } else if (this.data.filterStatus === 'expiring' && displayItem.isExpiringSoon) {
+          // 即将过期
+          allItems.push(displayItem);
+        } else if (this.data.filterStatus === 'expired' && displayItem.isExpired) {
+          // 已过期
+          allItems.push(displayItem);
+        }
       }
       
-      const displayItem = {
-        ...item,
-        isExpired: expired,
-        isExpiringSoon: !expired && daysLeft !== null && daysLeft <= 3,
-        daysLeft
-      };
+      // 按过期情况排序：已过期 > 即将过期 > 正常
+      allItems.sort((a, b) => {
+        if (a.isExpired && !b.isExpired) return -1;
+        if (!a.isExpired && b.isExpired) return 1;
+        if (a.isExpiringSoon && !b.isExpiringSoon) return -1;
+        if (!a.isExpiringSoon && b.isExpiringSoon) return 1;
+        
+        // 同类按保质期剩余天数或按名称排序
+        if (a.daysLeft !== null && b.daysLeft !== null) {
+          return a.daysLeft - b.daysLeft;
+        }
+        return a.name.localeCompare(b.name);
+      });
       
-      // 根据筛选条件过滤
-      if (this.data.filterStatus === '') {
-        // 全部
-        allItems.push(displayItem);
-      } else if (this.data.filterStatus === 'normal' && !displayItem.isExpired && !displayItem.isExpiringSoon) {
-        // 未到期（不包括即将过期）
-        allItems.push(displayItem);
-      } else if (this.data.filterStatus === 'expiring' && displayItem.isExpiringSoon) {
-        // 即将过期
-        allItems.push(displayItem);
-      } else if (this.data.filterStatus === 'expired' && displayItem.isExpired) {
-        // 已过期
-        allItems.push(displayItem);
-      }
+      // 保存筛选并排序后的完整数据
+      this.setData({
+        allFilteredItems: allItems,
+        ...counts // 更新各状态计数
+      });
     }
     
-    // 按过期情况排序：已过期 > 即将过期 > 正常
-    allItems.sort((a, b) => {
-      if (a.isExpired && !b.isExpired) return -1;
-      if (!a.isExpired && b.isExpired) return 1;
-      if (a.isExpiringSoon && !b.isExpiringSoon) return -1;
-      if (!a.isExpiringSoon && b.isExpiringSoon) return 1;
-      
-      // 同类按保质期剩余天数或按名称排序
-      if (a.daysLeft !== null && b.daysLeft !== null) {
-        return a.daysLeft - b.daysLeft;
-      }
-      return a.name.localeCompare(b.name);
-    });
-    
-    // 计算分页数据
-    const filteredTotal = allItems.length;
+    // 使用已保存的筛选后数据进行分页
+    const filteredTotal = this.data.allFilteredItems.length;
     const start = refresh ? 0 : (this.data.currentPage - 1) * this.data.pageSize;
     const end = start + this.data.pageSize;
-    const items = allItems.slice(start, end);
+    const items = this.data.allFilteredItems.slice(start, end);
     const hasMore = end < filteredTotal;
     
     // 更新数据
@@ -169,8 +190,7 @@ Page({
       filteredTotal,
       loading: false,
       isRefreshing: false,
-      isLoadingMore: false,
-      ...counts // 更新各状态计数
+      isLoadingMore: false
     });
     
     if (refresh && wx.stopPullDownRefresh) {
@@ -246,8 +266,8 @@ Page({
 
   // 上拉加载更多
   onReachBottom() {
-    if (this.data.hasMore && !this.data.loading) {
-      this.loadInventory();
-    }
+    // if (this.data.hasMore && !this.data.loading) {
+    //   this.loadInventory();
+    // }
   }
 }); 

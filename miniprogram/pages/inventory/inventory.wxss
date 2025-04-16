@@ -90,16 +90,32 @@
   color: #4CAF50;
 }
 
+/* 库存滚动容器 */
+.inventory-scroll-container {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden; /* 防止内容溢出 */
+  padding-right: 10rpx; /* 增加右侧内边距，使滚动条更靠右 */
+}
+
 /* 库存列表 */
 .inventory-list {
   flex: 1;
   padding: 20rpx;
+  padding-right: 40rpx; /* 增加右侧内边距，为滚动条留出更多空间 */
   padding-top: 220rpx; /* 为固定定位的搜索栏和筛选栏留出空间 */
   padding-bottom: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部导航栏和安全区域留出空间 */
   width: 100%;
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch; /* 增加 iOS 滚动流畅度 */
   height: 100%;
+  /* 自定义滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(76, 175, 80, 0.3) transparent;
+  /* iOS系统下滚动条样式优化 */
+  overflow-scrolling: touch;
 }
 
 .inventory-item {
@@ -110,6 +126,10 @@
   border-radius: 10rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
   align-items: center;
+  width: calc(100% - 25rpx); /* 调整宽度，为滚动条预留更多空间 */
+  box-sizing: border-box;
+  position: relative; /* 添加相对定位 */
+  margin-right: 25rpx; /* 增加右侧边距，使滚动条往右移 */
 }
 
 /* 左侧图片 */

@@ -50,80 +50,87 @@
   </view>
 
   <!-- 库存列表（滚动区域） -->
-  <scroll-view 
-    class="inventory-list" 
-    scroll-y 
-    enable-back-to-top
-    refresher-enabled
-    refresher-threshold="50"
-    refresher-default-style="black"
-    refresher-background="#f6f6f6"
-    refresher-triggered="{{isRefreshing}}"
-    bindrefresherrefresh="onRefresh"
-    bindscrolltolower="onReachBottom"
-  >
-    <!-- 加载状态 -->
-    <view class="loading-container" wx:if="{{loading && items.length === 0}}">
-      <view class="loading-spinner"></view>
-      <view class="loading-text">加载中...</view>
-    </view>
-
-    <!-- 列表内容 -->
-    <block wx:if="{{items.length > 0}}">
-      <view 
-        class="inventory-item" 
-        wx:for="{{items}}" 
-        wx:key="id" 
-        bindtap="editItem" 
-        data-id="{{item.id}}"
-      >
-        <!-- 左侧图片区域 -->
-        <view class="item-image">
-          <image src="{{item.image || '/images/default-food.png'}}" mode="aspectFill"></image>
-        </view>
-        
-        <!-- 中间食材信息区域 -->
-        <view class="item-info">
-          <view class="item-name">{{item.name}}</view>
-          <view class="item-amount">{{item.amount}}</view>
-        </view>
-        
-        <!-- 右侧日期信息区域 -->
-        <view class="item-dates-container">
-          <view class="date-row put-in-date">
-            <text class="date-label">放入:</text>
-            <text class="date-value">{{item.putInDate}}</text>
-          </view>
-          <view class="date-row expiry-date">
-            <text class="date-label">到期:</text>
-            <text class="date-value {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}">{{item.expiryDate}}</text>
-          </view>
-          <view class="days-left {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}" wx:if="{{item.daysLeft !== null}}">
-            {{item.isExpired ? '已过期' : '剩' + item.daysLeft + '天'}}
-          </view>
-        </view>
-        
-        <!-- 删除按钮 -->
-        <view class="delete-btn-container">
-          <view class="delete-btn" catchtap="deleteItem" data-id="{{item.id}}">×</view>
-        </view>
+  <view class="inventory-scroll-container">
+    <scroll-view 
+      class="inventory-list" 
+      scroll-y 
+      enable-back-to-top
+      refresher-enabled
+      refresher-threshold="50"
+      refresher-default-style="black"
+      refresher-background="#f6f6f6"
+      refresher-triggered="{{isRefreshing}}"
+      bindrefresherrefresh="onRefresh"
+      bindscrolltolower="onReachBottom"
+      enhanced="{{true}}"
+      show-scrollbar="{{true}}"
+      fast-deceleration="{{true}}"
+      scroll-anchoring="{{true}}"
+      style="--webkit-scrollbar-offset-right: 8rpx; padding-right: 10rpx;"
+    >
+      <!-- 加载状态 -->
+      <view class="loading-container" wx:if="{{loading && items.length === 0}}">
+        <view class="loading-spinner"></view>
+        <view class="loading-text">加载中...</view>
       </view>
 
-      <!-- 底部加载更多提示 -->
-      <view class="load-more-tip" wx:if="{{isLoadingMore}}">
-        <view class="loading-spinner small"></view>
-        <text class="loading-text">加载更多...</text>
+      <!-- 列表内容 -->
+      <block wx:if="{{items.length > 0}}">
+        <view 
+          class="inventory-item"
+          wx:for="{{items}}" 
+          wx:key="id" 
+          bindtap="editItem" 
+          data-id="{{item.id}}"
+        >
+          <!-- 左侧图片区域 -->
+          <view class="item-image">
+            <image src="{{item.image || '/images/default-food.png'}}" mode="aspectFill"></image>
+          </view>
+          
+          <!-- 中间食材信息区域 -->
+          <view class="item-info">
+            <view class="item-name">{{item.name}}</view>
+            <view class="item-amount">{{item.amount}}</view>
+          </view>
+          
+          <!-- 右侧日期信息区域 -->
+          <view class="item-dates-container">
+            <view class="date-row put-in-date">
+              <text class="date-label">放入:</text>
+              <text class="date-value">{{item.putInDate}}</text>
+            </view>
+            <view class="date-row expiry-date">
+              <text class="date-label">到期:</text>
+              <text class="date-value {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}">{{item.expiryDate}}</text>
+            </view>
+            <view class="days-left {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}" wx:if="{{item.daysLeft !== null}}">
+              {{item.isExpired ? '已过期' : '剩' + item.daysLeft + '天'}}
+            </view>
+          </view>
+          
+          <!-- 删除按钮 -->
+          <view class="delete-btn-container">
+            <view class="delete-btn" catchtap="deleteItem" data-id="{{item.id}}">×</view>
+          </view>
+        </view>
+
+        <!-- 底部加载更多提示 -->
+        <view class="load-more-tip" wx:if="{{isLoadingMore}}">
+          <view class="loading-spinner small"></view>
+          <text class="loading-text">加载更多...</text>
+        </view>
+        
+        <!-- 底部无更多数据提示 -->
+        <view class="no-more-tip" wx:if="{{!isLoadingMore && !hasMore && filteredTotal > pageSize}}">
+          <text>没有更多了</text>
+        </view>
+      </block>
+      <view class="empty-tip" wx:elif="{{!loading}}">
+        <view class="empty-text">暂无库存，请添加</view>
       </view>
-      
-      <!-- 底部无更多数据提示 -->
-      <view class="no-more-tip" wx:if="{{!isLoadingMore && !hasMore && filteredTotal > pageSize}}">
-        <text>没有更多了</text>
-      </view>
-    </block>
-    <view class="empty-tip" wx:elif="{{!loading}}">
-      <view class="empty-text">暂无库存，请添加</view>
-    </view>
-  </scroll-view>
+    </scroll-view>
+  </view>
 
   <!-- 添加按钮 -->
   <view class="add-btn" bindtap="addItem">+</view>
