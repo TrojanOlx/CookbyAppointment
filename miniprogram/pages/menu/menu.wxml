@@ -1,4 +1,4 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '0rpx'}};">
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
   <!-- 顶部类型选择器 -->
   <view class="type-selector">
     <view 
@@ -61,5 +61,5 @@
   </view>
 
   <!-- 添加按钮 -->
-  <view class="add-btn" bindtap="goToAdd" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 'px') : '0'}});">+</view>
+  <view class="add-btn" bindtap="goToAdd" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">+</view>
 </view> 

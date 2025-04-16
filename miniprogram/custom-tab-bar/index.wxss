@@ -15,8 +15,9 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  height: 48px;
-  padding:12rpx 0rpx;
+  min-height: 48px;
+  padding-top: 12rpx;
+  padding-bottom: 12rpx;
 }
 
 .tab-bar-icon {

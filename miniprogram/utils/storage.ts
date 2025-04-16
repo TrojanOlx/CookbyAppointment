@@ -1,9 +1,17 @@
 import { Dish, Appointment, InventoryItem, DishType, SpicyLevel, MealType } from './model';
 
-// 存储键名
+// 内存中存储数据的变量
+let memoryDishes: Dish[] = [];
+let memoryAppointments: Appointment[] = [];
+let memoryInventory: InventoryItem[] = [];
+
+// 存储键名 - 仅用于兼容旧代码
 const DISHES_KEY = 'dishes';
 const APPOINTMENTS_KEY = 'appointments';
 const INVENTORY_KEY = 'inventories';
+
+// 标记是否已初始化
+let isInitialized = false;
 
 // 生成唯一ID
 export function generateId(): string {
@@ -11,64 +19,34 @@ export function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5) + '-' + Math.random().toString(36).substr(2, 5);
 }
 
-// 通用存储函数
+// 通用存储函数 - 操作内存变量
 function setData<T>(key: string, data: T[]): void {
-  wx.setStorageSync(key, JSON.stringify(data));
+  if (key === DISHES_KEY) {
+    memoryDishes = data as any;
+  } else if (key === APPOINTMENTS_KEY) {
+    memoryAppointments = data as any;
+  } else if (key === INVENTORY_KEY) {
+    memoryInventory = data as any;
+  }
 }
 
-// 通用获取函数
+// 通用获取函数 - 从内存变量获取
 function getData<T>(key: string): T[] {
-  const data = wx.getStorageSync(key);
-  return data ? JSON.parse(data) : [];
+  if (key === DISHES_KEY) {
+    return memoryDishes as any;
+  } else if (key === APPOINTMENTS_KEY) {
+    return memoryAppointments as any;
+  } else if (key === INVENTORY_KEY) {
+    return memoryInventory as any;
+  }
+  return [] as T[];
 }
 
 // 添加测试数据
 export function initTestData(): void {
-  // 检查是否已经有数据
-  const existingDishes = getData<Dish>(DISHES_KEY);
-  const existingAppointments = getData<Appointment>(APPOINTMENTS_KEY);
-  const existingInventory = getData<InventoryItem>(INVENTORY_KEY);
-  
-  // 如果已经有数据，则不添加测试数据
-  if (existingDishes.length > 0 && existingAppointments.length > 0 && existingInventory.length > 0) {
+  // 如果已经初始化过，不再重复初始化
+  if (isInitialized) {
     return;
-  }
-  
-  // 在添加测试数据前，先检查是否已经存在相同ID的测试数据
-  // 食材库存测试数据
-  if (existingInventory.length > 0) {
-    // 过滤掉已有的测试数据ID
-    const existingIds = existingInventory.map(item => item.id);
-    for (let i = 1; i <= 12; i++) {
-      if (existingIds.includes(`test-inv${i}`)) {
-        console.log(`测试数据 test-inv${i} 已存在，跳过添加`);
-        return; // 如果发现任何一个测试ID已存在，则认为测试数据已被添加过
-      }
-    }
-  }
-  
-  // 菜品测试数据
-  if (existingDishes.length > 0) {
-    // 过滤掉已有的测试数据ID
-    const existingIds = existingDishes.map(item => item.id);
-    for (let i = 1; i <= 5; i++) {
-      if (existingIds.includes(`test-dish${i}`)) {
-        console.log(`测试数据 test-dish${i} 已存在，跳过添加`);
-        return; // 如果发现任何一个测试ID已存在，则认为测试数据已被添加过
-      }
-    }
-  }
-  
-  // 预约测试数据
-  if (existingAppointments.length > 0) {
-    // 过滤掉已有的测试数据ID
-    const existingIds = existingAppointments.map(item => item.id);
-    for (let i = 1; i <= 3; i++) {
-      if (existingIds.includes(`test-app${i}`)) {
-        console.log(`测试数据 test-app${i} 已存在，跳过添加`);
-        return; // 如果发现任何一个测试ID已存在，则认为测试数据已被添加过
-      }
-    }
   }
   
   // 添加测试菜品
@@ -347,37 +325,25 @@ export function initTestData(): void {
     }
   ];
   
-  // 存储测试数据
-  if (existingDishes.length === 0) {
-    setData(DISHES_KEY, testDishes);
-  }
+  // 直接将测试数据存储到内存中
+  setData(DISHES_KEY, testDishes);
+  setData(APPOINTMENTS_KEY, testAppointments);
+  setData(INVENTORY_KEY, testInventory);
   
-  if (existingAppointments.length === 0) {
-    setData(APPOINTMENTS_KEY, testAppointments);
-  }
-  
-  if (existingInventory.length === 0) {
-    setData(INVENTORY_KEY, testInventory);
-  } else {
-    // 如果已有一些库存数据，但不是全部测试数据，需要检查并添加不重复的测试数据
-    let updatedInventory = [...existingInventory];
-    const existingIds = existingInventory.map(item => item.id);
-    
-    for (const testItem of testInventory) {
-      if (!existingIds.includes(testItem.id)) {
-        updatedInventory.push(testItem);
-      }
-    }
-    
-    setData(INVENTORY_KEY, updatedInventory);
-  }
+  // 标记已初始化
+  isInitialized = true;
 }
 
 // 菜品相关操作
 export const dishService = {
   // 获取所有菜品
   getAllDishes(): Dish[] {
-    let dishes = getData<Dish>(DISHES_KEY);
+    // 确保数据已初始化
+    if (!isInitialized) {
+      initTestData();
+    }
+    
+    const dishes = getData<Dish>(DISHES_KEY);
     
     // 检查并去除重复ID
     const uniqueDishes: Dish[] = [];
@@ -392,11 +358,11 @@ export const dishService = {
       }
     }
     
-    // 如果有重复项，更新存储
+    // 如果有重复项，更新内存中的数据
     if (uniqueDishes.length !== dishes.length) {
       console.warn(`菜品中共有 ${dishes.length - uniqueDishes.length} 个重复项已被移除`);
       setData(DISHES_KEY, uniqueDishes);
-      dishes = uniqueDishes;
+      return uniqueDishes;
     }
     
     return dishes;
@@ -457,7 +423,12 @@ export const dishService = {
 export const appointmentService = {
   // 获取所有预约
   getAllAppointments(): Appointment[] {
-    let appointments = getData<Appointment>(APPOINTMENTS_KEY);
+    // 确保数据已初始化
+    if (!isInitialized) {
+      initTestData();
+    }
+    
+    const appointments = getData<Appointment>(APPOINTMENTS_KEY);
     
     // 检查并去除重复ID
     const uniqueAppointments: Appointment[] = [];
@@ -472,11 +443,11 @@ export const appointmentService = {
       }
     }
     
-    // 如果有重复项，更新存储
+    // 如果有重复项，更新内存中的数据
     if (uniqueAppointments.length !== appointments.length) {
       console.warn(`预约中共有 ${appointments.length - uniqueAppointments.length} 个重复项已被移除`);
       setData(APPOINTMENTS_KEY, uniqueAppointments);
-      appointments = uniqueAppointments;
+      return uniqueAppointments;
     }
     
     return appointments;
@@ -537,7 +508,12 @@ export const appointmentService = {
 export const inventoryService = {
   // 获取所有库存
   getAllInventory(): InventoryItem[] {
-    let items = getData<InventoryItem>(INVENTORY_KEY);
+    // 确保数据已初始化
+    if (!isInitialized) {
+      initTestData();
+    }
+    
+    const items = getData<InventoryItem>(INVENTORY_KEY);
     
     // 检查并去除重复ID
     const uniqueItems: InventoryItem[] = [];
@@ -552,11 +528,11 @@ export const inventoryService = {
       }
     }
     
-    // 如果有重复项，更新存储
+    // 如果有重复项，更新内存中的数据
     if (uniqueItems.length !== items.length) {
       console.warn(`库存中共有 ${items.length - uniqueItems.length} 个重复项已被移除`);
       setData(INVENTORY_KEY, uniqueItems);
-      items = uniqueItems;
+      return uniqueItems;
     }
     
     return items;

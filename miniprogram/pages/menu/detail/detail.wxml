@@ -1,4 +1,4 @@
-<view class="container">
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
   <!-- 轮播图 -->
   <swiper 
     class="dish-swiper" 

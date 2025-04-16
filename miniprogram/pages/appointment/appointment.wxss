@@ -7,6 +7,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  padding-bottom: calc(48px + env(safe-area-inset-bottom)); /* 基础TabBar高度 + 安全区域 */
 }
 
 /* 日历部分 */

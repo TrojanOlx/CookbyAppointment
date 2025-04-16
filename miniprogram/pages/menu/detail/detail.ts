@@ -8,7 +8,8 @@ Page({
    */
   data: {
     dish: {} as Dish,
-    dishId: ''
+    dishId: '',
+    safeAreaBottom: 0
   },
 
   /**
@@ -21,6 +22,8 @@ Page({
       });
       this.loadDish();
     }
+    
+    this.setSafeArea();
   },
 
   /**
@@ -31,6 +34,33 @@ Page({
     if (this.data.dishId) {
       this.loadDish();
     }
+  },
+
+  // 设置安全区域
+  setSafeArea() {
+    const app = getApp<IAppOption>();
+    const systemInfo = (app.globalData as any).systemInfo;
+    if (systemInfo) {
+      // 如果已有系统信息
+      this.processSafeArea(systemInfo);
+    } else {
+      // 重新获取系统信息
+      wx.getSystemInfo({
+        success: (res) => {
+          this.processSafeArea(res);
+        }
+      });
+    }
+  },
+
+  // 处理安全区域数据
+  processSafeArea(systemInfo: WechatMiniprogram.SystemInfo) {
+    const safeAreaBottom = systemInfo.safeArea ? 
+      (systemInfo.screenHeight - systemInfo.safeArea.bottom) : 0;
+    
+    this.setData({
+      safeAreaBottom
+    });
   },
 
   /**

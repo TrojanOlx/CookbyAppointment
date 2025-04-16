@@ -98,6 +98,7 @@
   display: flex;
   justify-content: center;
   margin-bottom: calc(50rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(48px + env(safe-area-inset-bottom)); /* 基础TabBar高度 + 安全区域 */
 }
 
 .version {

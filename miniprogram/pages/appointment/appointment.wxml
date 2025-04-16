@@ -1,4 +1,4 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '85rpx'}};">
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
   <!-- 日历部分 -->
   <view class="calendar-section">
     <calendar 

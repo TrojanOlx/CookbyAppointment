@@ -26,7 +26,7 @@
     </navigator>
   </view>
   
-  <view class="footer" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '85rpx'}};">
+  <view class="footer" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
     <view class="version">版本 1.0.0</view>
   </view>
 </view>
