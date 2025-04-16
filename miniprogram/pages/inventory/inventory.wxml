@@ -96,9 +96,7 @@
           </view>
           <view class="date-row expiry-date">
             <text class="date-label">到期:</text>
-            <text class="date-value {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}">
-              {{item.expiryDate}}
-            </text>
+            <text class="date-value {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}">{{item.expiryDate}}</text>
           </view>
           <view class="days-left {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}" wx:if="{{item.daysLeft !== null}}">
             {{item.isExpired ? '已过期' : '剩' + item.daysLeft + '天'}}
