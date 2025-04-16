@@ -2,12 +2,14 @@
 .container {
   position: relative;
   min-height: 100vh;
+  width: 100%;
   background-color: #f8f9fa;
   padding: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   padding-bottom: calc(48px + env(safe-area-inset-bottom)); /* 基础TabBar高度 + 安全区域 */
+  overflow-x: hidden; /* 防止水平滚动 */
 }
 
 /* 日历部分 */
@@ -16,6 +18,7 @@
   padding: 20rpx;
   box-sizing: border-box;
   background-color: #fff;
+  overflow-x: hidden; /* 防止水平滚动 */
 }
 
 /* 预约列表部分 */
@@ -25,6 +28,7 @@
   box-sizing: border-box;
   padding: 0 20rpx;
   padding-bottom: 20rpx;
+  overflow-x: hidden; /* 防止水平滚动 */
 }
 
 /* 预约列表头部 */
@@ -67,6 +71,7 @@
 /* 预约列表 */
 .appointments-list {
   width: 100%;
+  overflow-x: hidden; /* 防止水平滚动 */
 }
 
 /* 餐次卡片 */
@@ -76,6 +81,7 @@
   padding: 24rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  overflow: hidden; /* 防止内容溢出 */
 }
 
 .meal-header {
@@ -130,8 +136,10 @@
 .dishes-list {
   display: flex;
   white-space: nowrap;
-  margin: 0 -24rpx;
-  padding: 0 24rpx;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto; /* 允许内部横向滚动 */
+  overflow-y: hidden;
 }
 
 .dish-item {
@@ -140,6 +148,7 @@
   align-items: center;
   margin-right: 24rpx;
   width: 160rpx;
+  flex-shrink: 0; /* 防止菜品被压缩 */
 }
 
 .dish-image {

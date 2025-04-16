@@ -1,4 +1,4 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 4 + 'px') : '85rpx'}};">
   <!-- 搜索区域 -->
   <view class="search-bar">
     <view class="search-box">
