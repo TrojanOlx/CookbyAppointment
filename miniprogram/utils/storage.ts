@@ -175,6 +175,156 @@ export function initTestData(): void {
       remark: '麻辣鲜香的川菜代表',
       reference: '',
       createTime: Date.now()
+    },
+    {
+      id: 'test-dish6',
+      name: '宫保鸡丁',
+      type: DishType.Stir,
+      spicy: SpicyLevel.Medium,
+      images: ['/images/default-dish.png'],
+      ingredients: [
+        { id: 'ing22', name: '鸡胸肉', amount: '300g' },
+        { id: 'ing23', name: '花生', amount: '50g' },
+        { id: 'ing24', name: '干辣椒', amount: '8个' },
+        { id: 'ing25', name: '花椒', amount: '适量' },
+        { id: 'ing26', name: '葱', amount: '3根' },
+        { id: 'ing27', name: '姜', amount: '适量' },
+        { id: 'ing28', name: '蒜', amount: '3瓣' },
+        { id: 'ing29', name: '黄瓜', amount: '半根' }
+      ],
+      steps: [
+        '鸡胸肉切成丁，用盐、料酒和淀粉腌制15分钟',
+        '黄瓜切丁，葱姜蒜切末',
+        '花生米提前炒熟',
+        '锅中倒油，放入干辣椒和花椒爆香',
+        '加入葱姜蒜末煸炒出香味',
+        '倒入鸡丁快速翻炒至变色',
+        '加入黄瓜丁翻炒均匀',
+        '加入酱油、醋、糖、盐调味',
+        '最后加入花生米翻炒均匀即可'
+      ],
+      notice: '花生米不要炒糊，火候要控制好',
+      remark: '经典川菜，酸辣可口',
+      reference: '',
+      createTime: Date.now()
+    },
+    {
+      id: 'test-dish7',
+      name: '红烧肉',
+      type: DishType.Stew,
+      spicy: SpicyLevel.None,
+      images: ['/images/default-dish.png'],
+      ingredients: [
+        { id: 'ing30', name: '五花肉', amount: '500g' },
+        { id: 'ing31', name: '姜', amount: '5片' },
+        { id: 'ing32', name: '葱', amount: '2根' },
+        { id: 'ing33', name: '冰糖', amount: '30g' },
+        { id: 'ing34', name: '八角', amount: '2个' },
+        { id: 'ing35', name: '桂皮', amount: '1小块' },
+        { id: 'ing36', name: '料酒', amount: '2勺' },
+        { id: 'ing37', name: '老抽', amount: '1勺' }
+      ],
+      steps: [
+        '五花肉切成4厘米见方的块',
+        '冷水下锅焯水，去除血水和杂质',
+        '锅中放入少许油，加入冰糖小火煸炒至融化呈棕色',
+        '放入焯好的五花肉翻炒均匀上色',
+        '加入姜片、葱段、八角、桂皮爆香',
+        '加入料酒、老抽、生抽调色',
+        '加入没过肉的开水，大火烧开后转小火',
+        '盖上锅盖炖煮40分钟至肉烂',
+        '最后大火收汁即可'
+      ],
+      notice: '煮的时间要足够长，让肉炖烂',
+      remark: '经典家常菜，色香味俱全',
+      reference: '',
+      createTime: Date.now()
+    },
+    {
+      id: 'test-dish8',
+      name: '糖醋里脊',
+      type: DishType.Stir,
+      spicy: SpicyLevel.None,
+      images: ['/images/default-dish.png'],
+      ingredients: [
+        { id: 'ing38', name: '猪里脊肉', amount: '300g' },
+        { id: 'ing39', name: '淀粉', amount: '适量' },
+        { id: 'ing40', name: '鸡蛋', amount: '1个' },
+        { id: 'ing41', name: '白醋', amount: '2勺' },
+        { id: 'ing42', name: '白糖', amount: '3勺' },
+        { id: 'ing43', name: '番茄酱', amount: '2勺' },
+        { id: 'ing44', name: '盐', amount: '适量' }
+      ],
+      steps: [
+        '猪里脊肉切成条状，用盐、料酒、淀粉和蛋清腌制15分钟',
+        '锅中倒入油，油温五成热时放入腌好的肉条',
+        '炸至金黄色捞出沥油',
+        '锅中留少许油，倒入白醋、白糖、番茄酱、盐',
+        '小火熬制成浓稠的糖醋汁',
+        '放入炸好的肉条快速翻炒均匀即可'
+      ],
+      notice: '糖醋汁不要熬太久，避免过稠',
+      remark: '外酥里嫩，酸甜可口',
+      reference: '',
+      createTime: Date.now()
+    },
+    {
+      id: 'test-dish9',
+      name: '鱼香茄子',
+      type: DishType.Stir,
+      spicy: SpicyLevel.Medium,
+      images: ['/images/default-dish.png'],
+      ingredients: [
+        { id: 'ing45', name: '长茄子', amount: '2根' },
+        { id: 'ing46', name: '肉末', amount: '100g' },
+        { id: 'ing47', name: '葱', amount: '2根' },
+        { id: 'ing48', name: '姜', amount: '适量' },
+        { id: 'ing49', name: '蒜', amount: '3瓣' },
+        { id: 'ing50', name: '豆瓣酱', amount: '2勺' },
+        { id: 'ing51', name: '白糖', amount: '1勺' },
+        { id: 'ing52', name: '醋', amount: '1勺' }
+      ],
+      steps: [
+        '茄子切成条状，用盐水浸泡10分钟去涩',
+        '锅中倒油，炸茄子至外酥里软，捞出沥油',
+        '锅中留少许油，爆香葱姜蒜',
+        '加入肉末炒散',
+        '加入豆瓣酱炒出红油',
+        '加入白糖、醋、酱油调味',
+        '放入炸好的茄子翻炒均匀',
+        '勾芡收汁即可'
+      ],
+      notice: '茄子吸油量大，炸的时候油温要高',
+      remark: '鱼香味浓郁，下饭佳品',
+      reference: '',
+      createTime: Date.now()
+    },
+    {
+      id: 'test-dish10',
+      name: '蒜蓉蒸虾',
+      type: DishType.Steam,
+      spicy: SpicyLevel.None,
+      images: ['/images/default-dish.png'],
+      ingredients: [
+        { id: 'ing53', name: '大虾', amount: '500g' },
+        { id: 'ing54', name: '蒜', amount: '1整头' },
+        { id: 'ing55', name: '葱', amount: '2根' },
+        { id: 'ing56', name: '生姜', amount: '适量' },
+        { id: 'ing57', name: '料酒', amount: '1勺' },
+        { id: 'ing58', name: '盐', amount: '适量' }
+      ],
+      steps: [
+        '大虾洗净，去虾线',
+        '蒜切末，葱切段，姜切丝',
+        '将虾摆入盘中，撒上蒜末、姜丝',
+        '淋上料酒，撒上少许盐',
+        '蒸锅水开后，放入虾，中火蒸7-8分钟',
+        '出锅后撒上葱花即可'
+      ],
+      notice: '蒸虾不要过长时间，以免虾肉老硬',
+      remark: '鲜香美味，适合待客',
+      reference: '',
+      createTime: Date.now()
     }
   ];
   

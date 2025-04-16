@@ -2,7 +2,9 @@
 export enum DishType {
   Stir = '炒菜',
   Vegetable = '青菜',
-  Soup = '炖汤'
+  Soup = '炖汤',
+  Stew = '红烧',
+  Steam = '蒸菜'
 }
 
 // 菜品辣度
