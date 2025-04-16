@@ -1,6 +1,8 @@
 <!--logs.wxml-->
-<scroll-view class="scrollarea" scroll-y type="list">
-  <block wx:for="{{logs}}" wx:key="timeStamp" wx:for-item="log">
-    <view class="log-item">{{index + 1}}. {{log.date}}</view>
-  </block>
-</scroll-view>
+<view style="height: 100vh; display: flex; flex-direction: column; padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '0'}};">
+  <scroll-view class="scrollarea" scroll-y type="list">
+    <block wx:for="{{logs}}" wx:key="timeStamp" wx:for-item="log">
+      <view class="log-item">{{index + 1}}. {{log.date}}</view>
+    </block>
+  </scroll-view>
+</view>

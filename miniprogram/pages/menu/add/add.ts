@@ -18,44 +18,89 @@ const DEFAULT_DISH: Dish = {
 };
 
 Page({
+  /**
+   * 页面的初始数据
+   */
   data: {
-    dish: {} as Dish,
-    dishTypes: [DishType.Stir, DishType.Vegetable, DishType.Soup],
-    spicyLevels: [SpicyLevel.None, SpicyLevel.Mild, SpicyLevel.Medium, SpicyLevel.Hot],
-    editMode: false,  // 是否是编辑模式
+    isEdit: false,
+    dish: {
+      id: '',
+      name: '',
+      type: DishType.Stir,
+      spicy: SpicyLevel.None,
+      images: [] as string[],
+      ingredients: [] as Ingredient[],
+      steps: [] as string[],
+      notice: '',
+      remark: '',
+      reference: '',
+      createTime: 0
+    } as Dish,
+    dishTypes: Object.values(DishType),
+    spicyLevels: Object.values(SpicyLevel),
+    safeAreaBottom: 0
   },
 
+  /**
+   * 生命周期函数--监听页面加载
+   */
   onLoad(options) {
-    // 如果有传入ID，则是编辑模式
     if (options.id) {
+      // 编辑现有菜品
       const dish = dishService.getDishById(options.id);
       if (dish) {
         this.setData({
-          dish,
-          editMode: true
+          isEdit: true,
+          dish
         });
         wx.setNavigationBarTitle({
           title: '编辑菜品'
         });
       }
     } else {
-      // 新建模式，初始化默认数据结构
-      this.setData({
-        dish: {
-          ...DEFAULT_DISH,
-          ingredients: [this.createEmptyIngredient()],
-          steps: ['']
+      // 添加新菜品，创建一个空的食材项和步骤项
+      this.addIngredient();
+      this.addStep();
+    }
+    this.setSafeArea();
+  },
+
+  /**
+   * 设置安全区域
+   */
+  setSafeArea() {
+    const app = getApp<IAppOption>();
+    const systemInfo = (app.globalData as any).systemInfo;
+    if (systemInfo) {
+      // 如果已有系统信息
+      this.processSafeArea(systemInfo);
+    } else {
+      // 重新获取系统信息
+      wx.getSystemInfo({
+        success: (res) => {
+          this.processSafeArea(res);
         }
       });
     }
   },
 
+  /**
+   * 处理安全区域数据
+   */
+  processSafeArea(systemInfo: WechatMiniprogram.SystemInfo) {
+    const safeAreaBottom = systemInfo.safeArea ? 
+      (systemInfo.screenHeight - systemInfo.safeArea.bottom) : 0;
+    
+    this.setData({
+      safeAreaBottom
+    });
+  },
+
   // 选择菜品类型
   typeChange(e: any) {
     const index = e.detail.value;
-    const type = this.data.dishTypes[index];
     this.setData({
-      'dish.type': type
+      'dish.type': this.data.dishTypes[index]
     });
   },
 
@@ -232,7 +277,7 @@ Page({
     };
 
     // 保存或更新菜品
-    if (this.data.editMode) {
+    if (this.data.isEdit) {
       dishService.updateDish(saveDish);
       showSuccess('菜品更新成功');
     } else {

@@ -1,4 +1,4 @@
-<view class="container">
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '85rpx'}};">
   <form bindsubmit="submitForm">
     <!-- 基本信息部分 -->
     <view class="form-section">

@@ -34,12 +34,14 @@ Page({
     normalCount: 0,   // 未到期数量
     expiringCount: 0, // 即将过期数量
     expiredCount: 0,   // 已过期数量
-    allFilteredItems: [] as DisplayInventoryItem[] // 存储全部筛选后的数据
+    allFilteredItems: [] as DisplayInventoryItem[], // 存储全部筛选后的数据
+    safeAreaBottom: 0
   },
 
   onLoad() {
     // 初始加载数据
     this.loadInventory(true);
+    this.setSafeArea();
   },
 
   onShow() {
@@ -52,6 +54,33 @@ Page({
         selected: 3
       });
     }
+  },
+  
+  // 设置安全区域
+  setSafeArea() {
+    const app = getApp<IAppOption>();
+    const systemInfo = (app.globalData as any).systemInfo;
+    if (systemInfo) {
+      // 如果已有系统信息
+      this.processSafeArea(systemInfo);
+    } else {
+      // 重新获取系统信息
+      wx.getSystemInfo({
+        success: (res) => {
+          this.processSafeArea(res);
+        }
+      });
+    }
+  },
+
+  // 处理安全区域数据
+  processSafeArea(systemInfo: WechatMiniprogram.SystemInfo) {
+    const safeAreaBottom = systemInfo.safeArea ? 
+      (systemInfo.screenHeight - systemInfo.safeArea.bottom) : 0;
+    
+    this.setData({
+      safeAreaBottom
+    });
   },
   
   // 统计各状态的食材数量

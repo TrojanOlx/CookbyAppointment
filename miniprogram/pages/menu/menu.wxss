@@ -53,7 +53,7 @@
   flex: 1;
   padding: 20rpx;
   padding-top: 130rpx; /* 为固定定位的类型选择器留出空间 */
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部导航栏和安全区域留出空间 */
+  padding-bottom: 120rpx; /* 为底部导航栏留出空间 */
   width: 100%;
   box-sizing: border-box;
   overflow-y: auto;
@@ -140,7 +140,7 @@
 .add-btn {
   position: fixed;
   right: 30rpx;
-  bottom: calc(120rpx + env(safe-area-inset-bottom));
+  bottom: 120rpx;
   width: 100rpx;
   height: 100rpx;
   background-color: #4CAF50;

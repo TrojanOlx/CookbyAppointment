@@ -11,7 +11,8 @@ Page({
     pageSize: 10,
     currentPage: 1,
     hasMore: true,
-    loading: false
+    loading: false,
+    safeAreaBottom: 0
   },
 
   /**
@@ -20,6 +21,7 @@ Page({
   onLoad() {
     this.initTestData(); // 初始化测试数据
     this.loadDishes(true);
+    this.setSafeArea();
   },
 
   /**
@@ -35,6 +37,37 @@ Page({
         selected: 1
       });
     }
+  },
+
+  /**
+   * 设置安全区域
+   */
+  setSafeArea() {
+    const app = getApp<IAppOption>();
+    const systemInfo = (app.globalData as any).systemInfo;
+    if (systemInfo) {
+      // 如果已有系统信息
+      this.processSafeArea(systemInfo);
+    } else {
+      // 重新获取系统信息
+      wx.getSystemInfo({
+        success: (res) => {
+          this.processSafeArea(res);
+        }
+      });
+    }
+  },
+
+  /**
+   * 处理安全区域数据
+   */
+  processSafeArea(systemInfo: WechatMiniprogram.SystemInfo) {
+    const safeAreaBottom = systemInfo.safeArea ? 
+      (systemInfo.screenHeight - systemInfo.safeArea.bottom) : 0;
+    
+    this.setData({
+      safeAreaBottom
+    });
   },
 
   /**

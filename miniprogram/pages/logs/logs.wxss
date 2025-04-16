@@ -12,5 +12,5 @@ page {
   text-align: center;
 }
 .log-item:last-child {
-  padding-bottom: env(safe-area-inset-bottom);
+  margin-bottom: 20rpx;
 }

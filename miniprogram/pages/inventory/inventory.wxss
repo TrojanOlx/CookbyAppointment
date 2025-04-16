@@ -106,7 +106,7 @@
   padding: 20rpx;
   padding-right: 40rpx; /* 增加右侧内边距，为滚动条留出更多空间 */
   padding-top: 220rpx; /* 为固定定位的搜索栏和筛选栏留出空间 */
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom)); /* 为底部导航栏和安全区域留出空间 */
+  padding-bottom: 120rpx; /* 为底部导航栏留出空间 */
   width: 100%;
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch; /* 增加 iOS 滚动流畅度 */
@@ -319,7 +319,7 @@
 .add-btn {
   position: fixed;
   right: 30rpx;
-  bottom: calc(120rpx + env(safe-area-inset-bottom));
+  bottom: 120rpx;
   width: 100rpx;
   height: 100rpx;
   background-color: #4CAF50;
@@ -331,9 +331,4 @@
   justify-content: center;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
   z-index: 100;
-  transition: all 0.2s;
-}
-
-.add-btn:active {
-  transform: scale(0.95);
 } 

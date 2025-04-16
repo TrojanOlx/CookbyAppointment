@@ -1,4 +1,4 @@
-<view class="container">
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '0rpx'}};">
   <!-- 搜索区域 -->
   <view class="search-bar">
     <view class="search-box">
@@ -133,5 +133,5 @@
   </view>
 
   <!-- 添加按钮 -->
-  <view class="add-btn" bindtap="addItem">+</view>
+  <view class="add-btn" bindtap="addItem" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 'px') : '0'}});">+</view>
 </view> 

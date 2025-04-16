@@ -36,6 +36,7 @@ Page({
     selectedDateDisplay: '今日', // 选中的日期显示文本
     todayAppointments: [] as DisplayAppointment[], // 当前选中日期的预约
     plugins: [LunarPlugin],  // 使用农历插件
+    safeAreaBottom: 0
   },
 
   onLoad() {
@@ -51,6 +52,7 @@ Page({
 
     this.updateCalendarMarks();
     this.loadAppointments();
+    this.setSafeArea();
   },
 
   onShow() {
@@ -64,6 +66,33 @@ Page({
         selected: 2
       });
     }
+  },
+
+  // 设置安全区域
+  setSafeArea() {
+    const app = getApp<IAppOption>();
+    const systemInfo = (app.globalData as any).systemInfo;
+    if (systemInfo) {
+      // 如果已有系统信息
+      this.processSafeArea(systemInfo);
+    } else {
+      // 重新获取系统信息
+      wx.getSystemInfo({
+        success: (res) => {
+          this.processSafeArea(res);
+        }
+      });
+    }
+  },
+
+  // 处理安全区域数据
+  processSafeArea(systemInfo: WechatMiniprogram.SystemInfo) {
+    const safeAreaBottom = systemInfo.safeArea ? 
+      (systemInfo.screenHeight - systemInfo.safeArea.bottom) : 0;
+    
+    this.setData({
+      safeAreaBottom
+    });
   },
 
   // 更新日历标记
