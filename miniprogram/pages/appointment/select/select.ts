@@ -1,4 +1,4 @@
-import { Dish, MealType, Appointment } from '../../../utils/model';
+import { Dish, MealType, Appointment, DishType } from '../../../utils/model';
 import { dishService, appointmentService, generateId } from '../../../utils/storage';
 import { formatDate, showError, showSuccess, showToast } from '../../../utils/util';
 
@@ -28,10 +28,13 @@ Page({
     scrollTop: 0,
     lastScrollTop: 0,
     isNearBottom: false,
+    dishTypes: [] as string[], // 菜品类型列表
   },
 
   onLoad(options) {
+    // 初始化菜品类型
     this.setData({
+      dishTypes: Object.values(DishType),
       isLoading: true
     });
     

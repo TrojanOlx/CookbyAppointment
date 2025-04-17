@@ -45,26 +45,30 @@
         <view class="search-icon">🔍</view>
       </view>
       <view class="filter-tags">
+        <!-- 固定的"全部"选项 -->
         <view 
-          class="filter-tag {{selectedType === '' ? 'active' : ''}}" 
+          class="filter-tag fixed {{selectedType === '' ? 'active' : ''}}" 
           data-type="" 
           bindtap="filterByType"
         >全部</view>
-        <view 
-          class="filter-tag {{selectedType === '炒菜' ? 'active' : ''}}" 
-          data-type="炒菜" 
-          bindtap="filterByType"
-        >炒菜</view>
-        <view 
-          class="filter-tag {{selectedType === '青菜' ? 'active' : ''}}" 
-          data-type="青菜" 
-          bindtap="filterByType"
-        >青菜</view>
-        <view 
-          class="filter-tag {{selectedType === '炖汤' ? 'active' : ''}}" 
-          data-type="炖汤" 
-          bindtap="filterByType"
-        >炖汤</view>
+        
+        <!-- 可滚动的其他选项 -->
+        <scroll-view 
+          class="scroll-tags" 
+          scroll-x="true" 
+          enhanced="true" 
+          show-scrollbar="false"
+        >
+          <view class="scroll-tags-content">
+            <view 
+              class="filter-tag {{selectedType === item ? 'active' : ''}}" 
+              wx:for="{{dishTypes}}"
+              wx:key="*this"
+              data-type="{{item}}" 
+              bindtap="filterByType"
+            >{{item}}</view>
+          </view>
+        </scroll-view>
       </view>
     </view>
   </view>

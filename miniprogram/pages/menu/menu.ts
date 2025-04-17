@@ -8,6 +8,7 @@ Page({
   data: {
     dishes: [] as Dish[],
     selectedType: '', // 空字符串表示全部类型
+    dishTypes: [] as string[], // 菜品类型列表
     pageSize: 10,
     currentPage: 1,
     hasMore: true,
@@ -19,6 +20,11 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad() {
+    // 初始化菜品类型
+    this.setData({
+      dishTypes: Object.values(DishType)
+    });
+    
     this.initTestData(); // 初始化测试数据
     this.loadDishes(true);
     this.setSafeArea();

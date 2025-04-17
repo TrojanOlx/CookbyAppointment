@@ -14,39 +14,13 @@
     <scroll-view class="scroll-types" scroll-x="true" enhanced="true" show-scrollbar="false">
       <view class="type-selector-content">
         <view 
-          class="type-item {{selectedType === '炒菜' ? 'active' : ''}}" 
+          class="type-item {{selectedType === item ? 'active' : ''}}" 
+          wx:for="{{dishTypes}}"
+          wx:key="*this"
           bindtap="selectType" 
-          data-type="炒菜"
+          data-type="{{item}}"
         >
-          <text>炒菜</text>
-        </view>
-        <view 
-          class="type-item {{selectedType === '青菜' ? 'active' : ''}}" 
-          bindtap="selectType" 
-          data-type="青菜"
-        >
-          <text>青菜</text>
-        </view>
-        <view 
-          class="type-item {{selectedType === '炖汤' ? 'active' : ''}}" 
-          bindtap="selectType" 
-          data-type="炖汤"
-        >
-          <text>炖汤</text>
-        </view>
-        <view 
-          class="type-item {{selectedType === '红烧' ? 'active' : ''}}" 
-          bindtap="selectType" 
-          data-type="红烧"
-        >
-          <text>红烧</text>
-        </view>
-        <view 
-          class="type-item {{selectedType === '蒸菜' ? 'active' : ''}}" 
-          bindtap="selectType" 
-          data-type="蒸菜"
-        >
-          <text>蒸菜</text>
+          <text>{{item}}</text>
         </view>
       </view>
     </scroll-view>

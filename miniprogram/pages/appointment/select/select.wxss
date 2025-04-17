@@ -112,18 +112,53 @@
 
 .filter-tags {
   display: flex;
-  flex-wrap: wrap;
   width: 100%;
+  position: relative;
+}
+
+/* 固定的"全部"选项 */
+.filter-tag.fixed {
+  flex-shrink: 0;
+  position: relative;
+  margin: 0 20rpx 10rpx 0;
+  z-index: 1;
+  font-weight: 500;
+}
+
+.filter-tag.fixed::after {
+  content: '';
+  position: absolute;
+  right: -10rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rpx;
+  height: 24rpx;
+  background: linear-gradient(to bottom, transparent, #e0e0e0, transparent);
+}
+
+/* 可滚动区域 */
+.scroll-tags {
+  flex: 1;
+  white-space: nowrap;
+  margin-right: -20rpx;
+}
+
+.scroll-tags-content {
+  display: inline-flex;
+  padding-right: 20rpx;
 }
 
 .filter-tag {
-  padding: 8rpx 16rpx;
+  padding: 8rpx 24rpx;
   background-color: #f5f5f5;
   border-radius: 30rpx;
   margin-right: 15rpx;
   margin-bottom: 10rpx;
   font-size: 24rpx;
   color: #666;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .filter-tag.active {
