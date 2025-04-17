@@ -15,24 +15,28 @@
   left: 0;
   right: 0;
   z-index: 100;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
   background-color: #ffffff;
-  padding: 20rpx 10rpx;
+  padding: 0;
   border-radius: 0 0 10rpx 10rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
-  overflow-x: auto;
+  white-space: nowrap;
+  height: 120rpx;
+}
+
+.type-selector-content {
+  display: inline-flex;
+  padding: 20rpx 10rpx;
+  box-sizing: border-box;
+  height: 100%;
 }
 
 .type-item {
-  flex: 1;
-  min-width: 160rpx;
+  min-width: 140rpx;
   height: 80rpx;
   font-size: 28rpx;
   border-radius: 8rpx;
   color: #666;
-  margin: 0 5rpx;
+  margin: 0 10rpx;
   transition: all 0.3s;
   display: flex;
   flex-direction: column;
@@ -52,7 +56,7 @@
 .dish-list {
   flex: 1;
   padding: 20rpx;
-  padding-top: 130rpx; /* 为固定定位的类型选择器留出空间 */
+  padding-top: 140rpx; /* 为固定定位的类型选择器留出空间 */
   padding-bottom: 120rpx; /* 为底部导航栏留出空间 */
   width: 100%;
   box-sizing: border-box;

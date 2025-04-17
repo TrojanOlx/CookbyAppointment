@@ -1,35 +1,51 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '85rpx'}};">
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
   <!-- 顶部类型选择器 -->
-  <view class="type-selector">
-    <view 
-      class="type-item {{selectedType === '' ? 'active' : ''}}" 
-      bindtap="selectType" 
-      data-type=""
-    >
-      <text>全部</text>
+  <scroll-view class="type-selector" scroll-x="true" enhanced="true" show-scrollbar="false">
+    <view class="type-selector-content">
+      <view 
+        class="type-item {{selectedType === '' ? 'active' : ''}}" 
+        bindtap="selectType" 
+        data-type=""
+      >
+        <text>全部</text>
+      </view>
+      <view 
+        class="type-item {{selectedType === '炒菜' ? 'active' : ''}}" 
+        bindtap="selectType" 
+        data-type="炒菜"
+      >
+        <text>炒菜</text>
+      </view>
+      <view 
+        class="type-item {{selectedType === '青菜' ? 'active' : ''}}" 
+        bindtap="selectType" 
+        data-type="青菜"
+      >
+        <text>青菜</text>
+      </view>
+      <view 
+        class="type-item {{selectedType === '炖汤' ? 'active' : ''}}" 
+        bindtap="selectType" 
+        data-type="炖汤"
+      >
+        <text>炖汤</text>
+      </view>
+      <view 
+        class="type-item {{selectedType === '红烧' ? 'active' : ''}}" 
+        bindtap="selectType" 
+        data-type="红烧"
+      >
+        <text>红烧</text>
+      </view>
+      <view 
+        class="type-item {{selectedType === '蒸菜' ? 'active' : ''}}" 
+        bindtap="selectType" 
+        data-type="蒸菜"
+      >
+        <text>蒸菜</text>
+      </view>
     </view>
-    <view 
-      class="type-item {{selectedType === '炒菜' ? 'active' : ''}}" 
-      bindtap="selectType" 
-      data-type="炒菜"
-    >
-      <text>炒菜</text>
-    </view>
-    <view 
-      class="type-item {{selectedType === '青菜' ? 'active' : ''}}" 
-      bindtap="selectType" 
-      data-type="青菜"
-    >
-      <text>青菜</text>
-    </view>
-    <view 
-      class="type-item {{selectedType === '炖汤' ? 'active' : ''}}" 
-      bindtap="selectType" 
-      data-type="炖汤"
-    >
-      <text>炖汤</text>
-    </view>
-  </view>
+  </scroll-view>
 
   <!-- 菜品列表 -->
   <view class="dish-list">
