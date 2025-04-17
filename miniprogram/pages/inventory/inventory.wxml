@@ -109,7 +109,7 @@
               </view>
             </movable-view>
           </movable-area>
-          <view class="movable-delete-btn flex" catchtap="deleteItem" data-id="{{item.id}}">删除</view>
+          <view class="movable-delete-btn" catchtap="deleteItem" data-id="{{item.id}}">删除</view>
         </view>
 
         <!-- 底部加载更多提示 -->
