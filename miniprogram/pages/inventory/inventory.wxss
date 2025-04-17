@@ -118,18 +118,60 @@
   overflow-scrolling: touch;
 }
 
-.inventory-item {
+/* 滑动删除相关样式 */
+.inventory-item-container {
+  margin: 20rpx;
+  width: 710rpx;
+  height: 200rpx;
+  background: #FFFFFF;
+  border-radius: 20rpx;
   display: flex;
-  background-color: #fff;
-  margin-bottom: 15rpx;
-  padding: 20rpx;
-  border-radius: 10rpx;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.movable-area {
+  height: 200rpx;
+  width: calc(710rpx - 120rpx);
+  background: #FFFFFF;
+  border-radius: 20rpx;
+  z-index: 3;
+}
+
+.movable-view {
+  width: 710rpx;
+  height: 200rpx;
+  background: #FFFFFF;
+  border-radius: 20rpx;
+}
+
+.movable-delete-btn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 115rpx;
+  height: 100%;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  width: calc(100% - 25rpx); /* 调整宽度，为滚动条预留更多空间 */
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  background: #ff4d4f;
+  border-top-right-radius: 20rpx;
+  border-bottom-right-radius: 20rpx;
+  z-index: 1;
+}
+
+/* 修改原有样式以适应滑动删除 */
+.inventory-item {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  padding: 20rpx;
   box-sizing: border-box;
-  position: relative; /* 添加相对定位 */
-  margin-right: 25rpx; /* 增加右侧边距，使滚动条往右移 */
+  background: #FFFFFF;
+  border-radius: 20rpx;
 }
 
 /* 左侧图片 */
@@ -223,30 +265,6 @@
   font-weight: 500;
 }
 
-/* 删除按钮容器 */
-.delete-btn-container {
-  display: flex;
-  align-items: center;
-}
-
-.delete-btn {
-  width: 50rpx;
-  height: 50rpx;
-  background-color: #ffebee;
-  color: #f44336;
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 30rpx;
-  transition: all 0.3s;
-}
-
-.delete-btn:active {
-  background-color: #f44336;
-  color: #fff;
-}
-
 /* 空提示 */
 .empty-tip {
   display: flex;
@@ -331,4 +349,9 @@
   justify-content: center;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
   z-index: 100;
+}
+
+/* 移除原有的删除按钮样式 */
+.delete-btn-container {
+  display: none;
 } 

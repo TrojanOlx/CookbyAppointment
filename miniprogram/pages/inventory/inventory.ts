@@ -9,6 +9,7 @@ interface DisplayInventoryItem extends InventoryItem {
   isExpired: boolean;
   isExpiringSoon: boolean;
   daysLeft: number | null;
+  xmove?: number; // 添加滑动位移属性
 }
 
 interface CountInfo {
@@ -34,8 +35,9 @@ Page({
     normalCount: 0,   // 未到期数量
     expiringCount: 0, // 即将过期数量
     expiredCount: 0,   // 已过期数量
-    allFilteredItems: [] as DisplayInventoryItem[], // 存储全部筛选后的数据
-    safeAreaBottom: 0
+    allFilteredItems: [] as DisplayInventoryItem[], // 存储全部筛选后的完整数据
+    safeAreaBottom: 0,
+    startX: 0 // 添加触摸起始位置
   },
 
   onLoad() {
@@ -164,7 +166,8 @@ Page({
           ...item,
           isExpired: expired,
           isExpiringSoon: !expired && daysLeft !== null && daysLeft <= 3,
-          daysLeft
+          daysLeft,
+          xmove: 0 // 添加 xmove 属性
         };
         
         // 根据筛选条件过滤
@@ -298,5 +301,67 @@ Page({
     // if (this.data.hasMore && !this.data.loading) {
     //   this.loadInventory();
     // }
+  },
+
+  /**
+   * 处理touchstart事件
+   */
+  handleTouchStart(e: WechatMiniprogram.TouchEvent) {
+    this.data.startX = e.touches[0].pageX;
+  },
+
+  /**
+   * 处理touchend事件
+   */
+  handleTouchEnd(e: WechatMiniprogram.TouchEvent) {
+    if (e.changedTouches[0].pageX < this.data.startX && e.changedTouches[0].pageX - this.data.startX <= -30) {
+      this.showDeleteButton(e);
+    } else if (e.changedTouches[0].pageX > this.data.startX && e.changedTouches[0].pageX - this.data.startX < 30) {
+      this.showDeleteButton(e);
+    } else {
+      this.hideDeleteButton(e);
+    }
+  },
+
+  /**
+   * 显示删除按钮
+   */
+  showDeleteButton(e: WechatMiniprogram.TouchEvent) {
+    const index = (e.currentTarget as any).dataset.index;
+    this.setXmove(index, -65);
+  },
+
+  /**
+   * 隐藏删除按钮
+   */
+  hideDeleteButton(e: WechatMiniprogram.TouchEvent) {
+    const index = (e.currentTarget as any).dataset.index;
+    this.setXmove(index, 0);
+  },
+
+  /**
+   * 设置movable-view位移
+   */
+  setXmove(index: number, xmove: number) {
+    const items = [...this.data.items];
+    items[index].xmove = xmove;
+    this.setData({
+      items
+    });
+  },
+
+  /**
+   * 处理movable-view移动事件
+   */
+  handleMovableChange(e: any) {
+    if (e.detail.source === 'friction') {
+      if (e.detail.x < -30) {
+        this.showDeleteButton(e);
+      } else {
+        this.hideDeleteButton(e);
+      }
+    } else if (e.detail.source === 'out-of-bounds' && e.detail.x === 0) {
+      this.hideDeleteButton(e);
+    }
   }
 }); 
