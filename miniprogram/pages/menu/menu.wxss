@@ -19,8 +19,46 @@
   padding: 0;
   border-radius: 0 0 10rpx 10rpx;
   box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+  height: 120rpx;
+  display: flex;
+  flex-direction: row;
+}
+
+/* 固定的"全部"选项 */
+.type-item.fixed {
+  min-width: 120rpx;
+  height: 80rpx;
+  margin: 20rpx 20rpx 20rpx 30rpx;
+  flex-shrink: 0;
+  font-weight: 500;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.type-item.fixed::after {
+  content: '';
+  position: absolute;
+  right: -20rpx;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2rpx;
+  height: 40rpx;
+  background: linear-gradient(to bottom, transparent, #e0e0e0, transparent);
+}
+
+.type-item.fixed.active {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+/* 可滚动区域 */
+.scroll-types {
+  flex: 1;
   white-space: nowrap;
   height: 120rpx;
+  margin-left: 10rpx;
 }
 
 .type-selector-content {
