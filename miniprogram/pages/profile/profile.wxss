@@ -46,6 +46,17 @@
   font-size: 34rpx;
   color: #333333;
   font-weight: bold;
+  margin-bottom: 10rpx;
+}
+
+.user-openid {
+  font-size: 24rpx;
+  color: #999999;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 10rpx;
 }
 
 /* 菜单列表 */
@@ -100,4 +111,9 @@
 /* 管理员菜单样式 */
 .menu-section:last-child .menu-item:last-child {
   border-bottom: none;
+}
+
+/* 退出登录按钮样式 */
+.settings .menu-item:last-child .menu-text {
+  color: #FF5252;
 } 
