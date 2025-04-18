@@ -28,6 +28,17 @@ export interface UserInfo {
   language: string;
 }
 
+// 手机号信息接口
+export interface PhoneNumberResult {
+  phoneNumber: string;        // 用户绑定的手机号（国外手机号会有区号）
+  purePhoneNumber: string;    // 没有区号的手机号
+  countryCode: string;        // 区号
+  watermark: {
+    timestamp: number;
+    appid: string;
+  };
+}
+
 /**
  * 微信登录方法，返回登录凭证code
  * @returns Promise<string> 登录凭证code
@@ -82,6 +93,45 @@ export const code2Session = async (code: string): Promise<LoginResult> => {
     }
   } catch (error) {
     console.error('code2Session失败:', error);
+    throw error;
+  }
+};
+
+/**
+ * 获取用户手机号
+ * 需要在button组件添加 open-type="getPhoneNumber" bindgetphonenumber="回调方法"
+ * 回调方法中获取到code后，调用此方法发送到后端解析
+ * @param code 手机号获取凭证
+ * @returns Promise<PhoneNumberResult> 手机号信息
+ */
+export const getPhoneNumber = async (code: string): Promise<PhoneNumberResult> => {
+  try {
+    // 检查是否已登录
+    if (!isLoggedIn()) {
+      throw new Error('请先登录再获取手机号');
+    }
+    
+    const openid = getOpenId();
+    
+    // 调用后端接口获取手机号
+    const response = await requestWithLoading<PhoneNumberResult>({
+      url: `${BASE_URL}/api/getPhoneNumber`,
+      method: 'POST',
+      data: { 
+        code,
+        openid
+      }
+    }, '获取手机号中...');
+    
+    if (response && response.phoneNumber) {
+      // 保存手机号到本地存储
+      wx.setStorageSync('phoneNumber', response.phoneNumber);
+      return response;
+    } else {
+      throw new Error('获取手机号失败，服务器返回数据格式错误');
+    }
+  } catch (error) {
+    console.error('获取手机号失败:', error);
     throw error;
   }
 };
@@ -190,11 +240,51 @@ export const requestWithLoading = <T>(
         console.log("后端返回数据");
         console.log(res.data);
         
-        // 后端直接返回 {session_key: string, openid: string} 格式
+        // 判断返回的数据类型及字段
         const data = res.data as T;
         
-        // 检查数据是否包含必要的字段
-        if (data && (data as any).openid) {
+        // 检查响应数据的格式
+        if (data) {
+          // 处理多种返回数据结构
+          // 1. 登录返回的数据结构
+          if ((data as any).openid !== undefined) {
+            resolve(data);
+            return;
+          }
+          
+          // 2. 获取手机号返回的数据结构
+          if ((data as any).phoneNumber !== undefined || (data as any).phone_info) {
+            // 兼容直接返回数据或者包含在phone_info中的情况
+            if ((data as any).phone_info) {
+              resolve({
+                phoneNumber: (data as any).phone_info.phoneNumber,
+                purePhoneNumber: (data as any).phone_info.purePhoneNumber,
+                countryCode: (data as any).phone_info.countryCode,
+                watermark: (data as any).phone_info.watermark
+              } as unknown as T);
+            } else {
+              resolve(data);
+            }
+            return;
+          }
+          
+          // 3. 其他有效数据
+          if ((data as any).errcode === 0 || (data as any).code === 0 || (data as any).success) {
+            resolve(data);
+            return;
+          }
+          
+          // 4. 处理错误情况
+          if ((data as any).errcode !== undefined && (data as any).errcode !== 0) {
+            wx.showToast({
+              title: (data as any).errmsg || '请求失败',
+              icon: 'none'
+            });
+            reject(new Error((data as any).errmsg || '请求失败'));
+            return;
+          }
+          
+          // 5. 兜底方案，尝试解析返回的数据
           resolve(data);
         } else {
           wx.showToast({

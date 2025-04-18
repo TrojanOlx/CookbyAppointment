@@ -1,5 +1,5 @@
 // 我的页面
-import { login, isLoggedIn, logout, getOpenId, getUserProfile as authGetUserProfile } from '../../utils/auth';
+import { login, isLoggedIn, logout, getOpenId, getUserProfile as authGetUserProfile, getPhoneNumber as authGetPhoneNumber } from '../../utils/auth';
 import { showToast, showLoading, hideLoading } from '../../utils/util';
 
 // 用户信息接口
@@ -199,30 +199,31 @@ Page<IPageData, IPageMethods>({
   // 获取手机号码（需要在wxml的button组件上设置open-type="getPhoneNumber"）
   getPhoneNumber(e: WechatMiniprogram.ButtonGetPhoneNumber) {
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
-      // 用户同意授权，可以将信息发送到后端解密
-      console.log('获取手机号成功:', e.detail);
+      // 用户同意授权，获取code
+      const code = e.detail.code;
+      console.log('获取手机号成功, code:', code);
       
-      // 这里需要将加密数据发送到服务端解密
-      // 示例代码，实际需要根据后端接口调整
-      // wx.request({
-      //   url: '后端解密接口',
-      //   method: 'POST',
-      //   data: {
-      //     encryptedData: e.detail.encryptedData,
-      //     iv: e.detail.iv,
-      //     sessionKey: wx.getStorageSync('session_key')
-      //   },
-      //   success: (res) => {
-      //     // 处理成功响应
-      //     showToast('手机号绑定成功');
-      //   },
-      //   fail: (err) => {
-      //     console.error('手机号解密失败:', err);
-      //     showToast('手机号绑定失败');
-      //   }
-      // });
-      
-      showToast('手机号授权成功');
+      // 调用authGetPhoneNumber函数获取手机号
+      wx.showLoading({ title: '获取手机号中...', mask: true });
+      authGetPhoneNumber(code)
+        .then(result => {
+          console.log('手机号信息:', result);
+          
+          // 保存手机号到本地存储
+          wx.setStorageSync('phoneNumber', result.phoneNumber);
+          
+          wx.showToast({
+            title: '手机号绑定成功',
+            icon: 'success'
+          });
+        })
+        .catch(err => {
+          console.error('手机号获取失败:', err);
+          showToast('手机号获取失败');
+        })
+        .then(() => {
+          wx.hideLoading();
+        });
     } else {
       console.error('获取手机号失败:', e.detail.errMsg);
       showToast('获取手机号失败');

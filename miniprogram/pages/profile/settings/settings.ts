@@ -1,6 +1,6 @@
 // pages/profile/settings/settings.ts
 import { showToast } from '../../../utils/util';
-import { getUserProfile } from '../../../utils/auth';
+import { getUserProfile, getPhoneNumber as authGetPhoneNumber } from '../../../utils/auth';
 
 // 页面数据接口
 interface IPageData {
@@ -97,37 +97,32 @@ Page<IPageData, IPageMethods>({
   // 获取手机号
   getPhoneNumber(e: WechatMiniprogram.ButtonGetPhoneNumber) {
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
-      // 用户同意授权
-      console.log('获取手机号成功:', e.detail);
+      // 用户同意授权，获取code
+      const code = e.detail.code;
+      console.log('获取手机号成功, code:', code);
       
-      // 这里需要将加密数据发送到服务端解密
-      // 示例代码，实际需要根据后端接口调整
-      // wx.request({
-      //   url: '后端解密接口',
-      //   method: 'POST',
-      //   data: {
-      //     encryptedData: e.detail.encryptedData,
-      //     iv: e.detail.iv,
-      //     sessionKey: wx.getStorageSync('session_key')
-      //   },
-      //   success: (res) => {
-      //     // 处理成功响应
-      //     const phoneNumber = (res.data as any).phoneNumber;
-      //     wx.setStorageSync('phoneNumber', phoneNumber);
-      //     this.setData({ phoneNumber });
-      //     showToast('手机号绑定成功');
-      //   },
-      //   fail: (err) => {
-      //     console.error('手机号解密失败:', err);
-      //     showToast('手机号绑定失败');
-      //   }
-      // });
-      
-      // 模拟成功
-      const mockPhoneNumber = '138****8888';
-      wx.setStorageSync('phoneNumber', mockPhoneNumber);
-      this.setData({ phoneNumber: mockPhoneNumber });
-      showToast('手机号绑定成功');
+      // 调用工具函数获取手机号
+      wx.showLoading({ title: '绑定中...', mask: true });
+      authGetPhoneNumber(code)
+        .then(result => {
+          console.log('手机号信息:', result);
+          this.setData({ phoneNumber: result.phoneNumber });
+          wx.showToast({
+            title: '手机号绑定成功',
+            icon: 'success'
+          });
+        })
+        .catch(err => {
+          console.error('获取手机号失败:', err);
+          wx.showToast({
+            title: '手机号绑定失败',
+            icon: 'none'
+          });
+        })
+        .then(() => {
+          // 无论成功或失败都执行
+          wx.hideLoading();
+        });
     } else {
       console.error('获取手机号失败:', e.detail.errMsg);
       showToast('获取手机号失败');
