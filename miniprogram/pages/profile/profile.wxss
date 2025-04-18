@@ -19,34 +19,49 @@
 
 .login-btn {
   width: 80%;
-  height: 80rpx;
-  line-height: 80rpx;
-  background-color: #4CAF50;
-  color: #ffffff;
-  border-radius: 40rpx;
-  font-size: 30rpx;
+  height: 44px;
+  line-height: 44px;
+  background-color: #07c160;
+  color: white;
+  border-radius: 5px;
+  margin: 10px auto;
+  font-size: 16px;
+}
+
+.userinfo-btn {
+  width: 80%;
+  height: 44px;
+  line-height: 44px;
+  background-color: #1989fa;
+  color: white;
+  border-radius: 5px;
+  margin: 10px auto;
+  font-size: 16px;
 }
 
 .user-avatar-info {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   width: 100%;
 }
 
 .avatar {
-  width: 150rpx;
-  height: 150rpx;
-  border-radius: 75rpx;
-  margin-bottom: 20rpx;
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 60rpx;
+  margin-right: 30rpx;
   border: 4rpx solid #4CAF50;
+}
+
+.user-info-text {
+  flex: 1;
 }
 
 .user-name {
   font-size: 34rpx;
   color: #333333;
   font-weight: bold;
-  margin-bottom: 10rpx;
 }
 
 .user-openid {

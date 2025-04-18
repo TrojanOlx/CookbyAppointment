@@ -2,11 +2,12 @@
 <view class="profile-container">
   <!-- 用户信息区 -->
   <view class="user-info">
-    <button wx:if="{{!userInfo}}" class="login-btn" bindtap="doLogin" loading="{{isLoggingIn}}">微信登录</button>
+    <button wx:if="{{!userInfo}}" class="login-btn" bindtap="showLoginOptions" loading="{{isLoggingIn}}">微信登录</button>
     <view wx:else class="user-avatar-info">
       <image class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}"></image>
-      <view class="user-name">{{userInfo.nickName || '用户'}}</view>
-      <view class="user-openid" wx:if="{{openid}}">OpenID: {{openid}}</view>
+      <view class="user-info-text">
+        <view class="user-name">{{userInfo.nickName || '用户'}}</view>
+      </view>
     </view>
   </view>
   

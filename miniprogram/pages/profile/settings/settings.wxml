@@ -1,2 +1,58 @@
 <!--pages/profile/settings/settings.wxml-->
-<text>pages/profile/settings/settings.wxml</text>
+<view class="settings-container">
+  <view class="settings-title">账户设置</view>
+  
+  <!-- 个人信息设置 -->
+  <view class="settings-section">
+    <view class="settings-header">个人信息</view>
+    
+    <!-- 手机号绑定 -->
+    <view class="settings-item">
+      <view class="settings-label">手机号</view>
+      <view class="settings-value" wx:if="{{phoneNumber}}">{{phoneNumber}}</view>
+      <view class="settings-action" wx:else>
+        <button class="phone-btn" open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber">绑定手机号</button>
+      </view>
+    </view>
+    
+    <!-- 更新用户信息 -->
+    <view class="settings-item" bindtap="updateUserInfo">
+      <view class="settings-label">更新用户资料</view>
+      <view class="settings-arrow">></view>
+    </view>
+  </view>
+  
+  <!-- 通知设置 -->
+  <view class="settings-section">
+    <view class="settings-header">通知设置</view>
+    
+    <!-- 预约提醒 -->
+    <view class="settings-item">
+      <view class="settings-label">预约提醒</view>
+      <switch checked="{{notifyAppointment}}" bindchange="switchChange" data-type="appointment"></switch>
+    </view>
+    
+    <!-- 评价提醒 -->
+    <view class="settings-item">
+      <view class="settings-label">评价提醒</view>
+      <switch checked="{{notifyReview}}" bindchange="switchChange" data-type="review"></switch>
+    </view>
+  </view>
+  
+  <!-- 其他设置 -->
+  <view class="settings-section">
+    <view class="settings-header">其他设置</view>
+    
+    <!-- 清除缓存 -->
+    <view class="settings-item" bindtap="clearCache">
+      <view class="settings-label">清除缓存</view>
+      <view class="settings-arrow">></view>
+    </view>
+    
+    <!-- 关于我们 -->
+    <view class="settings-item" bindtap="navigateTo" data-url="/pages/about/about">
+      <view class="settings-label">关于我们</view>
+      <view class="settings-arrow">></view>
+    </view>
+  </view>
+</view>
