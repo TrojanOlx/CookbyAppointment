@@ -8,7 +8,17 @@
     "pages/appointment/select/select",
     "pages/inventory/inventory",
     "pages/inventory/add/add",
-    "pages/appointment/listtest"
+    "pages/appointment/listtest",
+    "pages/profile/profile",
+    "pages/profile/appointments/appointments",
+    "pages/profile/reviews/reviews",
+    "pages/profile/admin/appointments",
+    "pages/profile/admin/reviews",
+    "pages/profile/admin/statistics",
+    "pages/profile/settings/settings",
+    "pages/profile/admin/appointments/appointments",
+    "pages/profile/admin/reviews/reviews",
+    "pages/profile/admin/statistics/statistics"
   ],
   "window": {
     "navigationBarTextStyle": "white",
@@ -34,8 +44,8 @@
         "text": "预约"
       },
       {
-        "pagePath": "pages/inventory/inventory",
-        "text": "库存"
+        "pagePath": "pages/profile/profile",
+        "text": "我的"
       }
     ]
   },

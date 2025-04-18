@@ -1,0 +1,27 @@
+<view class="appointments-container">
+  <view class="page-header">
+    <text class="page-title">我的预约</text>
+  </view>
+  
+  <view class="appointment-list" wx:if="{{appointments.length > 0}}">
+    <view class="appointment-item" wx:for="{{appointments}}" wx:key="id">
+      <view class="appointment-date">{{item.date}}</view>
+      <view class="appointment-meal">{{item.mealType}}</view>
+      <view class="appointment-dishes">
+        <view class="dish-count">共{{item.dishes.length}}道菜</view>
+        <view class="dish-names">
+          <text wx:for="{{item.dishNames}}" wx:for-item="dishName" wx:key="*this" class="dish-name">{{dishName}}</text>
+        </view>
+      </view>
+      <view class="appointment-actions">
+        <button class="btn btn-primary" bindtap="viewAppointment" data-id="{{item.id}}">查看</button>
+        <button class="btn btn-secondary" bindtap="editAppointment" data-id="{{item.id}}">修改</button>
+      </view>
+    </view>
+  </view>
+  
+  <view class="empty-message" wx:else>
+    <text>您还没有任何预约，快去创建一个吧！</text>
+    <button class="btn btn-create" bindtap="createAppointment">创建预约</button>
+  </view>
+</view> 

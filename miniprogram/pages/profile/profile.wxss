@@ -1,0 +1,103 @@
+/* 页面容器 */
+.profile-container {
+  padding: 20rpx;
+  background-color: #f6f6f6;
+  min-height: 100vh;
+}
+
+/* 用户信息区域 */
+.user-info {
+  background-color: #ffffff;
+  border-radius: 12rpx;
+  padding: 30rpx;
+  margin-bottom: 30rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.login-btn {
+  width: 80%;
+  height: 80rpx;
+  line-height: 80rpx;
+  background-color: #4CAF50;
+  color: #ffffff;
+  border-radius: 40rpx;
+  font-size: 30rpx;
+}
+
+.user-avatar-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.avatar {
+  width: 150rpx;
+  height: 150rpx;
+  border-radius: 75rpx;
+  margin-bottom: 20rpx;
+  border: 4rpx solid #4CAF50;
+}
+
+.user-name {
+  font-size: 34rpx;
+  color: #333333;
+  font-weight: bold;
+}
+
+/* 菜单列表 */
+.menu-list {
+  background-color: #ffffff;
+  border-radius: 12rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.menu-section {
+  margin-bottom: 20rpx;
+}
+
+.menu-title {
+  font-size: 28rpx;
+  color: #888888;
+  padding: 20rpx 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  padding: 30rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.menu-icon {
+  margin-right: 20rpx;
+  font-size: 40rpx;
+}
+
+.menu-text {
+  flex: 1;
+  font-size: 30rpx;
+  color: #333333;
+}
+
+.menu-arrow {
+  color: #cccccc;
+  font-size: 30rpx;
+}
+
+/* 设置区域 */
+.settings {
+  background-color: #ffffff;
+  border-radius: 12rpx;
+  box-shadow: 0 4rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+/* 管理员菜单样式 */
+.menu-section:last-child .menu-item:last-child {
+  border-bottom: none;
+} 

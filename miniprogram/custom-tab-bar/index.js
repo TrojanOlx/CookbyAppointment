@@ -14,9 +14,9 @@ Component({
       text: "预约",
       icon: "📅"
     }, {
-      pagePath: "/pages/inventory/inventory",
-      text: "库存",
-      icon: "🧊"
+      pagePath: "/pages/profile/profile",
+      text: "我的",
+      icon: "👤"
     }]
   },
   
