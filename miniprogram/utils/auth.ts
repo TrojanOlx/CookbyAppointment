@@ -1,7 +1,7 @@
 // 用户认证相关工具函数
 
 // 服务器URL，需要根据实际情况修改
-const BASE_URL = 'https://your-api-server.com';
+const BASE_URL = 'https://wx.oulongxing.com';
 
 // 存储用户登录态的key
 const USER_TOKEN_KEY = 'user_token';
@@ -48,13 +48,16 @@ export const wxLogin = (): Promise<string> => {
  */
 export const code2Session = async (code: string): Promise<LoginResult> => {
   try {
+    console.log('开始请求后端:');
+    
     // 这里假设后端有一个/api/login接口，接收code并返回openid等信息
     const response = await requestWithLoading<LoginResult>({
-      url: `${BASE_URL}/api/login`,
+      url: `${BASE_URL}`,
       method: 'POST',
       data: { code }
     }, '登录中...');
 
+    console.log(response);
     if (response) {
       // 保存登录信息
       wx.setStorageSync(OPEN_ID_KEY, response.openid);
@@ -67,7 +70,7 @@ export const code2Session = async (code: string): Promise<LoginResult> => {
       throw new Error('服务器返回数据格式错误');
     }
   } catch (error) {
-    console.error('code2Session失败:', error);
+    console.error('code2Session失败1111:', error);
     throw error;
   }
 };
@@ -116,6 +119,8 @@ export const requestWithLoading = <T>(
       success: (res) => {
         wx.hideLoading();
         // 这里假设后端返回的数据格式为 { code: number, data: T, msg: string }
+        console.log("后端返回数据");
+        console.log(res.data);
         const result = res.data as { code: number; data: T; msg: string };
         if (result.code === 0 || result.code === 200) {
           resolve(result.data);
@@ -146,6 +151,7 @@ export const requestWithLoading = <T>(
 export const login = async (): Promise<LoginResult> => {
   try {
     const code = await wxLogin();
+    console.log('获取code成功:', code);
     return await code2Session(code);
   } catch (error) {
     console.error('登录失败:', error);
