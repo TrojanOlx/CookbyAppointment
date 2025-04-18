@@ -30,7 +30,7 @@
         "text": "菜单"
       },
       {
-        "pagePath": "pages/appointment/listtest",
+        "pagePath": "pages/appointment/appointment",
         "text": "预约"
       },
       {

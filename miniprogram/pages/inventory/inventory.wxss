@@ -121,7 +121,7 @@
 /* 滑动删除相关样式 */
 .inventory-item-container {
   margin: 20rpx;
-  width: 710rpx;
+  width: 100%;
   height: 200rpx;
   background: #FFFFFF;
   border-radius: 20rpx;
@@ -131,7 +131,7 @@
 
 .movable-area {
   height: 200rpx;
-  width: calc(710rpx - 120rpx);
+  width: calc(100% - 150rpx);
   background: #FFFFFF;
   border-radius: 20rpx;
   z-index: 3;
@@ -148,7 +148,7 @@
   position: absolute;
   right: 0;
   top: 0;
-  width: 115rpx;
+  width: 150rpx;
   height: 100%;
   display: flex;
   justify-content: center;
@@ -159,7 +159,6 @@
   background: #ff4d4f;
   border-top-right-radius: 20rpx;
   border-bottom-right-radius: 20rpx;
-  z-index: 1;
 }
 
 /* 修改原有样式以适应滑动删除 */
