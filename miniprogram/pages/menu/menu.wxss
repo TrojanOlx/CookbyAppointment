@@ -66,6 +66,7 @@
   padding: 20rpx 10rpx;
   box-sizing: border-box;
   height: 100%;
+  padding-right: 140rpx;
 }
 
 .type-item {
@@ -82,6 +83,11 @@
   justify-content: center;
   position: relative;
   border-bottom: 3rpx solid transparent;
+}
+
+/* 最后一个类型项添加额外的右边距 */
+.type-item:last-child {
+  margin-right: 30rpx;
 }
 
 .type-item.active {

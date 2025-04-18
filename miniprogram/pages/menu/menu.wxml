@@ -11,7 +11,15 @@
     </view>
     
     <!-- 可滚动的其他选项 -->
-    <scroll-view class="scroll-types" scroll-x="true" enhanced="true" show-scrollbar="false">
+    <scroll-view 
+      class="scroll-types" 
+      scroll-x="true" 
+      enhanced="true" 
+      show-scrollbar="false"
+      enable-flex="true"
+      scroll-with-animation="true"
+      scroll-anchoring="true"
+    >
       <view class="type-selector-content">
         <view 
           class="type-item {{selectedType === item ? 'active' : ''}}" 
