@@ -1,14 +1,10 @@
 // app.ts
 import { initTestData } from './utils/storage';
 
-interface GlobalData {
-  systemInfo?: WechatMiniprogram.SystemInfo;
-}
-
-App<{
-  globalData: GlobalData
-}>({
-  globalData: {},
+App({
+  globalData: {
+    systemInfo: null as WechatMiniprogram.SystemInfo | null
+  },
   
   onLaunch() {
     // 获取系统信息
@@ -22,4 +18,4 @@ App<{
     // 初始化测试数据
     initTestData();
   },
-})
+});

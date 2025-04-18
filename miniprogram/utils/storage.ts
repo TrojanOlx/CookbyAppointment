@@ -1,4 +1,4 @@
-import { Dish, Appointment, InventoryItem, DishType, SpicyLevel, MealType } from './model';
+import { Dish, Appointment, InventoryItem, DishType, SpicyLevel, MealType, AppointmentStatus, InventoryCategory, InventoryStatus } from '../utils/model';
 
 // 内存中存储数据的变量
 let memoryDishes: Dish[] = [];
@@ -42,6 +42,16 @@ function getData<T>(key: string): T[] {
   return [] as T[];
 }
 
+// 添加辅助函数，处理食材数据
+function enhanceIngredient(ingredient: any, dishId: string): any {
+  return {
+    ...ingredient,
+    dishId: dishId,
+    createTime: Date.now(),
+    updateTime: Date.now()
+  };
+}
+
 // 添加测试数据
 export function initTestData(): void {
   // 如果已经初始化过，不再重复初始化
@@ -58,10 +68,10 @@ export function initTestData(): void {
       spicy: SpicyLevel.None,
       images: ['/images/default-dish.png'],
       ingredients: [
-        { id: 'ing1', name: '西红柿', amount: '2个' },
-        { id: 'ing2', name: '鸡蛋', amount: '3个' },
-        { id: 'ing3', name: '葱', amount: '适量' },
-        { id: 'ing4', name: '盐', amount: '适量' }
+        enhanceIngredient({ id: 'ing1', name: '西红柿', amount: '2个' }, 'test-dish1'),
+        enhanceIngredient({ id: 'ing2', name: '鸡蛋', amount: '3个' }, 'test-dish1'),
+        enhanceIngredient({ id: 'ing3', name: '葱', amount: '适量' }, 'test-dish1'),
+        enhanceIngredient({ id: 'ing4', name: '盐', amount: '适量' }, 'test-dish1')
       ],
       steps: [
         '西红柿洗净切块，葱切段',
@@ -73,7 +83,10 @@ export function initTestData(): void {
       notice: '炒鸡蛋时火候不要太大，以免煎老',
       remark: '适合家常食用',
       reference: '',
-      createTime: Date.now()
+      creatorId: '',
+      creatorOpenid: '',
+      createTime: Date.now(),
+      updateTime: Date.now()
     },
     {
       id: 'test-dish2',
@@ -82,11 +95,11 @@ export function initTestData(): void {
       spicy: SpicyLevel.Medium,
       images: ['/images/default-dish.png'],
       ingredients: [
-        { id: 'ing5', name: '豆腐', amount: '1块' },
-        { id: 'ing6', name: '肉末', amount: '100g' },
-        { id: 'ing7', name: '郫县豆瓣酱', amount: '1勺' },
-        { id: 'ing8', name: '花椒', amount: '少许' },
-        { id: 'ing9', name: '大蒜', amount: '3瓣' }
+        enhanceIngredient({ id: 'ing5', name: '豆腐', amount: '1块' }, 'test-dish2'),
+        enhanceIngredient({ id: 'ing6', name: '肉末', amount: '100g' }, 'test-dish2'),
+        enhanceIngredient({ id: 'ing7', name: '郫县豆瓣酱', amount: '1勺' }, 'test-dish2'),
+        enhanceIngredient({ id: 'ing8', name: '花椒', amount: '少许' }, 'test-dish2'),
+        enhanceIngredient({ id: 'ing9', name: '大蒜', amount: '3瓣' }, 'test-dish2')
       ],
       steps: [
         '豆腐切成小方块，用开水焯烫一下',
@@ -100,7 +113,10 @@ export function initTestData(): void {
       notice: '翻炒时注意不要把豆腐弄碎',
       remark: '经典川菜',
       reference: '',
-      createTime: Date.now()
+      creatorId: '',
+      creatorOpenid: '',
+      createTime: Date.now(),
+      updateTime: Date.now()
     },
     {
       id: 'test-dish3',
@@ -109,9 +125,9 @@ export function initTestData(): void {
       spicy: SpicyLevel.None,
       images: ['/images/default-dish.png'],
       ingredients: [
-        { id: 'ing10', name: '油麦菜', amount: '1把' },
-        { id: 'ing11', name: '蒜', amount: '2瓣' },
-        { id: 'ing12', name: '盐', amount: '适量' }
+        enhanceIngredient({ id: 'ing10', name: '油麦菜', amount: '1把' }, 'test-dish3'),
+        enhanceIngredient({ id: 'ing11', name: '蒜', amount: '2瓣' }, 'test-dish3'),
+        enhanceIngredient({ id: 'ing12', name: '盐', amount: '适量' }, 'test-dish3')
       ],
       steps: [
         '油麦菜洗净，切成段',
@@ -122,7 +138,10 @@ export function initTestData(): void {
       notice: '油麦菜炒熟后会缩水，注意准备足够量',
       remark: '清淡爽口',
       reference: '',
-      createTime: Date.now()
+      creatorId: '',
+      creatorOpenid: '',
+      createTime: Date.now(),
+      updateTime: Date.now()
     },
     {
       id: 'test-dish4',
@@ -131,10 +150,10 @@ export function initTestData(): void {
       spicy: SpicyLevel.None,
       images: ['/images/default-dish.png'],
       ingredients: [
-        { id: 'ing13', name: '排骨', amount: '300g' },
-        { id: 'ing14', name: '冬瓜', amount: '半个' },
-        { id: 'ing15', name: '姜', amount: '3片' },
-        { id: 'ing16', name: '盐', amount: '适量' }
+        enhanceIngredient({ id: 'ing13', name: '排骨', amount: '300g' }, 'test-dish4'),
+        enhanceIngredient({ id: 'ing14', name: '冬瓜', amount: '半个' }, 'test-dish4'),
+        enhanceIngredient({ id: 'ing15', name: '姜', amount: '3片' }, 'test-dish4'),
+        enhanceIngredient({ id: 'ing16', name: '盐', amount: '适量' }, 'test-dish4')
       ],
       steps: [
         '排骨焯水去血水',
@@ -147,7 +166,10 @@ export function initTestData(): void {
       notice: '冬瓜不要煮太久，避免煮烂',
       remark: '清热解暑',
       reference: '',
-      createTime: Date.now()
+      creatorId: '',
+      creatorOpenid: '',
+      createTime: Date.now(),
+      updateTime: Date.now()
     },
     {
       id: 'test-dish5',
@@ -156,11 +178,11 @@ export function initTestData(): void {
       spicy: SpicyLevel.Hot,
       images: ['/images/default-dish.png'],
       ingredients: [
-        { id: 'ing17', name: '草鱼', amount: '1条' },
-        { id: 'ing18', name: '豆芽', amount: '适量' },
-        { id: 'ing19', name: '干辣椒', amount: '10个' },
-        { id: 'ing20', name: '花椒', amount: '1勺' },
-        { id: 'ing21', name: '郫县豆瓣酱', amount: '2勺' }
+        enhanceIngredient({ id: 'ing17', name: '草鱼', amount: '1条' }, 'test-dish5'),
+        enhanceIngredient({ id: 'ing18', name: '豆芽', amount: '适量' }, 'test-dish5'),
+        enhanceIngredient({ id: 'ing19', name: '干辣椒', amount: '10个' }, 'test-dish5'),
+        enhanceIngredient({ id: 'ing20', name: '花椒', amount: '1勺' }, 'test-dish5'),
+        enhanceIngredient({ id: 'ing21', name: '郫县豆瓣酱', amount: '2勺' }, 'test-dish5')
       ],
       steps: [
         '鱼处理干净，切片，用料酒和姜腌制10分钟',
@@ -174,7 +196,10 @@ export function initTestData(): void {
       notice: '鱼片要顺着鱼纹切，避免破碎',
       remark: '麻辣鲜香的川菜代表',
       reference: '',
-      createTime: Date.now()
+      creatorId: '',
+      creatorOpenid: '',
+      createTime: Date.now(),
+      updateTime: Date.now()
     },
     {
       id: 'test-dish6',
@@ -183,14 +208,14 @@ export function initTestData(): void {
       spicy: SpicyLevel.Medium,
       images: ['/images/default-dish.png'],
       ingredients: [
-        { id: 'ing22', name: '鸡胸肉', amount: '300g' },
-        { id: 'ing23', name: '花生', amount: '50g' },
-        { id: 'ing24', name: '干辣椒', amount: '8个' },
-        { id: 'ing25', name: '花椒', amount: '适量' },
-        { id: 'ing26', name: '葱', amount: '3根' },
-        { id: 'ing27', name: '姜', amount: '适量' },
-        { id: 'ing28', name: '蒜', amount: '3瓣' },
-        { id: 'ing29', name: '黄瓜', amount: '半根' }
+        enhanceIngredient({ id: 'ing22', name: '鸡胸肉', amount: '300g' }, 'test-dish6'),
+        enhanceIngredient({ id: 'ing23', name: '花生', amount: '50g' }, 'test-dish6'),
+        enhanceIngredient({ id: 'ing24', name: '干辣椒', amount: '8个' }, 'test-dish6'),
+        enhanceIngredient({ id: 'ing25', name: '花椒', amount: '适量' }, 'test-dish6'),
+        enhanceIngredient({ id: 'ing26', name: '葱', amount: '3根' }, 'test-dish6'),
+        enhanceIngredient({ id: 'ing27', name: '姜', amount: '适量' }, 'test-dish6'),
+        enhanceIngredient({ id: 'ing28', name: '蒜', amount: '3瓣' }, 'test-dish6'),
+        enhanceIngredient({ id: 'ing29', name: '黄瓜', amount: '半根' }, 'test-dish6')
       ],
       steps: [
         '鸡胸肉切成丁，用盐、料酒和淀粉腌制15分钟',
@@ -206,7 +231,10 @@ export function initTestData(): void {
       notice: '花生米不要炒糊，火候要控制好',
       remark: '经典川菜，酸辣可口',
       reference: '',
-      createTime: Date.now()
+      creatorId: '',
+      creatorOpenid: '',
+      createTime: Date.now(),
+      updateTime: Date.now()
     },
     {
       id: 'test-dish7',
