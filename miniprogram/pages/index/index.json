@@ -1,4 +1,6 @@
 {
   "navigationBarTitleText": "家庭菜单预约",
-  "usingComponents": {}
+  "usingComponents": {
+    "privacy-check": "/components/privacy-check/privacy-check"
+  }
 }

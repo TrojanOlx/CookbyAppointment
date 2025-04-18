@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/privacy/privacy",
     "pages/index/index",
     "pages/menu/menu",
     "pages/menu/add/add",
@@ -52,5 +53,18 @@
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
   "usingComponents": {},
-  "resizable": true
+  "resizable": true,
+  "permission": {
+    "scope.userInfo": {
+      "desc": "用于显示你的昵称和头像"
+    }
+  },
+  "requiredPrivateInfos": [
+    "chooseLocation",
+    "getLocation"
+  ],
+  "privacyPlugin": {
+    "version": "2.1",
+    "provider": "微信官方"
+  }
 }

@@ -1,5 +1,6 @@
 // app.ts
 import { initTestData } from './utils/storage';
+import { hasUserAcceptedPrivacy, requestPrivacyAuthorization } from './utils/privacy';
 
 App({
   globalData: {
@@ -17,5 +18,13 @@ App({
     
     // 初始化测试数据
     initTestData();
+    
+    // 处理隐私授权
+    if (!hasUserAcceptedPrivacy()) {
+      // 如果用户未接受隐私政策，引导到隐私政策页面
+      wx.navigateTo({
+        url: '/pages/privacy/privacy'
+      });
+    }
   },
 });

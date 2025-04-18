@@ -1,4 +1,7 @@
 <!--index.wxml-->
+<!-- 添加隐私检查组件 -->
+<privacy-check></privacy-check>
+
 <view class="container">
   <!-- 固定的导航部分 -->
   <view class="header fixed-header">
@@ -22,11 +25,11 @@
         <view class="feature-desc">规划每日餐饮</view>
       </navigator>
       
-      <navigator url="/pages/inventory/inventory" open-type="switchTab" class="feature-item">
+      <view class="feature-item" bindtap="navigateToInventory" data-url="/pages/inventory/inventory">
         <view class="feature-icon fridge-icon">🧊</view>
         <view class="feature-name">库存</view>
         <view class="feature-desc">管理冰箱食材</view>
-      </navigator>
+      </view>
     </view>
     
     <view class="footer" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">

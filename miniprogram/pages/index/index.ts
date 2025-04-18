@@ -65,7 +65,7 @@ Page({
 
   // 跳转到库存页面
   navigateToInventory() {
-    wx.switchTab({
+    wx.navigateTo({
       url: '/pages/inventory/inventory'
     });
   }

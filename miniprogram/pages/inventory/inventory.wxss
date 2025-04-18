@@ -106,7 +106,7 @@
   padding: 20rpx;
   padding-right: 40rpx; /* 增加右侧内边距，为滚动条留出更多空间 */
   padding-top: 220rpx; /* 为固定定位的搜索栏和筛选栏留出空间 */
-  padding-bottom: 120rpx; /* 为底部导航栏留出空间 */
+  padding-bottom: 30rpx; /* 为底部导航栏留出空间 */
   width: 100%;
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch; /* 增加 iOS 滚动流畅度 */

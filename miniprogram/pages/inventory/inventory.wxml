@@ -1,4 +1,4 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 4 + 'px') : '85rpx'}};">
+<view class="container" style="padding-bottom: {{safeAreaBottom}};" bindtap="onContainerTap">
   <!-- 搜索区域 -->
   <view class="search-bar">
     <view class="search-box">
@@ -8,6 +8,7 @@
         value="{{searchKeyword}}" 
         bindinput="onSearchInput" 
         confirm-type="search"
+        catchtap="stopEvent"
       />
       <view class="search-icon">🔍</view>
     </view>
@@ -19,6 +20,7 @@
       class="filter-item {{filterStatus === '' ? 'active' : ''}}" 
       bindtap="filterByStatus" 
       data-status=""
+      catchtap="stopEvent"
     >
       <text>全部</text>
       <text class="count">{{totalCount}}</text>
@@ -27,6 +29,7 @@
       class="filter-item {{filterStatus === 'normal' ? 'active' : ''}}" 
       bindtap="filterByStatus" 
       data-status="normal"
+      catchtap="stopEvent"
     >
       <text>未到期</text>
       <text class="count">{{normalCount}}</text>
@@ -35,6 +38,7 @@
       class="filter-item {{filterStatus === 'expiring' ? 'active' : ''}}" 
       bindtap="filterByStatus" 
       data-status="expiring"
+      catchtap="stopEvent"
     >
       <text>即将过期</text>
       <text class="count">{{expiringCount}}</text>
@@ -43,6 +47,7 @@
       class="filter-item {{filterStatus === 'expired' ? 'active' : ''}}" 
       bindtap="filterByStatus" 
       data-status="expired"
+      catchtap="stopEvent"
     >
       <text>已过期</text>
       <text class="count">{{expiredCount}}</text>
@@ -62,6 +67,7 @@
       refresher-triggered="{{isRefreshing}}"
       bindrefresherrefresh="onRefresh"
       bindscrolltolower="onReachBottom"
+      bindscroll="onScroll"
       enhanced="{{true}}"
       show-scrollbar="{{true}}"
       fast-deceleration="{{true}}"
@@ -79,7 +85,8 @@
         <view class="inventory-item-container" wx:for="{{items}}" wx:key="id">
           <movable-area class="movable-area">
             <movable-view class="movable-view" out-of-bounds="true" direction="horizontal" x="{{item.xmove}}" inertia="true" 
-              data-index="{{index}}" bindtouchstart="handleTouchStart" bindtouchend="handleTouchEnd" bindchange="handleMovableChange">
+              data-index="{{index}}" bindtouchstart="handleTouchStart" bindtouchend="handleTouchEnd" bindchange="handleMovableChange" catchtap="stopEvent"
+              damping="40" friction="5">
               <view class="inventory-item" bindtap="editItem" data-id="{{item.id}}">
                 <!-- 左侧图片区域 -->
                 <view class="item-image">

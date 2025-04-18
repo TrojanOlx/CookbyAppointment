@@ -237,6 +237,8 @@ Page({
       currentPage: 1
     });
     
+    // 隐藏所有删除按钮
+    this.hideAllDeleteButtons();
     this.loadInventory(true);
   },
 
@@ -248,17 +250,20 @@ Page({
       currentPage: 1
     });
     
+    // 隐藏所有删除按钮
+    this.hideAllDeleteButtons();
     this.loadInventory(true);
   },
   
-  // 下拉刷新
+  // 刷新事件
   onRefresh() {
-    if (this.data.isRefreshing) return;
+    // 隐藏所有删除按钮
+    this.hideAllDeleteButtons();
     
     this.setData({
-      isRefreshing: true
+      isRefreshing: true,
+      currentPage: 1
     });
-    
     this.loadInventory(true);
   },
 
@@ -271,9 +276,12 @@ Page({
 
   // 编辑食材
   editItem(e: any) {
+    // 隐藏所有删除按钮
+    this.hideAllDeleteButtons();
+    
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
-      url: `./add/add?id=${id}`
+      url: `/pages/inventory/add/add?id=${id}`
     });
   },
 
@@ -314,12 +322,27 @@ Page({
    * 处理touchend事件
    */
   handleTouchEnd(e: WechatMiniprogram.TouchEvent) {
-    if (e.changedTouches[0].pageX < this.data.startX && e.changedTouches[0].pageX - this.data.startX <= -30) {
+    const deltaX = e.changedTouches[0].pageX - this.data.startX;
+    
+    // 左滑超过30px，显示删除按钮
+    if (deltaX < -30) {
       this.showDeleteButton(e);
-    } else if (e.changedTouches[0].pageX > this.data.startX && e.changedTouches[0].pageX - this.data.startX < 30) {
-      this.showDeleteButton(e);
-    } else {
+    } 
+    // 右滑超过15px，隐藏删除按钮
+    else if (deltaX > 15) {
       this.hideDeleteButton(e);
+    }
+    // 其它小幅度滑动，根据当前状态决定
+    else {
+      const index = (e.currentTarget as any).dataset.index;
+      const currentXmove = this.data.items[index].xmove || 0;
+      
+      // 如果当前已经显示删除按钮，保持显示；否则隐藏
+      if (currentXmove < -30) {
+        this.showDeleteButton(e);
+      } else {
+        this.hideDeleteButton(e);
+      }
     }
   },
 
@@ -328,7 +351,19 @@ Page({
    */
   showDeleteButton(e: WechatMiniprogram.TouchEvent) {
     const index = (e.currentTarget as any).dataset.index;
-    this.setXmove(index, -65);
+    
+    // 先重置所有项目的xmove为0
+    const items = [...this.data.items];
+    items.forEach((item, idx) => {
+      items[idx].xmove = 0;
+    });
+    
+    // 然后只设置当前项目的xmove为-85
+    items[index].xmove = -85;
+    
+    this.setData({
+      items
+    });
   },
 
   /**
@@ -354,14 +389,59 @@ Page({
    * 处理movable-view移动事件
    */
   handleMovableChange(e: any) {
-    if (e.detail.source === 'friction') {
+    if (e.detail.source === 'touch') {
+      // 用户正在触摸滑动，不做额外处理
+      return;
+    }
+    
+    if (e.detail.source === 'friction' || e.detail.source === 'out-of-bounds') {
+      // 当是惯性滑动或者超出边界时
       if (e.detail.x < -30) {
+        // 如果滑动距离超过阈值，显示删除按钮
         this.showDeleteButton(e);
-      } else {
+      } else if (e.detail.source === 'out-of-bounds' && e.detail.x === 0) {
+        // 如果是由于边界弹回导致的位置改变，隐藏删除按钮
+        this.hideDeleteButton(e);
+      } else if (Math.abs(e.detail.x) < 15) {
+        // 如果滑动距离较小，隐藏删除按钮
         this.hideDeleteButton(e);
       }
-    } else if (e.detail.source === 'out-of-bounds' && e.detail.x === 0) {
-      this.hideDeleteButton(e);
     }
-  }
+  },
+
+  /**
+   * 隐藏所有删除按钮
+   */
+  hideAllDeleteButtons() {
+    const items = [...this.data.items];
+    items.forEach((item, index) => {
+      item.xmove = 0;
+    });
+    this.setData({
+      items
+    });
+  },
+
+  /**
+   * 容器点击事件，用于隐藏所有删除按钮
+   */
+  onContainerTap() {
+    // 隐藏所有删除按钮
+    this.hideAllDeleteButtons();
+  },
+  
+  /**
+   * 阻止事件冒泡
+   */
+  stopEvent() {
+    // 什么都不做，仅阻止事件冒泡
+  },
+
+  /**
+   * 处理滚动事件
+   */
+  onScroll() {
+    // 滚动时隐藏所有删除按钮
+    this.hideAllDeleteButtons();
+  },
 }); 
