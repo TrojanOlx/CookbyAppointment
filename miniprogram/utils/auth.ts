@@ -63,7 +63,7 @@ export const code2Session = async (code: string): Promise<LoginResult> => {
     
     // 这里假设后端有一个/api/login接口，接收code并返回openid等信息
     const response = await requestWithLoading<LoginResult>({
-      url: `${BASE_URL}`,
+      url: `${BASE_URL}/api/getUserProfile`,
       method: 'POST',
       data: { code }
     }, '登录中...');
