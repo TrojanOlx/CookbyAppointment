@@ -24,6 +24,10 @@ export class UserService {
 
   // 获取用户信息
   static async getUserInfo(userId?: string): Promise<User> {
+    // 如果userId未定义或为空字符串，则获取当前登录用户信息
+    if (!userId) {
+      return get<User>('/api/user/info');
+    }
     return get<User>('/api/user/info', { userId });
   }
 

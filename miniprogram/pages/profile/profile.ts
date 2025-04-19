@@ -1,21 +1,11 @@
 // 我的页面
-import { login, isLoggedIn, logout, getOpenId, getUserProfile as authGetUserProfile, getPhoneNumber as authGetPhoneNumber } from '../../utils/auth';
+import { UserService } from '../../services/userService';
+import { User } from '../../models/user';
 import { showToast, showLoading, hideLoading } from '../../utils/util';
-
-// 用户信息接口
-interface UserInfo {
-  avatarUrl?: string;
-  nickName?: string;
-  gender?: number;
-  province?: string;
-  city?: string;
-  country?: string;
-  openid?: string;
-}
 
 // 页面数据接口
 interface IPageData {
-  userInfo: UserInfo | null;
+  userInfo: User | null;
   isAdmin: boolean;
   hasUserInfo: boolean;
   canIUseGetUserProfile: boolean;
@@ -33,6 +23,7 @@ interface IPageMethods {
   getUserProfile: () => void;
   showLoginOptions: () => void;
   getPhoneNumber: (e: WechatMiniprogram.ButtonGetPhoneNumber) => void;
+  fetchUserInfo: () => Promise<void>;
 }
 
 Page<IPageData, IPageMethods>({
@@ -54,20 +45,53 @@ Page<IPageData, IPageMethods>({
     }
     
     // 检查是否已登录
-    if (isLoggedIn()) {
-      // 获取用户的openid
-      const openid = getOpenId();
-      this.setData({ openid });
-
+    const token = wx.getStorageSync('token');
+    if (token) {
       // 尝试从本地存储获取用户信息
       const userInfo = wx.getStorageSync('userInfo');
       if (userInfo) {
         this.setData({
           userInfo,
-          hasUserInfo: true
+          hasUserInfo: true,
+          openid: userInfo.openid
+        });
+        this.checkAdminStatus();
+      } else {
+        // 有token但没有用户信息，尝试获取用户信息
+        this.fetchUserInfo();
+      }
+    }
+  },
+  
+  // 获取用户信息
+  async fetchUserInfo() {
+    try {
+      showLoading('获取用户信息...');
+      // 不传入userId参数，使用当前登录用户身份获取信息
+      const userInfo = await UserService.getUserInfo();
+      if (userInfo) {
+        wx.setStorageSync('userInfo', userInfo);
+        this.setData({
+          userInfo,
+          hasUserInfo: true,
+          openid: userInfo.openid
         });
         this.checkAdminStatus();
       }
+      hideLoading();
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
+      hideLoading();
+      showToast('获取用户信息失败');
+      
+      // 如果出现403或401错误，可能是token失效，清除token
+      wx.removeStorageSync('token');
+      this.setData({
+        userInfo: null,
+        hasUserInfo: false,
+        isAdmin: false,
+        openid: null
+      });
     }
   },
   
@@ -112,8 +136,31 @@ Page<IPageData, IPageMethods>({
     try {
       this.setData({ isLoggingIn: true });
       
-      // 调用wx.login获取code，并换取openid等信息
-      const loginResult = await login();
+      // 获取登录code
+      const loginCode = await new Promise<string>((resolve, reject) => {
+        wx.login({
+          success: (res) => {
+            if (res.code) {
+              resolve(res.code);
+            } else {
+              reject(new Error('登录失败: ' + res.errMsg));
+            }
+          },
+          fail: reject
+        });
+      });
+      
+      // 调用UserService进行登录
+      const loginResult = await UserService.login(loginCode);
+      
+      // 确保获取到token
+      if (!loginResult.token) {
+        throw new Error('登录返回数据不完整，缺少token');
+      }
+      
+      // 保存登录状态
+      wx.setStorageSync('token', loginResult.token);
+      wx.setStorageSync('openid', loginResult.openid);
       
       this.setData({
         openid: loginResult.openid,
@@ -122,21 +169,39 @@ Page<IPageData, IPageMethods>({
       
       showToast('登录成功');
       
-      // 登录成功后，弹出提示获取用户资料
-      if (!this.data.userInfo) {
-        wx.showModal({
-          title: '完善资料',
-          content: '是否授权获取您的用户资料？',
-          confirmText: '确定',
-          cancelText: '暂不',
-          success: (res) => {
-            if (res.confirm) {
-              // 用户点击确定按钮，获取用户资料
-              this.getUserProfile();
+      // 获取用户信息
+      await this.fetchUserInfo();
+      
+      // 登录成功后，先弹出提示获取用户资料（昵称和头像）
+      wx.showModal({
+        title: '完善用户资料',
+        content: '是否授权获取您的昵称和头像等信息？',
+        confirmText: '立即获取',
+        cancelText: '暂不',
+        success: (modalRes) => {
+          if (modalRes.confirm) {
+            // 用户点击确认，触发获取用户资料
+            this.getUserProfile();
+          } else {
+            // 用户点击取消，如果没有手机号则提示绑定手机号
+            if (this.data.userInfo && !this.data.userInfo.phoneNumber) {
+              wx.showModal({
+                title: '绑定手机号',
+                content: '是否需要绑定您的手机号码？',
+                confirmText: '去绑定',
+                cancelText: '暂不',
+                success: (phoneModalRes) => {
+                  if (phoneModalRes.confirm) {
+                    wx.navigateTo({
+                      url: '/pages/profile/settings/settings'
+                    });
+                  }
+                }
+              });
             }
           }
-        });
-      }
+        }
+      });
     } catch (error) {
       console.error('登录失败:', error);
       this.setData({ isLoggingIn: false });
@@ -146,13 +211,17 @@ Page<IPageData, IPageMethods>({
   
   // 退出登录
   doLogout() {
-    logout();
+    wx.removeStorageSync('token');
+    wx.removeStorageSync('openid');
+    wx.removeStorageSync('userInfo');
+    
     this.setData({
       userInfo: null,
       hasUserInfo: false,
       isAdmin: false,
       openid: null
     });
+    
     showToast('已退出登录');
   },
   
@@ -162,32 +231,65 @@ Page<IPageData, IPageMethods>({
     wx.getUserProfile({
       desc: '用于完善用户信息',
       success: (res) => {
-        const userInfo: UserInfo = res.userInfo;
-        // 如果已登录，将openid添加到用户信息中
-        if (this.data.openid) {
-          userInfo.openid = this.data.openid;
-        }
-        wx.setStorageSync('userInfo', userInfo);
-        this.setData({
-          userInfo,
-          hasUserInfo: true
-        });
-        this.checkAdminStatus();
+        console.log("用户信息");
+        console.log(res);
         
-        // 获取到用户资料后，提示获取手机号
-        wx.showModal({
-          title: '绑定手机号',
-          content: '是否需要绑定您的手机号码？',
-          confirmText: '去绑定',
-          cancelText: '暂不',
-          success: (modalRes) => {
-            if (modalRes.confirm) {
-              wx.navigateTo({
-                url: '/pages/profile/settings/settings'
-              });
+        // 没有获取到用户信息
+        if (!res.userInfo) {
+          showToast('获取用户信息失败');
+          return;
+        }
+        
+        // 更新用户信息
+        const userInfo = {
+          ...this.data.userInfo,
+          nickName: res.userInfo.nickName,
+          avatarUrl: res.userInfo.avatarUrl,
+          gender: res.userInfo.gender,
+          country: res.userInfo.country,
+          province: res.userInfo.province,
+          city: res.userInfo.city
+        };
+        
+        // 调用接口更新用户信息
+        showLoading('更新用户信息...');
+        UserService.updateUserInfo(userInfo)
+          .then(updatedUser => {
+            wx.setStorageSync('userInfo', updatedUser);
+            this.setData({
+              userInfo: updatedUser,
+              hasUserInfo: true
+            });
+            this.checkAdminStatus();
+            hideLoading();
+            
+            // 显示成功提示
+            showToast('资料获取成功');
+            
+            // 获取到用户资料后，提示获取手机号
+            if (!updatedUser.phoneNumber) {
+              setTimeout(() => {
+                wx.showModal({
+                  title: '绑定手机号',
+                  content: '是否需要绑定您的手机号码？',
+                  confirmText: '去绑定',
+                  cancelText: '暂不',
+                  success: (modalRes) => {
+                    if (modalRes.confirm) {
+                      wx.navigateTo({
+                        url: '/pages/profile/settings/settings'
+                      });
+                    }
+                  }
+                });
+              }, 500); // 延迟显示，避免与成功提示重叠
             }
-          }
-        });
+          })
+          .catch(err => {
+            console.error('更新用户信息失败:', err);
+            hideLoading();
+            showToast('更新用户信息失败');
+          });
       },
       fail: (err) => {
         console.error('获取用户信息失败:', err);
@@ -203,26 +305,34 @@ Page<IPageData, IPageMethods>({
       const code = e.detail.code;
       console.log('获取手机号成功, code:', code);
       
-      // 调用authGetPhoneNumber函数获取手机号
-      wx.showLoading({ title: '获取手机号中...', mask: true });
-      authGetPhoneNumber(code)
+      // 调用UserService获取手机号
+      showLoading('获取手机号中...');
+      UserService.getPhoneNumber(code)
         .then(result => {
           console.log('手机号信息:', result);
           
-          // 保存手机号到本地存储
-          wx.setStorageSync('phoneNumber', result.phoneNumber);
+          // 更新用户信息中的手机号
+          const userInfo = {
+            ...this.data.userInfo,
+            phoneNumber: result.phoneNumber
+          };
           
-          wx.showToast({
-            title: '手机号绑定成功',
-            icon: 'success'
+          // 调用接口更新用户信息
+          return UserService.updateUserInfo(userInfo);
+        })
+        .then(updatedUser => {
+          wx.setStorageSync('userInfo', updatedUser);
+          this.setData({
+            userInfo: updatedUser
           });
+          
+          hideLoading();
+          showToast('手机号绑定成功');
         })
         .catch(err => {
           console.error('手机号获取失败:', err);
+          hideLoading();
           showToast('手机号获取失败');
-        })
-        .then(() => {
-          wx.hideLoading();
         });
     } else {
       console.error('获取手机号失败:', e.detail.errMsg);
@@ -236,43 +346,47 @@ Page<IPageData, IPageMethods>({
     this.doLogin().then(() => {
       // 登录成功后，如果按钮方式获取了用户信息
       if (e && e.detail && e.detail.userInfo) {
-        const userInfo: UserInfo = e.detail.userInfo;
-        // 将openid添加到用户信息中
-        if (this.data.openid) {
-          userInfo.openid = this.data.openid;
-        }
-        wx.setStorageSync('userInfo', userInfo);
-        this.setData({
-          userInfo,
-          hasUserInfo: true
-        });
-        this.checkAdminStatus();
+        const userInfo = {
+          ...this.data.userInfo,
+          nickName: e.detail.userInfo.nickName,
+          avatarUrl: e.detail.userInfo.avatarUrl,
+          gender: e.detail.userInfo.gender,
+          country: e.detail.userInfo.country,
+          province: e.detail.userInfo.province,
+          city: e.detail.userInfo.city
+        };
+        
+        // 调用接口更新用户信息
+        UserService.updateUserInfo(userInfo)
+          .then(updatedUser => {
+            wx.setStorageSync('userInfo', updatedUser);
+            this.setData({
+              userInfo: updatedUser,
+              hasUserInfo: true
+            });
+            this.checkAdminStatus();
+          })
+          .catch(err => {
+            console.error('更新用户信息失败:', err);
+            showToast('更新用户信息失败');
+          });
       }
     });
   },
 
   // 检查管理员状态
-  checkAdminStatus() {
-    // 这里应该实现真实的管理员权限检查
-    // 可以基于openid或unionid判断用户是否为管理员
-    // 暂时使用模拟数据，将特定用户名作为管理员
-    const adminUsernames = ['admin', '管理员'];
-    const adminOpenids = ['o-1-C6_A-LcLC4PFDA-sbcNFNUqE']; // 添加管理员的openid
-    
-    // 通过用户昵称判断
-    let isAdmin = this.data.userInfo && 
-      this.data.userInfo.nickName && 
-      adminUsernames.includes(this.data.userInfo.nickName);
+  async checkAdminStatus() {
+    try {
+      const result = await UserService.checkAdmin();
+      this.setData({ isAdmin: result.isAdmin });
+    } catch (error) {
+      console.error('检查管理员状态失败:', error);
       
-    // 通过openid判断
-    if (!isAdmin && this.data.openid) {
-      isAdmin = adminOpenids.includes(this.data.openid);
+      // 失败时使用本地方式判断（备用）
+      const adminOpenids = ['o-1-C6_A-LcLC4PFDA-sbcNFNUqE']; // 添加管理员的openid
+      const isAdmin = this.data.openid && adminOpenids.includes(this.data.openid);
+      this.setData({ isAdmin: Boolean(isAdmin) });
     }
-    
-    this.setData({ isAdmin: Boolean(isAdmin) });
-    
-    // 保存管理员状态
-    wx.setStorageSync('isAdmin', isAdmin);
   },
   
   // 页面导航
