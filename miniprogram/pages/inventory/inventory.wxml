@@ -20,7 +20,6 @@
       class="filter-item {{filterStatus === '' ? 'active' : ''}}" 
       bindtap="filterByStatus" 
       data-status=""
-      catchtap="stopEvent"
     >
       <text>全部</text>
       <text class="count">{{totalCount}}</text>
@@ -29,7 +28,6 @@
       class="filter-item {{filterStatus === 'normal' ? 'active' : ''}}" 
       bindtap="filterByStatus" 
       data-status="normal"
-      catchtap="stopEvent"
     >
       <text>未到期</text>
       <text class="count">{{normalCount}}</text>
@@ -38,7 +36,6 @@
       class="filter-item {{filterStatus === 'expiring' ? 'active' : ''}}" 
       bindtap="filterByStatus" 
       data-status="expiring"
-      catchtap="stopEvent"
     >
       <text>即将过期</text>
       <text class="count">{{expiringCount}}</text>
@@ -47,7 +44,6 @@
       class="filter-item {{filterStatus === 'expired' ? 'active' : ''}}" 
       bindtap="filterByStatus" 
       data-status="expired"
-      catchtap="stopEvent"
     >
       <text>已过期</text>
       <text class="count">{{expiredCount}}</text>
