@@ -1,6 +1,11 @@
-import { DishType, Dish, Ingredient, SpicyLevel } from '../../../utils/model';
-import { dishService, generateId } from '../../../utils/storage';
-import { showSuccess, showError } from '../../../utils/util';
+import { DishType, Dish, Ingredient, SpicyLevel } from '../../../models/dish';
+import { DishService } from '../../../services/dishService';
+import { showSuccess, showError, showLoading, hideLoading, showToast } from '../../../utils/util';
+
+// 生成唯一ID
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
 
 // 默认菜品数据结构
 const DEFAULT_DISH: Dish = {
@@ -38,17 +43,20 @@ Page({
     } as Dish,
     dishTypes: Object.values(DishType),
     spicyLevels: Object.values(SpicyLevel),
-    safeAreaBottom: 0
+    safeAreaBottom: 0,
+    loading: false
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
-  onLoad(options) {
+  async onLoad(options) {
     if (options.id) {
       // 编辑现有菜品
-      const dish = dishService.getDishById(options.id);
-      if (dish) {
+      this.setData({ loading: true });
+      showLoading('加载中');
+      try {
+        const dish = await DishService.getDishDetail(options.id);
         this.setData({
           isEdit: true,
           dish
@@ -56,6 +64,15 @@ Page({
         wx.setNavigationBarTitle({
           title: '编辑菜品'
         });
+      } catch (error) {
+        console.error('获取菜品详情失败:', error);
+        showToast('获取菜品详情失败');
+        setTimeout(() => {
+          wx.navigateBack();
+        }, 1500);
+      } finally {
+        hideLoading();
+        this.setData({ loading: false });
       }
     } else {
       // 添加新菜品，创建一个空的食材项和步骤项
@@ -227,7 +244,7 @@ Page({
   },
 
   // 提交表单
-  submitForm(e: any) {
+  async submitForm(e: any) {
     const formData = e.detail.value;
     const { dish } = this.data;
 
@@ -276,18 +293,28 @@ Page({
       createTime: dish.createTime || Date.now()
     };
 
-    // 保存或更新菜品
-    if (this.data.isEdit) {
-      dishService.updateDish(saveDish);
-      showSuccess('菜品更新成功');
-    } else {
-      dishService.addDish(saveDish);
-      showSuccess('菜品添加成功');
-    }
+    try {
+      showLoading(this.data.isEdit ? '更新中' : '添加中');
+      
+      // 保存或更新菜品
+      if (this.data.isEdit) {
+        await DishService.updateDish(saveDish);
+        hideLoading();
+        showSuccess('菜品更新成功');
+      } else {
+        await DishService.addDish(saveDish);
+        hideLoading();
+        showSuccess('菜品添加成功');
+      }
 
-    // 返回上一页
-    setTimeout(() => {
-      wx.navigateBack();
-    }, 1500);
+      // 返回上一页
+      setTimeout(() => {
+        wx.navigateBack();
+      }, 1500);
+    } catch (error) {
+      hideLoading();
+      console.error(this.data.isEdit ? '更新菜品失败:' : '添加菜品失败:', error);
+      showToast(this.data.isEdit ? '更新菜品失败' : '添加菜品失败');
+    }
   }
 }); 

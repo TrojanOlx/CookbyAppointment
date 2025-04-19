@@ -1,6 +1,6 @@
-import { Dish } from '../../../utils/model';
-import { dishService } from '../../../utils/storage';
-import { showSuccess, showConfirm } from '../../../utils/util';
+import { Dish } from '../../../models/dish';
+import { DishService } from '../../../services/dishService';
+import { showSuccess, showConfirm, showLoading, hideLoading, showToast } from '../../../utils/util';
 
 Page({
   /**
@@ -9,7 +9,8 @@ Page({
   data: {
     dish: {} as Dish,
     dishId: '',
-    safeAreaBottom: 0
+    safeAreaBottom: 0,
+    loading: false
   },
 
   /**
@@ -66,20 +67,24 @@ Page({
   /**
    * 加载菜品数据
    */
-  loadDish() {
-    const dish = dishService.getDishById(this.data.dishId);
-    if (dish) {
+  async loadDish() {
+    if (this.data.loading) return;
+    
+    this.setData({ loading: true });
+    showLoading('加载中');
+    
+    try {
+      const dish = await DishService.getDishDetail(this.data.dishId);
       this.setData({ dish });
-    } else {
-      wx.showToast({
-        title: '菜品不存在',
-        icon: 'error',
-        complete: () => {
-          setTimeout(() => {
-            wx.navigateBack();
-          }, 1500);
-        }
-      });
+    } catch (error) {
+      console.error('获取菜品详情失败:', error);
+      showToast('获取菜品详情失败');
+      setTimeout(() => {
+        wx.navigateBack();
+      }, 1500);
+    } finally {
+      hideLoading();
+      this.setData({ loading: false });
     }
   },
 
@@ -98,12 +103,22 @@ Page({
   async deleteDish() {
     const confirmed = await showConfirm('确认删除', '确定要删除这个菜品吗？');
     if (confirmed) {
-      const success = dishService.deleteDish(this.data.dishId);
-      if (success) {
-        showSuccess('删除成功');
-        setTimeout(() => {
-          wx.navigateBack();
-        }, 1500);
+      try {
+        showLoading('删除中');
+        const result = await DishService.deleteDish(this.data.dishId);
+        if (result.success) {
+          hideLoading();
+          showSuccess('删除成功');
+          setTimeout(() => {
+            wx.navigateBack();
+          }, 1500);
+        } else {
+          throw new Error('删除失败');
+        }
+      } catch (error) {
+        hideLoading();
+        console.error('删除菜品失败:', error);
+        showToast('删除菜品失败');
       }
     }
   }
