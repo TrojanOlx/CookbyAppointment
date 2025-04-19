@@ -91,13 +91,13 @@
     style="padding-top: {{headerHeight}}px; padding-bottom: {{bottomHeight}}px;"
   >
     <!-- 加载状态 -->
-    <view class="loading-container" wx:if="{{isLoading}}">
+    <view class="loading-container" wx:if="{{isLoading && filteredDishes.length === 0}}">
       <view class="loading-spinner"></view>
       <view class="loading-text">加载中...</view>
     </view>
 
     <!-- 菜品列表 -->
-    <view class="dish-list" wx:else>
+    <view class="dish-list" wx:if="{{!isLoading || filteredDishes.length > 0}}">
       <block wx:if="{{filteredDishes.length > 0}}">
         <view 
           wx:for="{{filteredDishes}}" 

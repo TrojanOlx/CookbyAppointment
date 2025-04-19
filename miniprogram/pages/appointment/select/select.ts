@@ -1,6 +1,13 @@
-import { Dish, MealType, Appointment, DishType } from '../../../utils/model';
-import { dishService, appointmentService, generateId } from '../../../utils/storage';
-import { formatDate, showError, showSuccess, showToast } from '../../../utils/util';
+import { Dish, DishType } from '../../../models/dish';
+import { Appointment, MealType } from '../../../models/appointment';
+import { AppointmentService } from '../../../services/appointmentService';
+import { DishService } from '../../../services/dishService';
+import { formatDate, showError, showSuccess, showToast, showLoading, hideLoading } from '../../../utils/util';
+
+// 生成唯一ID
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+}
 
 // 每页加载的菜品数量
 const PAGE_SIZE = 10;
@@ -31,23 +38,21 @@ Page({
     dishTypes: [] as string[], // 菜品类型列表
   },
 
-  onLoad(options) {
+  // 搜索的定时器
+  searchTimer: null as number | null,
+
+  async onLoad(options) {
     // 初始化菜品类型
     this.setData({
       dishTypes: Object.values(DishType),
       isLoading: true
     });
     
-    // 获取所有菜品
     try {
-      const dishes = dishService.getAllDishes();
-      
-      // 按创建时间排序，最新的排在前面
-      dishes.sort((a, b) => b.createTime - a.createTime);
-      
       if (options.id) {
         // 编辑模式，加载预约数据
-        const appointment = appointmentService.getAppointmentById(options.id);
+        showLoading('加载中');
+        const appointment = await AppointmentService.getAppointmentDetail(options.id);
         
         if (appointment) {
           // 将选中的菜品ID数组转换为映射对象
@@ -60,8 +65,6 @@ Page({
             date: appointment.date,
             selectedMealType: appointment.mealType,
             selectedDishes,
-            dishes,
-            filteredTotal: dishes.length,
             editMode: true,
             appointmentId: options.id,
             selectedCount: appointment.dishes.length
@@ -70,7 +73,9 @@ Page({
           wx.setNavigationBarTitle({
             title: '编辑预约'
           });
+          hideLoading();
         } else {
+          hideLoading();
           showError('预约数据不存在');
           setTimeout(() => {
             wx.navigateBack();
@@ -81,8 +86,6 @@ Page({
         // 新建模式，设置日期
         this.setData({
           date: options.date,
-          dishes,
-          filteredTotal: dishes.length,
           selectedDishes: {}
         });
       } else {
@@ -94,18 +97,18 @@ Page({
       }
       
       // 分页加载第一页数据
-      this.loadPageData(1);
+      await this.loadPageData(1);
+      
+      // 计算固定顶部区域的高度
+      this.calculateHeaderHeight();
     } catch (error) {
       console.error('加载数据失败', error);
       showError('加载数据失败');
-    } finally {
+      hideLoading();
       this.setData({
         isLoading: false
       });
     }
-
-    // 计算固定顶部区域的高度
-    this.calculateHeaderHeight();
   },
 
   onReady() {
@@ -177,122 +180,118 @@ Page({
   },
 
   // 分页加载数据
-  loadPageData(page: number) {
-    const { dishes, selectedType, searchKeyword } = this.data;
-    let filtered = [...dishes];
+  async loadPageData(page: number) {
+    const { selectedType, searchKeyword } = this.data;
     
-    // 按类型筛选
-    if (selectedType) {
-      filtered = filtered.filter(dish => dish.type === selectedType);
-    }
-    
-    // 按关键词搜索
-    if (searchKeyword) {
-      filtered = filtered.filter(dish => 
-        dish.name.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-        dish.ingredients.some(ing => ing.name.toLowerCase().includes(searchKeyword.toLowerCase()))
-      );
-    }
-    
-    // 记录筛选后的总数量
-    const filteredTotal = filtered.length;
-    
-    // 分页截取
-    const start = (page - 1) * PAGE_SIZE;
-    const end = page * PAGE_SIZE;
-    const pageData = filtered.slice(start, end);
-    
-    // 是否还有更多数据
-    const hasMoreData = end < filteredTotal;
-    
-    // 更新数据
+    console.log('加载数据开始，设置isLoading=', page === 1);
+    this.setData({ isLoading: page === 1 });
     if (page === 1) {
-      // 第一页直接替换
+      showLoading('加载中');
+    }
+    
+    try {
+      let dishesResult;
+      
+      // 根据不同条件调用不同的API
+      if (searchKeyword) {
+        // 如果有搜索关键词，使用搜索API
+        console.log('使用搜索API，关键词:', searchKeyword);
+        dishesResult = await DishService.searchDish(searchKeyword, page, PAGE_SIZE);
+      } else {
+        // 否则使用普通列表查询，可传入类型过滤
+        console.log('使用普通查询API，类型:', selectedType || '全部');
+        dishesResult = await DishService.getDishList(page, PAGE_SIZE, selectedType || undefined);
+      }
+      
+      console.log('接收到数据:', dishesResult.list.length, '条记录，总数:', dishesResult.total);
+      const dishes = dishesResult.list;
+      const total = dishesResult.total;
+      
       this.setData({
-        filteredDishes: pageData,
+        dishes: page === 1 ? dishes : [...this.data.dishes, ...dishes],
+        filteredDishes: page === 1 ? dishes : [...this.data.filteredDishes, ...dishes],
         currentPage: page,
-        hasMoreData,
-        filteredTotal
+        hasMoreData: dishes.length >= PAGE_SIZE && this.data.filteredDishes.length < total,
+        filteredTotal: total,
+        isRefreshing: false,
+        isLoadingMore: false,
+        isLoading: false
+      }, () => {
+        console.log('数据加载完成，当前isLoading=', this.data.isLoading);
       });
-    } else {
-      // 追加到现有数据
+      
+      if (page === 1) {
+        hideLoading();
+      }
+    } catch (error) {
+      console.error('加载菜品数据失败:', error);
+      showToast('加载菜品数据失败');
       this.setData({
-        filteredDishes: [...this.data.filteredDishes, ...pageData],
-        currentPage: page,
-        hasMoreData
+        isRefreshing: false,
+        isLoadingMore: false,
+        isLoading: false
+      }, () => {
+        console.log('数据加载出错，当前isLoading=', this.data.isLoading);
       });
+      if (page === 1) {
+        hideLoading();
+      }
     }
   },
 
-  // 下拉刷新
-  onRefresh() {
+  // 刷新数据
+  async onRefresh() {
     if (this.data.isRefreshing) return;
     
-    this.setData({
-      isRefreshing: true
-    });
+    this.setData({ isRefreshing: true });
     
     try {
-      // 重新获取菜品数据
-      const dishes = dishService.getAllDishes();
-      dishes.sort((a, b) => b.createTime - a.createTime);
+      // 重置到第一页
+      this.setData({ currentPage: 1 });
       
-      this.setData({
-        dishes,
-        currentPage: 1
-      });
-      
-      // 重新加载第一页
-      this.loadPageData(1);
-      
-      showToast('刷新成功');
+      // 重新加载第一页数据
+      await this.loadPageData(1);
     } catch (error) {
-      console.error('刷新失败', error);
-      showError('刷新失败');
+      console.error('刷新数据失败', error);
+      showToast('刷新数据失败');
+      this.setData({ isRefreshing: false });
     } finally {
-      setTimeout(() => {
-        this.setData({
-          isRefreshing: false
-        });
-      }, 800); // 稍微延迟停止刷新状态，以便用户看到刷新效果
+      // 停止微信自带的下拉刷新动画
+      wx.stopPullDownRefresh();
     }
   },
 
   // 加载更多
-  onLoadMore() {
+  async onLoadMore() {
     if (this.data.isLoadingMore || !this.data.hasMoreData) return;
     
-    this.setData({
-      isLoadingMore: true
-    });
+    this.setData({ isLoadingMore: true });
     
-    try {
-      const nextPage = this.data.currentPage + 1;
-      this.loadPageData(nextPage);
-    } catch (error) {
-      console.error('加载更多失败', error);
-    } finally {
-      setTimeout(() => {
-        this.setData({
-          isLoadingMore: false
-        });
-      }, 500);
-    }
+    // 加载下一页数据
+    const nextPage = this.data.currentPage + 1;
+    await this.loadPageData(nextPage);
   },
 
   // 选择餐次
-  selectMealType(e: any) {
+  async selectMealType(e: any) {
     const type = e.currentTarget.dataset.type;
     
     if (this.data.editMode) {
-      // 编辑模式下检查是否有冲突
-      const existingAppointments = appointmentService.getAppointmentByDate(this.data.date);
-      const hasConflict = existingAppointments.some(
-        app => app.mealType === type && app.id !== this.data.appointmentId
-      );
-      
-      if (hasConflict) {
-        showToast('该餐次已存在预约，请选择其他餐次');
+      try {
+        // 编辑模式下检查是否有冲突
+        const appointmentsResult = await AppointmentService.getAppointmentList(1, 20, undefined, this.data.date);
+        const existingAppointments = appointmentsResult.list;
+        const hasConflict = existingAppointments.some(
+          (app: Appointment) => app.mealType === type && app.id !== this.data.appointmentId
+        );
+        
+        if (hasConflict) {
+          showToast('该餐次已存在预约，请选择其他餐次');
+          return;
+        }
+      } catch (error) {
+        console.error('检查餐次冲突失败:', error);
+        showToast('网络异常，请重试');
         return;
       }
     }
@@ -303,36 +302,58 @@ Page({
   },
 
   // 按菜品类型筛选
-  filterByType(e: any) {
+  async filterByType(e: any) {
     const type = e.currentTarget.dataset.type;
     
-    this.setData({
-      selectedType: type,
-      currentPage: 1
-    });
-
-    this.loadPageData(1);
+    // 如果选择的是当前类型且不是空类型，则取消选择
+    if (this.data.selectedType === type && type !== '') {
+      this.setData({ selectedType: '' });
+    } else {
+      // 否则设置为新类型
+      this.setData({ selectedType: type });
+    }
+    
+    // 重置页码
+    this.setData({ currentPage: 1 });
+    
+    // 重新加载数据
+    await this.loadPageData(1);
   },
 
   // 搜索输入
   onSearchInput(e: any) {
+    // 保存输入值
+    const searchValue = e.detail.value;
+    
+    // 设置搜索关键词（不立即触发搜索）
     this.setData({
-      searchKeyword: e.detail.value,
-      currentPage: 1
+      searchKeyword: searchValue
     });
     
-    this.loadPageData(1);
+    // 使用防抖，避免频繁请求
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    
+    // 创建新的定时器
+    this.searchTimer = setTimeout(() => {
+      console.log('搜索防抖结束，开始执行搜索:', searchValue);
+      // 重置页码并搜索
+      this.setData({ currentPage: 1 }, () => {
+        this.loadPageData(1);
+      });
+    }, 500);
   },
 
   // 清除筛选条件
-  clearFilters() {
+  async clearFilters() {
     this.setData({
       selectedType: '',
       searchKeyword: '',
       currentPage: 1
     });
 
-    this.loadPageData(1);
+    await this.loadPageData(1);
   },
 
   // 监听滚动事件
@@ -416,7 +437,7 @@ Page({
   },
 
   // 保存预约
-  saveAppointment() {
+  async saveAppointment() {
     const { date, selectedMealType, selectedDishes, editMode, appointmentId } = this.data;
     
     // 获取选中的菜品ID列表
@@ -428,56 +449,46 @@ Page({
       return;
     }
     
-    wx.showLoading({
-      title: '保存中...',
-      mask: true
-    });
+    showLoading('保存中...');
     
     try {
       if (editMode) {
         // 更新预约
-        const success = appointmentService.updateAppointment({
+        await AppointmentService.updateAppointment({
           id: appointmentId,
           date,
           mealType: selectedMealType,
-          dishes: selectedDishIds,
-          createTime: Date.now()
+          dishes: selectedDishIds
         });
         
-        wx.hideLoading();
-        
-        if (success) {
-          showSuccess('预约更新成功');
-          setTimeout(() => {
-            wx.navigateBack();
-          }, 1500);
-        } else {
-          showError('预约更新失败');
-        }
+        hideLoading();
+        showSuccess('预约更新成功');
+        setTimeout(() => {
+          wx.navigateBack();
+        }, 1500);
       } else {
         // 检查是否已存在同一天同一餐次的预约
-        const existingAppointments = appointmentService.getAppointmentByDate(date);
+        const appointmentsResult = await AppointmentService.getAppointmentList(1, 20, undefined, date);
+        const existingAppointments = appointmentsResult.list;
         const hasConflict = existingAppointments.some(
-          app => app.mealType === selectedMealType
+          (app: Appointment) => app.mealType === selectedMealType
         );
         
         if (hasConflict) {
-          wx.hideLoading();
+          hideLoading();
           showError('该餐次已存在预约，请编辑或删除已有预约');
           return;
         }
         
         // 创建新预约
-        const appointment: Appointment = {
-          id: generateId(),
+        const appointment: Partial<Appointment> = {
           date,
           mealType: selectedMealType,
-          dishes: selectedDishIds,
-          createTime: Date.now()
+          dishes: selectedDishIds
         };
         
-        appointmentService.addAppointment(appointment);
-        wx.hideLoading();
+        await AppointmentService.createAppointment(appointment);
+        hideLoading();
         showSuccess('预约成功');
         
         setTimeout(() => {
@@ -485,7 +496,7 @@ Page({
         }, 1500);
       }
     } catch (error) {
-      wx.hideLoading();
+      hideLoading();
       console.error('保存预约失败', error);
       showError('保存预约失败，请重试');
     }
