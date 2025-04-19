@@ -29,7 +29,14 @@
     </view>
 
     <view class="appointments-list">
-      <block wx:if="{{todayAppointments.length > 0}}">
+      <!-- 加载状态 -->
+      <view class="loading-state" wx:if="{{isLoading}}">
+        <view class="loading-spinner"></view>
+        <text class="loading-text">加载中...</text>
+      </view>
+      
+      <!-- 预约列表 -->
+      <block wx:elif="{{todayAppointments.length > 0}}">
         <view class="meal-card" wx:for="{{todayAppointments}}" wx:key="id">
           <view class="meal-header">
             <view class="meal-info">
@@ -54,6 +61,7 @@
         </view>
       </block>
 
+      <!-- 空状态 -->
       <view class="empty-state" wx:else>
         <text class="empty-text">暂无预约安排</text>
         <view class="empty-btn" bindtap="addAppointment">添加预约</view>
