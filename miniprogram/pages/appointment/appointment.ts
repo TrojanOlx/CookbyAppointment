@@ -163,8 +163,8 @@ Page({
         }
       }
 
-      // 生成标记数据
-      const markedDates: MarkItem[] = [];
+      // 生成标记数据 - 使用wx-calendar需要的格式
+      const marks: any[] = [];
 
       // 遍历所有有预约的日期
       for (const [dateKey, meals] of dateToMeals.entries()) {
@@ -184,43 +184,59 @@ Page({
             continue;
           }
 
-          // 为该日期生成一个唯一的key
-          const key = `${year}_${month}_${day}`;
-
-          // 为每个餐次添加不同颜色的点
-          if (meals.breakfast) {
-            markedDates.push({
-              key,
-              type: 'dot',
-              color: '#2196F3', // 早餐 - 蓝色
-              bgColor: 'transparent'
+          // 计算预约的餐次数量
+          const mealCount = (meals.breakfast ? 1 : 0) + 
+                           (meals.lunch ? 1 : 0) + 
+                           (meals.dinner ? 1 : 0);
+                           
+          // 如果有多个餐次预约，显示"预"
+          if (mealCount > 1) {
+            marks.push({
+              year,
+              month,
+              day,
+              type: 'corner',
+              text: '预',
+              style: { color: '#4CAF50' } // 绿色
             });
-          }
-
-          if (meals.lunch) {
-            markedDates.push({
-              key,
-              type: 'dot',
-              color: '#FF9800', // 午餐 - 橙色
-              bgColor: 'transparent'
-            });
-          }
-
-          if (meals.dinner) {
-            markedDates.push({
-              key,
-              type: 'dot',
-              color: '#9C27B0', // 晚餐 - 紫色
-              bgColor: 'transparent'
-            });
+          } else {
+            // 只有一个餐次预约时，显示具体是哪一餐
+            if (meals.breakfast) {
+              marks.push({
+                year,
+                month, 
+                day,
+                type: 'corner',
+                text: '早',
+                style: { color: '#2196F3' } // 蓝色
+              });
+            } else if (meals.lunch) {
+              marks.push({
+                year,
+                month,
+                day,
+                type: 'corner',
+                text: '午',
+                style: { color: '#FF9800' } // 橙色
+              });
+            } else if (meals.dinner) {
+              marks.push({
+                year,
+                month,
+                day,
+                type: 'corner',
+                text: '晚',
+                style: { color: '#9C27B0' } // 紫色
+              });
+            }
           }
         } catch (error) {
           console.error(`处理日期标记时出错: ${dateKey}`, error);
         }
       }
 
-      console.log('设置日历标记:', markedDates);
-      this.setData({ markedDates, isLoading: false });
+      console.log('设置日历标记:', marks);
+      this.setData({ markedDates: marks, isLoading: false });
       hideLoading();
     } catch (error) {
       console.error('更新日历标记时出错:', error);
