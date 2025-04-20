@@ -1,5 +1,7 @@
 // 预约相关数据模型
 
+import { Dish } from './dish';
+
 // 餐次类型
 export enum MealType {
   Breakfast = '早餐',
@@ -20,7 +22,7 @@ export interface Appointment {
   id: string;           // 唯一ID，数据库主键
   date: string;         // 日期，格式：YYYY-MM-DD
   mealType: MealType;   // 餐次
-  dishes: string[];     // 菜品ID数组
+  dishes: Dish[];       // 完整菜品对象数组
   createTime: number;   // 创建时间
   userId?: string;      // 用户ID（可选）
   openid?: string;      // 用户openid（可选）

@@ -39,21 +39,16 @@ Page({
     todayAppointments: [] as DisplayAppointment[], // 当前选中日期的预约
     plugins: [LunarPlugin],  // 使用农历插件
     safeAreaBottom: 0,
-    isLoading: false, // 加载状态
-    currentYear: 0,
-    currentMonth: 0
+    isLoading: false // 加载状态
   },
 
   onLoad() {
     // 初始化选择今天的日期
     const today = getCurrentDate(); // 返回格式: YYYY-MM-DD
-    const currentDate = new Date();
-    
-    // 设置初始日期和当前年月
+
+    // 设置初始日期
     this.setData({
-      selectedDate: today,
-      currentYear: currentDate.getFullYear(),
-      currentMonth: currentDate.getMonth() + 1
+      selectedDate: today
     });
 
     console.log('初始化选择日期:', today);
@@ -64,9 +59,20 @@ Page({
   },
 
   onShow() {
+    console.log('页面显示');
     // 每次显示页面时重新加载预约数据
     this.updateCalendarMarks();
-    this.loadAppointments();
+    
+    // 加载当前选中日期的预约
+    if (this.data.selectedDate) {
+      this.loadAppointments();
+    } else {
+      // 如果没有选中日期，默认加载今天的预约
+      const today = getCurrentDate();
+      this.setData({ selectedDate: today }, () => {
+        this.loadAppointments();
+      });
+    }
 
     // 更新TabBar选中状态
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
@@ -109,15 +115,9 @@ Page({
       showLoading('加载数据中');
       this.setData({ isLoading: true });
       
-      // 只获取当天的预约
-      const today = getCurrentDate();
-      console.log('只获取今天的预约:', today);
-      
-      // 获取当天预约
-      const result = await AppointmentService.getAppointmentList(1, 200, undefined, today);
-      const appointments = result.list.filter(appointment => appointment.date === today);
-      
-      console.log(`获取当天(${today})预约:`, appointments.length, '条');
+      // 获取所有预约
+      const result = await AppointmentService.getAppointmentList(1, 100);  // 获取足够多的预约
+      const appointments = result.list;
 
       // 创建日期到预约类型的映射
       const dateToMeals = new Map<string, {
@@ -164,7 +164,7 @@ Page({
       }
 
       // 生成标记数据
-      const markedDates: any[] = [];
+      const markedDates: MarkItem[] = [];
 
       // 遍历所有有预约的日期
       for (const [dateKey, meals] of dateToMeals.entries()) {
@@ -184,10 +184,13 @@ Page({
             continue;
           }
 
+          // 为该日期生成一个唯一的key
+          const key = `${year}_${month}_${day}`;
+
           // 为每个餐次添加不同颜色的点
           if (meals.breakfast) {
             markedDates.push({
-              date: { year, month, day },  // 使用date属性而不是key
+              key,
               type: 'dot',
               color: '#2196F3', // 早餐 - 蓝色
               bgColor: 'transparent'
@@ -196,7 +199,7 @@ Page({
 
           if (meals.lunch) {
             markedDates.push({
-              date: { year, month, day },  // 使用date属性而不是key
+              key,
               type: 'dot',
               color: '#FF9800', // 午餐 - 橙色
               bgColor: 'transparent'
@@ -205,7 +208,7 @@ Page({
 
           if (meals.dinner) {
             markedDates.push({
-              date: { year, month, day },  // 使用date属性而不是key
+              key,
               type: 'dot',
               color: '#9C27B0', // 晚餐 - 紫色
               bgColor: 'transparent'
@@ -247,45 +250,38 @@ Page({
       showLoading('加载预约中');
       this.setData({ isLoading: true });
 
-      // 获取当天所有预约（传入具体日期）
+      console.log(`加载${selectedDate}的预约数据`);
+      
+      // 获取当天所有预约
       const result = await AppointmentService.getAppointmentList(1, 20, undefined, selectedDate);
-      // 只过滤出当天的预约
-      const dateAppointments = result.list.filter(appointment => appointment.date === selectedDate);
-      console.log(`获取${selectedDate}的预约:`, dateAppointments.length, '条');
-
+      const dateAppointments = result.list;
+      
       // 转换为展示数据
       const todayAppointments: DisplayAppointment[] = [];
-
+      
       for (const appointment of dateAppointments) {
-        const dishList: Dish[] = [];
-        
         try {
-          // 使用getAppointmentDishes获取预约菜品关联
-          const appointmentDishes = await AppointmentService.getAppointmentDishes(appointment.id);
-          console.log(`预约${appointment.id}的菜品关联:`, appointmentDishes.length, '个');
+          // 获取预约详情
+          const appointmentDetail = await AppointmentService.getAppointmentDetail(appointment.id);
           
-          // 获取每个菜品的详细信息
-          for (const appointmentDish of appointmentDishes) {
-            try {
-              const dish = await DishService.getDishDetail(appointmentDish.dishId);
-              if (dish) {
-                dishList.push(dish);
-              } else {
-                console.warn(`未找到菜品: ${appointmentDish.dishId}`);
-              }
-            } catch (error) {
-              console.error(`获取菜品详情失败: ${appointmentDish.dishId}`, error);
-            }
+          // 检查dishes是否存在且是数组
+          if (!appointmentDetail.dishes || !Array.isArray(appointmentDetail.dishes)) {
+            console.warn('预约中菜品列表无效:', appointmentDetail);
+            continue;
           }
-        } catch (error) {
-          console.error(`获取预约菜品关联失败: ${appointment.id}`, error);
-        }
+          
+          // 直接使用API返回的完整菜品对象
+          console.log('使用API返回的完整菜品信息');
+          const dishList = appointmentDetail.dishes as Dish[];
 
-        todayAppointments.push({
-          id: appointment.id,
-          mealType: appointment.mealType,
-          dishList
-        });
+          todayAppointments.push({
+            id: appointmentDetail.id,
+            mealType: appointmentDetail.mealType,
+            dishList
+          });
+        } catch (error) {
+          console.error(`获取预约详情失败: ${appointment.id}`, error);
+        }
       }
 
       // 按餐次排序
@@ -311,6 +307,8 @@ Page({
         }
       }
 
+      console.log(`加载到${todayAppointments.length}个预约`);
+      
       this.setData({
         todayAppointments,
         selectedDateDisplay,
@@ -366,17 +364,11 @@ Page({
           typeof currentYear === 'number' && typeof currentMonth === 'number' &&
           !isNaN(currentYear) && !isNaN(currentMonth)) {
         console.log(`日历切换到 ${currentYear}年${currentMonth}月`);
-        
-        // 存储当前显示的年月，供updateCalendarMarks使用
-        this.setData({
-          currentYear,
-          currentMonth
-        });
       } else {
         console.warn('日历变化事件中的年月数据无效', e.detail);
       }
 
-      // 更新标记
+      // 不管怎样，更新标记
       this.updateCalendarMarks();
     } catch (error) {
       console.error('处理日历变化事件时出错:', error);
@@ -491,13 +483,8 @@ Page({
       console.log(`日历初始化视图: ${view}`);
     }
 
-    // 如果事件中包含年月信息，更新当前年月
     if (current && current.year && current.month) {
       console.log(`日历初始化年月: ${current.year}年${current.month}月`);
-      this.setData({
-        currentYear: current.year,
-        currentMonth: current.month
-      });
     }
 
     // 日历加载完成后，确保标记已更新
