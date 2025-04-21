@@ -55,11 +55,31 @@ Page({
         const appointment = await AppointmentService.getAppointmentDetail(options.id);
         
         if (appointment) {
-          // 将选中的菜品ID数组转换为映射对象
-          const selectedDishes = appointment.dishes.reduce((acc, id) => {
-            acc[id] = true;
-            return acc;
-          }, {} as Record<string, boolean>);
+          // 处理dishes字段(可能是字符串数组或对象数组)
+          let selectedDishes: Record<string, boolean> = {};
+          let selectedCount = 0;
+          
+          if (appointment.dishes && Array.isArray(appointment.dishes)) {
+            if (appointment.dishes.length > 0) {
+              if (typeof appointment.dishes[0] === 'string') {
+                // 如果dishes是字符串ID数组
+                selectedDishes = (appointment.dishes as string[]).reduce((acc, id) => {
+                  acc[id] = true;
+                  return acc;
+                }, {} as Record<string, boolean>);
+                selectedCount = appointment.dishes.length;
+              } else {
+                // 如果dishes是对象数组
+                selectedDishes = (appointment.dishes as Dish[]).reduce((acc, dish) => {
+                  if (dish.id) {
+                    acc[dish.id] = true;
+                  }
+                  return acc;
+                }, {} as Record<string, boolean>);
+                selectedCount = Object.keys(selectedDishes).length;
+              }
+            }
+          }
 
           this.setData({
             date: appointment.date,
@@ -67,7 +87,7 @@ Page({
             selectedDishes,
             editMode: true,
             appointmentId: options.id,
-            selectedCount: appointment.dishes.length
+            selectedCount
           });
           
           wx.setNavigationBarTitle({

@@ -286,9 +286,31 @@ Page({
             continue;
           }
           
-          // 直接使用API返回的完整菜品对象
-          console.log('使用API返回的完整菜品信息');
-          const dishList = appointmentDetail.dishes as Dish[];
+          const dishList: Dish[] = [];
+          
+          // 判断dishes是字符串数组还是对象数组
+          if (appointmentDetail.dishes.length > 0) {
+            if (typeof appointmentDetail.dishes[0] === 'string') {
+              // 如果是字符串数组，需要获取每个菜品的详情
+              console.log('使用菜品ID数组，需要获取每个菜品详情');
+              for (const dishId of appointmentDetail.dishes as string[]) {
+                try {
+                  const dish = await DishService.getDishDetail(dishId);
+                  if (dish) {
+                    dishList.push(dish);
+                  } else {
+                    console.warn(`未找到菜品: ${dishId}`);
+                  }
+                } catch (error) {
+                  console.error(`获取菜品详情失败: ${dishId}`, error);
+                }
+              }
+            } else {
+              // 如果是对象数组，直接使用
+              console.log('使用API返回的完整菜品信息');
+              dishList.push(...(appointmentDetail.dishes as Dish[]));
+            }
+          }
 
           todayAppointments.push({
             id: appointmentDetail.id,

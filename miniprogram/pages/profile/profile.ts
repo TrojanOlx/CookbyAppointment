@@ -24,6 +24,7 @@ interface IPageMethods {
   showLoginOptions: () => void;
   getPhoneNumber: (e: WechatMiniprogram.ButtonGetPhoneNumber) => void;
   fetchUserInfo: () => Promise<void>;
+  isUserInfoComplete: () => boolean;
 }
 
 Page<IPageData, IPageMethods>({
@@ -171,42 +172,65 @@ Page<IPageData, IPageMethods>({
       
       // 获取用户信息
       await this.fetchUserInfo();
+
+      // 检查用户信息是否完整
+      const isUserInfoComplete = this.isUserInfoComplete();
       
-      // 登录成功后，先弹出提示获取用户资料（昵称和头像）
-      wx.showModal({
-        title: '完善用户资料',
-        content: '是否授权获取您的昵称和头像等信息？',
-        confirmText: '立即获取',
-        cancelText: '暂不',
-        success: (modalRes) => {
-          if (modalRes.confirm) {
-            // 用户点击确认，触发获取用户资料
-            this.getUserProfile();
-          } else {
-            // 用户点击取消，如果没有手机号则提示绑定手机号
-            if (this.data.userInfo && !this.data.userInfo.phoneNumber) {
-              wx.showModal({
-                title: '绑定手机号',
-                content: '是否需要绑定您的手机号码？',
-                confirmText: '去绑定',
-                cancelText: '暂不',
-                success: (phoneModalRes) => {
-                  if (phoneModalRes.confirm) {
-                    wx.navigateTo({
-                      url: '/pages/profile/settings/settings'
-                    });
+      // 只有当用户信息不完整时，才提示完善资料
+      if (!isUserInfoComplete) {
+        // 登录成功后，先弹出提示获取用户资料（昵称和头像）
+        wx.showModal({
+          title: '完善用户资料',
+          content: '是否授权获取您的昵称和头像等信息？',
+          confirmText: '立即获取',
+          cancelText: '暂不',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              // 用户点击确认，触发获取用户资料
+              this.getUserProfile();
+            } else {
+              // 用户点击取消，如果没有手机号则提示绑定手机号
+              if (this.data.userInfo && !this.data.userInfo.phoneNumber) {
+                wx.showModal({
+                  title: '绑定手机号',
+                  content: '是否需要绑定您的手机号码？',
+                  confirmText: '去绑定',
+                  cancelText: '暂不',
+                  success: (phoneModalRes) => {
+                    if (phoneModalRes.confirm) {
+                      wx.navigateTo({
+                        url: '/pages/profile/settings/settings'
+                      });
+                    }
                   }
-                }
-              });
+                });
+              }
             }
           }
-        }
-      });
+        });
+      } else {
+        // 用户信息已完整，可以在这里添加其他提示或操作
+        console.log('用户信息已完整，无需重复获取');
+      }
     } catch (error) {
       console.error('登录失败:', error);
       this.setData({ isLoggingIn: false });
       showToast('登录失败，请重试');
     }
+  },
+  
+  // 判断用户信息是否完整
+  isUserInfoComplete() {
+    const { userInfo } = this.data;
+    if (!userInfo) return false;
+    
+    // 检查必要的个人信息字段是否存在
+    const hasBasicInfo = Boolean(
+      userInfo.nickName && 
+      userInfo.avatarUrl
+    );
+    
+    return hasBasicInfo;
   },
   
   // 退出登录
