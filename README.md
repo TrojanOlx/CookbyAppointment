@@ -97,3 +97,27 @@
 - 微信开发者工具 V1.06.2306222
 - TypeScript 4.7.4
 - 小程序基础库 V2.30.2 
+
+## 全局登录拦截功能
+
+本应用实现了全局登录拦截功能，可以控制需要登录才能访问的页面，未登录用户将被重定向到登录页面。
+
+### 实现的主要功能
+
+1. 定义了需要登录才能访问的页面列表
+2. 重写了微信小程序的导航方法（`wx.navigateTo`、`wx.redirectTo`、`wx.switchTab`、`wx.reLaunch`）进行拦截判断
+3. 对于未登录用户访问受限页面，会先保存原始要跳转的路径，然后重定向到登录页
+4. 用户成功登录后，会自动跳转回原来想要访问的页面
+
+### 需要登录才能访问的页面
+
+- 菜单相关: `pages/menu/menu`, `pages/menu/add/add`, `pages/menu/detail/detail`
+- 预约相关: `pages/appointment/appointment`, `pages/appointment/select/select`, `pages/appointment/listtest`
+- 库存相关: `pages/inventory/inventory`, `pages/inventory/add/add`
+- 个人中心相关: 
+  - 用户: `pages/profile/appointments/appointments`, `pages/profile/reviews/reviews`, `pages/profile/settings/settings`
+  - 管理员: `pages/profile/admin/appointments`, `pages/profile/admin/reviews`, `pages/profile/admin/statistics` 等
+
+### 使用方法
+
+系统已自动实现全局拦截，无需在每个页面中单独编写拦截代码。如需修改需要登录的页面列表，请编辑 `app.ts` 文件中的 `needLoginPages` 数组。 

@@ -25,6 +25,7 @@ interface IPageMethods {
   getPhoneNumber: (e: WechatMiniprogram.ButtonGetPhoneNumber) => void;
   fetchUserInfo: () => Promise<void>;
   isUserInfoComplete: () => boolean;
+  checkAndRedirect: (redirectUrl: string) => void;
 }
 
 Page<IPageData, IPageMethods>({
@@ -176,7 +177,10 @@ Page<IPageData, IPageMethods>({
       // 检查用户信息是否完整
       const isUserInfoComplete = this.isUserInfoComplete();
       
-      // 只有当用户信息不完整时，才提示完善资料
+      // 获取重定向URL（如果有）
+      const redirectUrl = wx.getStorageSync('redirectUrl');
+      
+      // 如果用户信息不完整，先提示完善资料
       if (!isUserInfoComplete) {
         // 登录成功后，先弹出提示获取用户资料（昵称和头像）
         wx.showModal({
@@ -188,6 +192,11 @@ Page<IPageData, IPageMethods>({
             if (modalRes.confirm) {
               // 用户点击确认，触发获取用户资料
               this.getUserProfile();
+              
+              // 设置一个延时，在获取用户资料完成后检查是否需要重定向
+              setTimeout(() => {
+                this.checkAndRedirect(redirectUrl);
+              }, 2000);
             } else {
               // 用户点击取消，如果没有手机号则提示绑定手机号
               if (this.data.userInfo && !this.data.userInfo.phoneNumber) {
@@ -201,21 +210,56 @@ Page<IPageData, IPageMethods>({
                       wx.navigateTo({
                         url: '/pages/profile/settings/settings'
                       });
+                    } else {
+                      // 用户拒绝绑定手机号，检查是否需要重定向
+                      this.checkAndRedirect(redirectUrl);
                     }
                   }
                 });
+              } else {
+                // 无需绑定手机号，检查是否需要重定向
+                this.checkAndRedirect(redirectUrl);
               }
             }
           }
         });
       } else {
-        // 用户信息已完整，可以在这里添加其他提示或操作
-        console.log('用户信息已完整，无需重复获取');
+        // 用户信息已完整，直接检查是否需要重定向
+        this.checkAndRedirect(redirectUrl);
       }
     } catch (error) {
       console.error('登录失败:', error);
       this.setData({ isLoggingIn: false });
       showToast('登录失败，请重试');
+    }
+  },
+  
+  // 检查并执行重定向
+  checkAndRedirect(redirectUrl: string) {
+    if (redirectUrl) {
+      // 清除存储的重定向URL
+      wx.removeStorageSync('redirectUrl');
+      
+      // 检查URL是否包含switchTab的页面
+      const tabPages = [
+        '/pages/index/index',
+        '/pages/menu/menu',
+        '/pages/appointment/appointment',
+        '/pages/profile/profile'
+      ];
+      
+      // 检查是否是tabBar页面
+      const isTabPage = tabPages.some(tabPage => redirectUrl.startsWith(tabPage));
+      
+      if (isTabPage) {
+        wx.switchTab({
+          url: redirectUrl
+        });
+      } else {
+        wx.navigateTo({
+          url: redirectUrl
+        });
+      }
     }
   },
   
