@@ -65,6 +65,18 @@ Page<IPageData, IPageMethods>({
     }
   },
   
+  onShow() {
+    // 更新TabBar选中状态
+    if (typeof this.getTabBar === 'function') {
+      const tabBar = this.getTabBar();
+      if (tabBar) {
+        tabBar.setData({
+          selected: 3
+        });
+      }
+    }
+  },
+  
   // 获取用户信息
   async fetchUserInfo() {
     try {

@@ -1,5 +1,5 @@
-import { InventoryItem } from '../../utils/model';
-import { inventoryService, generateId } from '../../utils/storage';
+import { InventoryItem } from '../../models/inventory';
+import { InventoryService } from '../../services/inventoryService';
 import { showConfirm, showSuccess, showToast, getCurrentDate, isDateExpired, dateDiff } from '../../utils/util';
 
 // 每页加载的数量
@@ -49,13 +49,6 @@ Page({
   onShow() {
     // 显示页面时刷新数据
     this.loadInventory(true);
-    
-    // 更新TabBar选中状态
-    if (typeof this.getTabBar === 'function') {
-      this.getTabBar().setData({
-        selected: 3
-      });
-    }
   },
   
   // 设置安全区域
@@ -118,7 +111,7 @@ Page({
   },
 
   // 加载库存数据
-  loadInventory(refresh = false) {
+  async loadInventory(refresh = false) {
     if (this.data.loading && !this.data.isRefreshing) return;
     
     this.setData({ 
@@ -126,104 +119,124 @@ Page({
       isLoadingMore: !refresh && !this.data.isRefreshing
     });
     
-    // 只有刷新时才重新获取全部数据
-    if (refresh) {
-      // 获取所有库存数据
-      let inventoryItems = inventoryService.getAllInventory();
-      
-      // 确保没有重复ID的数据
-      const uniqueIds = new Set<string>();
-      inventoryItems = inventoryItems.filter(item => {
-        if (uniqueIds.has(item.id)) {
-          console.warn(`发现重复ID: ${item.id}，已过滤`);
-          return false;
-        }
-        uniqueIds.add(item.id);
-        return true;
-      });
-      
-      // 计算各状态计数
-      const counts = this.calculateCounts(inventoryItems);
-      
-      // 根据搜索关键词筛选
-      let filteredItems = this.data.searchKeyword 
-        ? inventoryService.searchInventoryByName(this.data.searchKeyword).filter(item => uniqueIds.has(item.id))
-        : inventoryItems;
-      
-      // 处理数据，添加过期信息
-      const allItems: DisplayInventoryItem[] = [];
-      const today = getCurrentDate();
-      
-      for (const item of filteredItems) {
-        const expired = isDateExpired(item.expiryDate);
-        let daysLeft = null;
+    try {
+      // 只有刷新时才重新获取全部数据
+      if (refresh) {
+        let inventoryItems: InventoryItem[] = [];
+        let response;
         
-        if (!expired) {
-          daysLeft = dateDiff(today, item.expiryDate);
+        // 根据搜索关键词获取数据
+        if (this.data.searchKeyword) {
+          // 使用搜索接口
+          response = await InventoryService.searchInventory(
+            this.data.searchKeyword, 
+            1, 
+            100 // 获取较多数据以便本地筛选
+          );
+          inventoryItems = response.list;
+        } else {
+          // 获取所有库存数据
+          response = await InventoryService.getInventoryList(1, 100); // 获取较多数据以便本地筛选
+          inventoryItems = response.list;
         }
         
-        const displayItem = {
-          ...item,
-          isExpired: expired,
-          isExpiringSoon: !expired && daysLeft !== null && daysLeft <= 3,
-          daysLeft,
-          xmove: 0 // 添加 xmove 属性
-        };
+        // 计算各状态计数
+        const counts = this.calculateCounts(inventoryItems);
         
-        // 根据筛选条件过滤
-        if (this.data.filterStatus === '') {
-          // 全部
-          allItems.push(displayItem);
-        } else if (this.data.filterStatus === 'normal' && !displayItem.isExpired && !displayItem.isExpiringSoon) {
-          // 未到期（不包括即将过期）
-          allItems.push(displayItem);
-        } else if (this.data.filterStatus === 'expiring' && displayItem.isExpiringSoon) {
-          // 即将过期
-          allItems.push(displayItem);
-        } else if (this.data.filterStatus === 'expired' && displayItem.isExpired) {
-          // 已过期
-          allItems.push(displayItem);
+        // 处理数据，添加过期信息
+        const allItems: DisplayInventoryItem[] = [];
+        const today = getCurrentDate();
+        
+        // 创建ID映射以处理可能的重复ID
+        const usedIds = new Set<string>();
+        
+        for (const item of inventoryItems) {
+          const expired = isDateExpired(item.expiryDate);
+          let daysLeft = null;
+          
+          if (!expired) {
+            daysLeft = dateDiff(today, item.expiryDate);
+          }
+          
+          // 确保ID唯一
+          let uniqueId = item.id;
+          if (usedIds.has(uniqueId)) {
+            uniqueId = `${uniqueId}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+          }
+          usedIds.add(uniqueId);
+          
+          const displayItem = {
+            ...item,
+            id: uniqueId, // 使用唯一ID
+            isExpired: expired,
+            isExpiringSoon: !expired && daysLeft !== null && daysLeft <= 3,
+            daysLeft,
+            xmove: 0 // 添加 xmove 属性
+          };
+          
+          // 根据筛选条件过滤
+          if (this.data.filterStatus === '') {
+            // 全部
+            allItems.push(displayItem);
+          } else if (this.data.filterStatus === 'normal' && !displayItem.isExpired && !displayItem.isExpiringSoon) {
+            // 未到期（不包括即将过期）
+            allItems.push(displayItem);
+          } else if (this.data.filterStatus === 'expiring' && displayItem.isExpiringSoon) {
+            // 即将过期
+            allItems.push(displayItem);
+          } else if (this.data.filterStatus === 'expired' && displayItem.isExpired) {
+            // 已过期
+            allItems.push(displayItem);
+          }
         }
+        
+        // 按过期情况排序：已过期 > 即将过期 > 正常
+        allItems.sort((a, b) => {
+          if (a.isExpired && !b.isExpired) return -1;
+          if (!a.isExpired && b.isExpired) return 1;
+          if (a.isExpiringSoon && !b.isExpiringSoon) return -1;
+          if (!a.isExpiringSoon && b.isExpiringSoon) return 1;
+          
+          // 同类按保质期剩余天数或按名称排序
+          if (a.daysLeft !== null && b.daysLeft !== null) {
+            return a.daysLeft - b.daysLeft;
+          }
+          return a.name.localeCompare(b.name);
+        });
+        
+        // 保存筛选并排序后的完整数据
+        this.setData({
+          allFilteredItems: allItems,
+          ...counts // 更新各状态计数
+        });
       }
       
-      // 按过期情况排序：已过期 > 即将过期 > 正常
-      allItems.sort((a, b) => {
-        if (a.isExpired && !b.isExpired) return -1;
-        if (!a.isExpired && b.isExpired) return 1;
-        if (a.isExpiringSoon && !b.isExpiringSoon) return -1;
-        if (!a.isExpiringSoon && b.isExpiringSoon) return 1;
-        
-        // 同类按保质期剩余天数或按名称排序
-        if (a.daysLeft !== null && b.daysLeft !== null) {
-          return a.daysLeft - b.daysLeft;
-        }
-        return a.name.localeCompare(b.name);
-      });
+      // 使用已保存的筛选后数据进行分页
+      const filteredTotal = this.data.allFilteredItems.length;
+      const start = refresh ? 0 : (this.data.currentPage - 1) * this.data.pageSize;
+      const end = start + this.data.pageSize;
+      const items = this.data.allFilteredItems.slice(start, end);
+      const hasMore = end < filteredTotal;
       
-      // 保存筛选并排序后的完整数据
+      // 更新数据
       this.setData({
-        allFilteredItems: allItems,
-        ...counts // 更新各状态计数
+        items: refresh ? items : [...this.data.items, ...items],
+        currentPage: refresh ? 1 : this.data.currentPage + 1,
+        hasMore,
+        filteredTotal,
+        loading: false,
+        isRefreshing: false,
+        isLoadingMore: false
+      });
+    } catch (error) {
+      console.error('加载库存数据失败:', error);
+      showToast('加载数据失败，请重试');
+      this.setData({
+        loading: false,
+        isRefreshing: false,
+        isLoadingMore: false
       });
     }
-    
-    // 使用已保存的筛选后数据进行分页
-    const filteredTotal = this.data.allFilteredItems.length;
-    const start = refresh ? 0 : (this.data.currentPage - 1) * this.data.pageSize;
-    const end = start + this.data.pageSize;
-    const items = this.data.allFilteredItems.slice(start, end);
-    const hasMore = end < filteredTotal;
-    
-    // 更新数据
-    this.setData({
-      items: refresh ? items : [...this.data.items, ...items],
-      currentPage: refresh ? 1 : this.data.currentPage + 1,
-      hasMore,
-      filteredTotal,
-      loading: false,
-      isRefreshing: false,
-      isLoadingMore: false
-    });
     
     if (refresh && wx.stopPullDownRefresh) {
       wx.stopPullDownRefresh();
@@ -291,10 +304,17 @@ Page({
     const confirmed = await showConfirm('确认删除', '确定要删除这个食材吗？');
     
     if (confirmed) {
-      const success = inventoryService.deleteInventory(id);
-      if (success) {
-        showSuccess('删除成功');
-        this.loadInventory(true);
+      try {
+        const result = await InventoryService.deleteInventory(id);
+        if (result.success) {
+          showSuccess('删除成功');
+          this.loadInventory(true);
+        } else {
+          showToast('删除失败');
+        }
+      } catch (error) {
+        console.error('删除库存失败:', error);
+        showToast('删除失败，请重试');
       }
     }
   },
@@ -306,9 +326,9 @@ Page({
 
   // 上拉加载更多
   onReachBottom() {
-    // if (this.data.hasMore && !this.data.loading) {
-    //   this.loadInventory();
-    // }
+    if (this.data.hasMore && !this.data.loading) {
+      this.loadInventory();
+    }
   },
 
   /**
