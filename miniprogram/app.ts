@@ -24,6 +24,11 @@ const needLoginPages = [
   "pages/profile/admin/statistics/statistics"
 ];
 
+// 定义通用返回结果类型
+interface GeneralCallbackResult {
+  errMsg: string;
+}
+
 App({
   globalData: {
     systemInfo: null as WechatMiniprogram.SystemInfo | null,
@@ -77,15 +82,15 @@ App({
           });
           
           // 跳转到登录页
-          return new Promise<WechatMiniprogram.NavigateToSuccessCallbackResult>((resolve) => {
+          return new Promise<GeneralCallbackResult>((resolve) => {
             setTimeout(() => {
               wx.switchTab({
                 url: '/pages/profile/profile',
                 success: (res) => {
-                  resolve({ errMsg: 'navigateTo:redirected' } as WechatMiniprogram.NavigateToSuccessCallbackResult);
+                  resolve({ errMsg: 'navigateTo:redirected' });
                 },
                 fail: () => {
-                  resolve({ errMsg: 'navigateTo:redirected' } as WechatMiniprogram.NavigateToSuccessCallbackResult);
+                  resolve({ errMsg: 'navigateTo:redirected' });
                 }
               });
             }, 1500);
@@ -117,15 +122,15 @@ App({
           });
           
           // 跳转到登录页
-          return new Promise<WechatMiniprogram.RedirectToSuccessCallbackResult>((resolve) => {
+          return new Promise<GeneralCallbackResult>((resolve) => {
             setTimeout(() => {
               wx.switchTab({
                 url: '/pages/profile/profile',
                 success: (res) => {
-                  resolve({ errMsg: 'redirectTo:redirected' } as WechatMiniprogram.RedirectToSuccessCallbackResult);
+                  resolve({ errMsg: 'redirectTo:redirected' });
                 },
                 fail: () => {
-                  resolve({ errMsg: 'redirectTo:redirected' } as WechatMiniprogram.RedirectToSuccessCallbackResult);
+                  resolve({ errMsg: 'redirectTo:redirected' });
                 }
               });
             }, 1500);
@@ -156,15 +161,15 @@ App({
           });
           
           // 跳转到登录页
-          return new Promise<WechatMiniprogram.SwitchTabSuccessCallbackResult>((resolve) => {
+          return new Promise<GeneralCallbackResult>((resolve) => {
             setTimeout(() => {
               originalSwitchTab({
                 url: '/pages/profile/profile',
                 success: (res) => {
-                  resolve({ errMsg: 'switchTab:redirected' } as WechatMiniprogram.SwitchTabSuccessCallbackResult);
+                  resolve({ errMsg: 'switchTab:redirected' });
                 },
                 fail: () => {
-                  resolve({ errMsg: 'switchTab:redirected' } as WechatMiniprogram.SwitchTabSuccessCallbackResult);
+                  resolve({ errMsg: 'switchTab:redirected' });
                 }
               });
             }, 1500);
@@ -196,15 +201,15 @@ App({
           });
           
           // 跳转到登录页
-          return new Promise<WechatMiniprogram.ReLaunchSuccessCallbackResult>((resolve) => {
+          return new Promise<GeneralCallbackResult>((resolve) => {
             setTimeout(() => {
               wx.switchTab({
                 url: '/pages/profile/profile',
                 success: (res) => {
-                  resolve({ errMsg: 'reLaunch:redirected' } as WechatMiniprogram.ReLaunchSuccessCallbackResult);
+                  resolve({ errMsg: 'reLaunch:redirected' });
                 },
                 fail: () => {
-                  resolve({ errMsg: 'reLaunch:redirected' } as WechatMiniprogram.ReLaunchSuccessCallbackResult);
+                  resolve({ errMsg: 'reLaunch:redirected' });
                 }
               });
             }, 1500);
