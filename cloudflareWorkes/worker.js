@@ -82,7 +82,11 @@ const routes = {
   '/api/appointment/complete': { PUT: handleCompleteAppointment },
   '/api/appointment/dishes': { GET: handleGetAppointmentDishes },
   '/api/appointment/dish/add': { POST: handleAddAppointmentDish },
-  '/api/appointment/dish/remove': { DELETE: handleRemoveAppointmentDish }
+  '/api/appointment/dish/remove': { DELETE: handleRemoveAppointmentDish },
+
+  // 管理员相关
+  '/api/admin/appointment/list': { GET: handleGetAllAppointments },
+  '/api/admin/appointment/today': { GET: handleGetTodayAppointments }
 };
 
 // 跨域头

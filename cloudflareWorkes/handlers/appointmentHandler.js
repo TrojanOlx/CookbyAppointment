@@ -24,8 +24,8 @@ export async function handleGetAppointmentList(request, env) {
     const status = query.get('status') || null;
     const date = query.get('date') || null;
     
-    // 管理员可以查看所有预约，普通用户只能查看自己的
-    const userId = user.isAdmin === 1 ? null : user.id;
+    // 普通用户只能查看自己的预约
+    const userId = user.id;
     
     // 查询预约列表
     const { total, appointments } = await getAppointmentList(
@@ -38,6 +38,131 @@ export async function handleGetAppointmentList(request, env) {
     );
     
     return createJsonResponse({ total, list: appointments });
+  } catch (error) {
+    return createErrorResponse(`服务器错误: ${error.message}`, 500);
+  }
+}
+
+// 管理员获取所有预约列表
+export async function handleGetAllAppointments(request, env) {
+  try {
+    // 获取认证信息
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    
+    if (!token) {
+      return createErrorResponse('未提供token', 401);
+    }
+    
+    // 验证token和获取用户信息
+    const { loginInfo, user } = await validateTokenAndGetUser(env.DB, token);
+    if (!loginInfo || !user) {
+      return createErrorResponse('无效的token或用户不存在', 401);
+    }
+    
+    // 只有管理员可以查看所有预约
+    if (user.isAdmin !== 1) {
+      return createErrorResponse('权限不足', 403);
+    }
+    
+    // 获取查询参数
+    const query = new URL(request.url).searchParams;
+    const page = parseInt(query.get('page')) || 1;
+    const pageSize = parseInt(query.get('pageSize')) || 10;
+    const status = query.get('status') || null;
+    const date = query.get('date') || null;
+    
+    // 查询所有预约列表
+    const { total, appointments } = await getAppointmentList(
+      env.DB, 
+      null, // 传入null表示不限制用户
+      page, 
+      pageSize, 
+      status, 
+      date
+    );
+    
+    return createJsonResponse({ total, list: appointments });
+  } catch (error) {
+    return createErrorResponse(`服务器错误: ${error.message}`, 500);
+  }
+}
+
+// 管理员获取当天所有用户的预约列表
+export async function handleGetTodayAppointments(request, env) {
+  try {
+    // 获取认证信息
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    
+    if (!token) {
+      return createErrorResponse('未提供token', 401);
+    }
+    
+    // 验证token和获取用户信息
+    const { loginInfo, user } = await validateTokenAndGetUser(env.DB, token);
+    if (!loginInfo || !user) {
+      return createErrorResponse('无效的token或用户不存在', 401);
+    }
+    
+    // 只有管理员可以查看当天所有预约
+    if (user.isAdmin !== 1) {
+      return createErrorResponse('权限不足', 403);
+    }
+    
+    // 获取查询参数
+    const query = new URL(request.url).searchParams;
+    const page = parseInt(query.get('page')) || 1;
+    const pageSize = parseInt(query.get('pageSize')) || 50;
+    const status = query.get('status') || null;
+    
+    // 获取当天日期
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayFormatted = `${year}-${month}-${day}`;
+    
+    // 查询当天所有预约列表
+    const { total, appointments } = await getAppointmentList(
+      env.DB, 
+      null, // 传入null表示不限制用户
+      page, 
+      pageSize, 
+      status, 
+      todayFormatted
+    );
+    
+    // 为每个预约添加用户信息和菜品详情
+    const appointmentsWithDetails = [];
+    for (const appointment of appointments) {
+      // 获取用户信息
+      const userInfo = await getUserById(env.DB, appointment.userId);
+      
+      // 获取预约关联的菜品
+      const appointmentDishes = await getAppointmentDishes(env.DB, appointment.id);
+      const dishIds = appointmentDishes.map(ad => ad.dishId);
+      
+      // 获取菜品详情
+      const dishes = [];
+      for (const dishId of dishIds) {
+        const dish = await getDishById(env.DB, dishId);
+        if (dish) {
+          dishes.push(dish);
+        }
+      }
+      
+      // 构建完整的预约信息
+      appointmentsWithDetails.push({
+        ...appointment,
+        userName: userInfo ? userInfo.nickName : '未知用户',
+        userPhone: userInfo ? userInfo.phone : '',
+        userAvatar: userInfo ? userInfo.avatarUrl : '',
+        dishes
+      });
+    }
+    
+    return createJsonResponse({ total, list: appointmentsWithDetails });
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
   }
@@ -830,4 +955,10 @@ function parseJsonField(field, defaultValue) {
   } catch (e) {
     return defaultValue;
   }
+}
+
+// 根据用户ID获取用户信息
+async function getUserById(db, userId) {
+  const stmt = db.prepare('SELECT * FROM users WHERE id = ?').bind(userId);
+  return await stmt.first();
 } 
