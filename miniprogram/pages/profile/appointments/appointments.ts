@@ -1,6 +1,8 @@
 // 引入数据管理工具和类型定义
-import { getAllAppointments, getDishById } from '../../../utils/storage';
-import { Appointment, Dish, AppointmentStatus, MealType } from '../../../utils/model';
+import { AppointmentService } from '../../../services/appointmentService';
+import { DishService } from '../../../services/dishService';
+import { Appointment, AppointmentDish } from '../../../models/appointment';
+import { AppointmentStatus, MealType } from '../../../utils/model';
 
 // 页面数据接口
 interface IPageData {
@@ -67,43 +69,56 @@ Page<IPageData, IPageMethods>({
     // 先设置加载状态
     this.setData({ loading: true });
     
-    // 获取所有预约
-    const allAppointments = getAllAppointments();
-    
-    // TODO: 实际项目中应该根据用户ID筛选预约
-    // 这里暂时展示所有预约
-    
-    // 处理每个预约，添加菜品名称
-    const appointments = allAppointments.map((appointment: Appointment) => {
-      // 判断dishes是字符串数组还是对象数组
-      let dishNames: string[] = [];
-      
-      if (appointment.dishes && appointment.dishes.length > 0) {
-        if (typeof appointment.dishes[0] === 'string') {
-          // dishes是字符串ID数组
-          dishNames = (appointment.dishes as string[]).map(dishId => {
-            const dish = getDishById(dishId);
-            return dish ? dish.name : '未知菜品';
-          });
-        } else {
-          // dishes是对象数组，直接获取name
-          dishNames = (appointment.dishes as unknown as Dish[]).map(dish => {
-            return dish.name || '未知菜品';
-          });
-        }
-      }
-      
-      return {
-        ...appointment,
-        dishNames
-      };
-    });
-    
-    // 更新数据
-    this.setData({
-      appointments,
-      loading: false
-    });
+    // 使用AppointmentService获取预约列表
+    AppointmentService.getAppointmentList()
+      .then(async (result) => {
+        const appointmentsData = result.list;
+        
+        // 处理每个预约，添加菜品名称
+        const appointments = await Promise.all(appointmentsData.map(async (appointment) => {
+          // 获取预约关联的菜品
+          let dishNames: string[] = [];
+          
+          if (appointment.id) {
+            try {
+              const appointmentDishes = await AppointmentService.getAppointmentDishes(appointment.id);
+              
+              // 使用Promise.all并行获取所有菜品名称
+              dishNames = await Promise.all(appointmentDishes.map(async (ad) => {
+                try {
+                  const dishDetail = await DishService.getDishDetail(ad.dishId);
+                  return dishDetail.name || '未知菜品';
+                } catch (error) {
+                  console.error(`获取菜品名称失败: ${ad.dishId}`, error);
+                  return '未知菜品';
+                }
+              }));
+            } catch (error) {
+              console.error('获取预约菜品失败', error);
+              dishNames = ['获取菜品失败'];
+            }
+          }
+          
+          return {
+            ...appointment,
+            dishNames
+          };
+        }));
+        
+        // 更新数据
+        this.setData({
+          appointments,
+          loading: false
+        });
+      })
+      .catch(error => {
+        console.error('获取预约列表失败', error);
+        wx.showToast({
+          title: '获取预约列表失败',
+          icon: 'none'
+        });
+        this.setData({ loading: false });
+      });
   },
   
   // 查看预约详情
