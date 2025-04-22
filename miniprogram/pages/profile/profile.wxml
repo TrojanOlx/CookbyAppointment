@@ -39,7 +39,7 @@
     <!-- 管理员功能 -->
     <view class="menu-section" wx:if="{{isAdmin}}">
       <view class="menu-title">管理员功能</view>
-      <view class="menu-item" bindtap="navigateTo" data-url="/pages/menu/add/add">
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/menu/menu">
         <text class="menu-icon">🍲</text>
         <text class="menu-text">编辑菜单</text>
         <text class="menu-arrow">></text>

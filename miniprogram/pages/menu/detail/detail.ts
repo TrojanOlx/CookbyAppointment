@@ -1,6 +1,7 @@
 import { Dish } from '../../../models/dish';
 import { DishService } from '../../../services/dishService';
 import { showSuccess, showConfirm, showLoading, hideLoading, showToast } from '../../../utils/util';
+import { UserService } from '../../../services/userService';
 
 Page({
   /**
@@ -10,7 +11,8 @@ Page({
     dish: {} as Dish,
     dishId: '',
     safeAreaBottom: 0,
-    loading: false
+    loading: false,
+    isAdmin: false // 是否为管理员
   },
 
   /**
@@ -25,6 +27,7 @@ Page({
     }
     
     this.setSafeArea();
+    this.checkAdminStatus();
   },
 
   /**
@@ -34,6 +37,20 @@ Page({
     // 每次显示页面都重新加载数据，以便获取最新的编辑结果
     if (this.data.dishId) {
       this.loadDish();
+    }
+    this.checkAdminStatus();
+  },
+
+  /**
+   * 检查管理员状态
+   */
+  async checkAdminStatus() {
+    try {
+      const result = await UserService.checkAdmin();
+      this.setData({ isAdmin: result.isAdmin });
+    } catch (error) {
+      console.error('检查管理员状态失败:', error);
+      this.setData({ isAdmin: false });
     }
   },
 

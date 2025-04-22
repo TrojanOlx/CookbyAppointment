@@ -64,5 +64,5 @@
   </view>
 
   <!-- 添加按钮 -->
-  <view class="add-btn" bindtap="goToAdd" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">+</view>
+  <view class="add-btn" bindtap="goToAdd" wx:if="{{isAdmin}}" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">+</view>
 </view> 

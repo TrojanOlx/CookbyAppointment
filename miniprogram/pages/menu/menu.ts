@@ -1,6 +1,7 @@
 import { Dish, DishType, SpicyLevel } from '../../models/dish';
 import { DishService } from '../../services/dishService';
 import { showLoading, hideLoading, showToast } from '../../utils/util';
+import { UserService } from '../../services/userService';
 
 Page({
   /**
@@ -15,7 +16,8 @@ Page({
     hasMore: true,
     loading: false,
     safeAreaBottom: 0,
-    total: 0
+    total: 0,
+    isAdmin: false // 是否为管理员
   },
 
   /**
@@ -29,6 +31,7 @@ Page({
     
     this.loadDishes(true);
     this.setSafeArea();
+    this.checkAdminStatus();
   },
 
   /**
@@ -37,12 +40,26 @@ Page({
   onShow() {
     // 每次显示页面时重新加载数据，以获取最新数据
     this.loadDishes(true);
+    this.checkAdminStatus();
     
     // 更新TabBar选中状态
     if (typeof this.getTabBar === 'function') {
       this.getTabBar().setData({
         selected: 1
       });
+    }
+  },
+
+  /**
+   * 检查管理员状态
+   */
+  async checkAdminStatus() {
+    try {
+      const result = await UserService.checkAdmin();
+      this.setData({ isAdmin: result.isAdmin });
+    } catch (error) {
+      console.error('检查管理员状态失败:', error);
+      this.setData({ isAdmin: false });
     }
   },
 

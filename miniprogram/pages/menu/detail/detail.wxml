@@ -73,7 +73,7 @@
   </view>
 
   <!-- 操作按钮 -->
-  <view class="action-buttons">
+  <view class="action-buttons" wx:if="{{isAdmin}}">
     <button class="action-btn edit" bindtap="editDish">编辑</button>
     <button class="action-btn delete" bindtap="deleteDish">删除</button>
   </view>
