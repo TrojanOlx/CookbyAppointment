@@ -88,8 +88,8 @@ export async function handleGetAllAppointments(request, env) {
   }
 }
 
-// 管理员获取当天所有用户的预约列表
-export async function handleGetTodayAppointments(request, env) {
+// 管理员获取指定日期所有用户的预约列表
+export async function handleGetDateAppointments(request, env) {
   try {
     // 获取认证信息
     const authHeader = request.headers.get('Authorization') || '';
@@ -105,7 +105,7 @@ export async function handleGetTodayAppointments(request, env) {
       return createErrorResponse('无效的token或用户不存在', 401);
     }
     
-    // 只有管理员可以查看当天所有预约
+    // 只有管理员可以查看所有预约
     if (user.isAdmin !== 1) {
       return createErrorResponse('权限不足', 403);
     }
@@ -115,22 +115,22 @@ export async function handleGetTodayAppointments(request, env) {
     const page = parseInt(query.get('page')) || 1;
     const pageSize = parseInt(query.get('pageSize')) || 50;
     const status = query.get('status') || null;
+    const date = query.get('date') || null;
     
-    // 获取当天日期
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    const todayFormatted = `${year}-${month}-${day}`;
+    // 验证日期参数
+    if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      // 如果没有提供有效的日期参数，返回空结果
+      return createJsonResponse({ total: 0, list: [] });
+    }
     
-    // 查询当天所有预约列表
+    // 查询指定日期的所有预约列表
     const { total, appointments } = await getAppointmentList(
       env.DB, 
       null, // 传入null表示不限制用户
       page, 
       pageSize, 
       status, 
-      todayFormatted
+      date
     );
     
     // 为每个预约添加用户信息和菜品详情

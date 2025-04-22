@@ -1,2 +1,57 @@
-<!--pages/profile/admin/appointments/appointments.wxml-->
-<text>pages/profile/admin/appointments/appointments.wxml</text>
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
+  <!-- 日历部分 -->
+  <view class="calendar-section">
+    <calendar 
+      id="calendar"
+      view="week"
+      mode="{{calendarMode}}"
+      date="{{selectedDate}}"
+      marks="{{markedDates}}"
+      lunar="{{true}}"
+      plugins="{{plugins}}"
+      header="{{true}}"
+      fold="{{false}}"
+      bindload="onCalendarLoad"
+      bindclick="onCalendarSelect"
+      bindchange="onCalendarChange"
+      bindviewchange="onViewChange"
+    />
+  </view>
+
+  <!-- 预约列表部分 -->
+  <view class="appointments-section">
+    <view class="section-header">
+      <text class="section-title">{{selectedDateDisplay}}用户预约</text>
+    </view>
+
+    <view class="appointments-list">
+      <!-- 加载状态 -->
+      <view class="loading-state" wx:if="{{isLoading}}">
+        <view class="loading-spinner"></view>
+        <text class="loading-text">加载中...</text>
+      </view>
+      
+      <!-- 预约列表 -->
+      <block wx:elif="{{userAppointments.length > 0}}">
+        <view class="user-card" wx:for="{{userAppointments}}" wx:key="userName" wx:for-item="user">
+          <view class="user-header">
+            <text class="user-name">{{user.userName}}</text>
+          </view>
+          <view class="meals-list">
+            <view class="meal-item" wx:for="{{user.meals}}" wx:key="type" wx:for-item="meal">
+              <view class="meal-type">{{meal.type}}</view>
+              <view class="dish-list">
+                <text class="dish-name" wx:for="{{meal.dishes}}" wx:key="*this" wx:for-item="dish">{{dish}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </block>
+
+      <!-- 空状态 -->
+      <view class="empty-state" wx:else>
+        <text class="empty-text">暂无预约安排</text>
+      </view>
+    </view>
+  </view>
+</view> 

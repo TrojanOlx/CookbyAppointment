@@ -4,40 +4,40 @@ import { handleGetUserPhoneNumber } from './handlers/phoneNumber.js';
 import { handleLogin, handleGetUserInfo, handleUpdateUserInfo, handleCheckAdmin, handleGetUserList, handleGetUserPhone } from './handlers/userHandler.js';
 import { handleGetInventoryList, handleGetInventoryDetail, handleAddInventory, handleUpdateInventory, handleDeleteInventory, handleSearchInventory, handleGetExpiringItems } from './handlers/inventoryHandler.js';
 import { handleGetDishList, handleGetDishDetail, handleAddDish, handleUpdateDish, handleDeleteDish, handleSearchDish, handleRecommendByIngredients, handleGetIngredientList, handleAddIngredient, handleUpdateIngredient, handleDeleteIngredient } from './handlers/dishHandler.js';
-import { handleGetAppointmentList, handleGetAppointmentDetail, handleCreateAppointment, handleUpdateAppointment, handleCancelAppointment, handleConfirmAppointment, handleCompleteAppointment, handleGetAppointmentDishes, handleAddAppointmentDish, handleRemoveAppointmentDish } from './handlers/appointmentHandler.js';
+import { handleGetAllAppointments, handleGetDateAppointments, handleGetAppointmentList, handleGetAppointmentDetail, handleCreateAppointment, handleUpdateAppointment, handleCancelAppointment, handleConfirmAppointment, handleCompleteAppointment, handleGetAppointmentDishes, handleAddAppointmentDish, handleRemoveAppointmentDish } from './handlers/appointmentHandler.js';
 
 // 获取access_token
 export async function getAccessToken(env) {
-    const appid = env.WX_APPID;
-    const secret = env.WX_SECRET;
-    
-    const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`;
-    
-    const response = await fetch(url);
-    const result = await response.json();
-    
-    if (result.errcode) {
-      throw new Error(`获取access_token失败: ${result.errmsg}`);
-    }
-    
-    return result.access_token;
+  const appid = env.WX_APPID;
+  const secret = env.WX_SECRET;
+
+  const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${appid}&secret=${secret}`;
+
+  const response = await fetch(url);
+  const result = await response.json();
+
+  if (result.errcode) {
+    throw new Error(`获取access_token失败: ${result.errmsg}`);
   }
-  
-  // 创建JSON响应
-  export function createJsonResponse(data, status = 200) {
-    return new Response(JSON.stringify(data), {
-      status,
-      headers: { 'Content-Type': 'application/json' }
-    });
-  }
-  
-  // 创建错误响应
-  export function createErrorResponse(message, status = 400) {
-    return createJsonResponse({ 
-      error: true, 
-      message 
-    }, status);
-  }
+
+  return result.access_token;
+}
+
+// 创建JSON响应
+export function createJsonResponse(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+// 创建错误响应
+export function createErrorResponse(message, status = 400) {
+  return createJsonResponse({
+    error: true,
+    message
+  }, status);
+}
 
 // API路由
 const routes = {
@@ -49,7 +49,7 @@ const routes = {
   '/api/user/admin': { GET: handleCheckAdmin },
   '/api/user/list': { GET: handleGetUserList },
   '/api/user/phone/wx': { POST: handleGetUserPhoneNumber },
-  
+
   // 库存相关API
   '/api/inventory/list': { GET: handleGetInventoryList },
   '/api/inventory/detail': { GET: handleGetInventoryDetail },
@@ -58,7 +58,7 @@ const routes = {
   '/api/inventory/delete': { DELETE: handleDeleteInventory },
   '/api/inventory/search': { GET: handleSearchInventory },
   '/api/inventory/expiring': { GET: handleGetExpiringItems },
-  
+
   // 菜品相关API
   '/api/dish/list': { GET: handleGetDishList },
   '/api/dish/detail': { GET: handleGetDishDetail },
@@ -71,7 +71,7 @@ const routes = {
   '/api/dish/ingredient/add': { POST: handleAddIngredient },
   '/api/dish/ingredient/update': { PUT: handleUpdateIngredient },
   '/api/dish/ingredient/delete': { DELETE: handleDeleteIngredient },
-  
+
   // 预约相关API
   '/api/appointment/list': { GET: handleGetAppointmentList },
   '/api/appointment/detail': { GET: handleGetAppointmentDetail },
@@ -86,7 +86,7 @@ const routes = {
 
   // 管理员相关
   '/api/admin/appointment/list': { GET: handleGetAllAppointments },
-  '/api/admin/appointment/today': { GET: handleGetTodayAppointments }
+  '/api/admin/appointment/date': { GET: handleGetDateAppointments }
 };
 
 // 跨域头
@@ -102,7 +102,7 @@ async function handleRequest(request, env) {
   const url = new URL(request.url);
   const path = url.pathname;
   const method = request.method;
-  
+
   // 处理预检请求
   if (method === 'OPTIONS') {
     return new Response(null, {
@@ -110,10 +110,10 @@ async function handleRequest(request, env) {
       headers: corsHeaders
     });
   }
-  
+
   // 查找路由处理程序
   const route = routes[path];
-  
+
   if (route && route[method]) {
     // 调用处理程序
     try {
@@ -125,7 +125,7 @@ async function handleRequest(request, env) {
       return addCorsHeaders(createErrorResponse(`服务器错误: ${error.message}`, 500));
     }
   }
-  
+
   // 路由不存在
   return addCorsHeaders(createErrorResponse('Not Found', 404));
 }
@@ -133,11 +133,11 @@ async function handleRequest(request, env) {
 // 添加CORS头
 function addCorsHeaders(response) {
   const newHeaders = new Headers(response.headers);
-  
+
   Object.keys(corsHeaders).forEach(key => {
     newHeaders.set(key, corsHeaders[key]);
   });
-  
+
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

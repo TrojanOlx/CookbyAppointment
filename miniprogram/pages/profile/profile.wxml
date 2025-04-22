@@ -44,7 +44,7 @@
         <text class="menu-text">编辑菜单</text>
         <text class="menu-arrow">></text>
       </view>
-      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/appointments">
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/appointments/appointments">
         <text class="menu-icon">📋</text>
         <text class="menu-text">查看预约</text>
         <text class="menu-arrow">></text>

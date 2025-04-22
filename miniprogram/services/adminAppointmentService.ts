@@ -19,10 +19,11 @@ export class AdminAppointmentService {
     });
   }
 
-  // 获取当天所有用户的预约列表（包含用户信息和菜品详情）
-  static async getTodayAppointments(
+  // 获取指定日期所有用户的预约列表（包含用户信息和菜品详情）
+  static async getDateAppointments(
     page: number = 1, 
     pageSize: number = 50, 
+    date: string,
     status?: string
   ): Promise<{ total: number, list: Array<Appointment & { 
     userName: string, 
@@ -38,9 +39,10 @@ export class AdminAppointmentService {
         userAvatar: string,
         dishes: any[]
       }> 
-    }>('/api/admin/appointment/today', { 
+    }>('/api/admin/appointment/date', { 
       page, 
       pageSize, 
+      date,
       status
     });
   }

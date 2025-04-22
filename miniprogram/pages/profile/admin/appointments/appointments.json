@@ -1,3 +1,6 @@
 {
-  "usingComponents": {}
-}
+  "navigationBarTitleText": "用户预约",
+  "usingComponents": {
+    "calendar": "@lspriv/wx-calendar"
+  }
+} 

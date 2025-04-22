@@ -1,1 +1,265 @@
-/* pages/profile/admin/appointments/appointments.wxss */
+.appointments-container {
+  padding: 20rpx;
+  background-color: #f6f6f6;
+  min-height: 100vh;
+}
+
+.page-header {
+  margin-bottom: 30rpx;
+  padding: 20rpx 0;
+}
+
+.page-title {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333333;
+}
+
+.appointment-list {
+  margin-bottom: 30rpx;
+}
+
+.appointment-item {
+  background-color: #ffffff;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+}
+
+.appointment-date {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333333;
+  margin-bottom: 10rpx;
+}
+
+.appointment-meal {
+  font-size: 28rpx;
+  color: #4CAF50;
+  margin-bottom: 10rpx;
+}
+
+.appointment-dishes {
+  margin-bottom: 20rpx;
+}
+
+.dish-count {
+  font-size: 26rpx;
+  color: #666666;
+  margin-bottom: 10rpx;
+}
+
+.dish-names {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.dish-name {
+  font-size: 24rpx;
+  color: #999999;
+  background-color: #f0f0f0;
+  padding: 4rpx 12rpx;
+  border-radius: 20rpx;
+  margin-right: 10rpx;
+  margin-bottom: 10rpx;
+}
+
+.appointment-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn {
+  margin-left: 20rpx;
+  font-size: 26rpx;
+  padding: 10rpx 30rpx;
+  border-radius: 30rpx;
+}
+
+.btn-primary {
+  background-color: #4CAF50;
+  color: #ffffff;
+}
+
+.btn-secondary {
+  background-color: #f5f5f5;
+  color: #666666;
+  border: 1rpx solid #dddddd;
+}
+
+.empty-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100rpx 0;
+  color: #999999;
+  font-size: 30rpx;
+  text-align: center;
+}
+
+.btn-create {
+  margin-top: 30rpx;
+  background-color: #4CAF50;
+  color: #ffffff;
+  font-size: 30rpx;
+  padding: 16rpx 40rpx;
+  border-radius: 40rpx;
+}
+
+/* 容器样式 */
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: #f8f8f8;
+}
+
+/* 日历部分样式 */
+.calendar-section {
+  background-color: #fff;
+  padding: 20rpx 0;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+  margin-bottom: 20rpx;
+}
+
+/* 预约列表部分样式 */
+.appointments-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 20rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20rpx 0;
+  margin-bottom: 20rpx;
+  width: 100%;
+}
+
+.section-title {
+  font-size: 34rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+.appointments-list {
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+}
+
+/* 加载状态样式 */
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 0;
+}
+
+.loading-spinner {
+  width: 60rpx;
+  height: 60rpx;
+  border: 6rpx solid #f3f3f3;
+  border-top: 6rpx solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20rpx;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 用户卡片样式 */
+.user-card {
+  background-color: #fff;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+.user-header {
+  padding: 24rpx 30rpx;
+  background-color: #f0f7ff;
+  border-bottom: 1rpx solid #e0e0e0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.user-name {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #333;
+}
+
+/* 餐次列表样式 */
+.meals-list {
+  padding: 0 30rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.meal-item {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f0f0;
+}
+
+.meal-item:last-child {
+  border-bottom: none;
+}
+
+.meal-type {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #555;
+  margin-bottom: 10rpx;
+}
+
+.dish-list {
+  display: flex;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.dish-name {
+  font-size: 26rpx;
+  color: #666;
+  background-color: #f5f5f5;
+  padding: 6rpx 16rpx;
+  border-radius: 30rpx;
+  margin-right: 16rpx;
+  margin-bottom: 10rpx;
+}
+
+/* 空状态样式 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60rpx 0;
+}
+
+.empty-text {
+  font-size: 30rpx;
+  color: #999;
+  text-align: center;
+} 
