@@ -24397,7 +24397,7 @@ Page({
 *       <button wx:else open-type="getUserInfo" bindgetuserinfo="getUserInfo"> 获取头像昵称 </button>
 *     </block>
 *     <block wx:else>
-*       <image bindtap="bindViewTap" class="userinfo-avatar" src="{{userInfo.avatarUrl}}" mode="cover"></image>
+*       <image referrerPolicy="no-referrer" bindtap="bindViewTap" class="userinfo-avatar" src="{{userInfo.avatarUrl}}" mode="cover"></image>
 *       <text class="userinfo-nickname">{{userInfo.nickName}}</text>
 *     </block>
 *   </view>

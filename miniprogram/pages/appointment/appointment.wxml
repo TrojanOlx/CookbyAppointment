@@ -54,7 +54,7 @@
           </view>
           <scroll-view class="dishes-list" scroll-x enable-flex show-scrollbar="false" enhanced="true">
             <view class="dish-item" wx:for="{{item.dishList}}" wx:key="id" wx:for-item="dish">
-              <image class="dish-image" mode="aspectFill" src="{{dish.images[0] || '/images/default-dish.png'}}"></image>
+              <image referrerPolicy="no-referrer" class="dish-image" mode="aspectFill" src="{{dish.images[0] || '/images/default-dish.png'}}"></image>
               <text class="dish-name">{{dish.name}}</text>
             </view>
           </scroll-view>

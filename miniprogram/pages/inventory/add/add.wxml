@@ -3,17 +3,12 @@
     <!-- 基本信息部分 -->
     <view class="form-section">
       <view class="section-title">食材信息</view>
-      
+
       <!-- 食材图片选择 -->
       <view class="form-item">
         <view class="image-upload">
           <view class="image-preview" bindtap="chooseImage">
-            <image 
-              wx:if="{{item.image}}" 
-              src="{{item.image}}" 
-              mode="aspectFill"
-              class="preview-image"
-            ></image>
+            <image referrerPolicy="no-referrer" wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill" class="preview-image"></image>
             <view wx:else class="upload-placeholder">
               <text class="iconfont icon-add"></text>
               <text class="placeholder-text">添加图片</text>
@@ -21,7 +16,7 @@
           </view>
         </view>
       </view>
-      
+
       <view class="form-item">
         <view class="form-label required">食材名称</view>
         <input class="form-input" name="name" placeholder="请输入食材名称" value="{{item.name}}" />
@@ -61,4 +56,4 @@
       <button class="submit-btn" form-type="submit">保存</button>
     </view>
   </form>
-</view> 
+</view>

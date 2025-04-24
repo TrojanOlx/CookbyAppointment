@@ -1,0 +1,225 @@
+/* 文件管理页面样式 */
+.container {
+  padding: 20rpx;
+}
+
+.page-header {
+  margin-bottom: 30rpx;
+}
+
+.page-title {
+  font-size: 36rpx;
+  font-weight: bold;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  margin: 20rpx 0;
+  color: #333;
+}
+
+/* 文件夹选择器 */
+.folder-selector {
+  margin-bottom: 30rpx;
+}
+
+.folder-list {
+  display: flex;
+  white-space: nowrap;
+}
+
+.folder-item {
+  display: inline-block;
+  padding: 10rpx 30rpx;
+  margin-right: 20rpx;
+  background-color: #f5f5f5;
+  border-radius: 30rpx;
+  font-size: 24rpx;
+}
+
+.folder-item.active {
+  background-color: #1aad19;
+  color: white;
+}
+
+/* 操作按钮 */
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20rpx;
+  margin-bottom: 30rpx;
+}
+
+.action-btn {
+  margin: 0 !important;
+}
+
+/* 文件列表 */
+.file-list {
+  margin-top: 20rpx;
+}
+
+.loading, .empty-list {
+  padding: 40rpx 0;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}
+
+.files-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300rpx, 1fr));
+  gap: 20rpx;
+}
+
+.file-item {
+  position: relative;
+  padding: 20rpx;
+  background-color: #fff;
+  border-radius: 10rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+}
+
+.file-item.selected {
+  background-color: #e6f7ff;
+  border: 2rpx solid #1890ff;
+}
+
+.file-icon {
+  width: 100%;
+  height: 160rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10rpx;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.file-thumbnail {
+  width: 100%;
+  height: 100%;
+}
+
+.file-type-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 48rpx;
+  color: #666;
+}
+
+.file-info {
+  padding: 10rpx 0;
+}
+
+.file-name {
+  font-size: 24rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 6rpx;
+}
+
+.file-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 20rpx;
+  color: #999;
+}
+
+.ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10rpx;
+}
+
+.action-icon {
+  width: 50rpx;
+  height: 50rpx;
+  line-height: 50rpx;
+  text-align: center;
+  font-size: 28rpx;
+  margin-left: 10rpx;
+  border-radius: 25rpx;
+}
+
+.action-icon.delete {
+  color: #ff4d4f;
+}
+
+/* 文件信息弹窗 */
+.file-info-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  width: 80%;
+  max-width: 600rpx;
+  background-color: #fff;
+  border-radius: 10rpx;
+  padding: 30rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20rpx;
+  border-bottom: 1rpx solid #eee;
+}
+
+.modal-title {
+  font-size: 32rpx;
+  font-weight: bold;
+}
+
+.modal-close {
+  font-size: 48rpx;
+  color: #999;
+  line-height: 1;
+}
+
+.modal-body {
+  margin-top: 20rpx;
+}
+
+.info-item {
+  margin-bottom: 16rpx;
+}
+
+.info-label {
+  font-size: 24rpx;
+  color: #666;
+  margin-right: 10rpx;
+  font-weight: bold;
+}
+
+.info-value {
+  font-size: 26rpx;
+  color: #333;
+  word-break: break-all;
+}
+
+.info-url {
+  color: #1890ff;
+  text-decoration: underline;
+} 

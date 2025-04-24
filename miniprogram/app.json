@@ -14,7 +14,8 @@
     "pages/profile/settings/settings",
     "pages/profile/admin/appointments/appointments",
     "pages/profile/admin/reviews/reviews",
-    "pages/profile/admin/statistics/statistics"
+    "pages/profile/admin/statistics/statistics",
+    "pages/profile/admin/files/files"
   ],
   "window": {
     "navigationBarTextStyle": "white",

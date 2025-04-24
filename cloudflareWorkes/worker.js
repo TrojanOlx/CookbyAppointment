@@ -5,6 +5,7 @@ import { handleLogin, handleGetUserInfo, handleUpdateUserInfo, handleCheckAdmin,
 import { handleGetInventoryList, handleGetInventoryDetail, handleAddInventory, handleUpdateInventory, handleDeleteInventory, handleSearchInventory, handleGetExpiringItems } from './handlers/inventoryHandler.js';
 import { handleGetDishList, handleGetDishDetail, handleAddDish, handleUpdateDish, handleDeleteDish, handleSearchDish, handleRecommendByIngredients, handleGetIngredientList, handleAddIngredient, handleUpdateIngredient, handleDeleteIngredient } from './handlers/dishHandler.js';
 import { handleGetAllAppointments, handleGetDateAppointments, handleGetAppointmentList, handleGetAppointmentDetail, handleCreateAppointment, handleUpdateAppointment, handleCancelAppointment, handleConfirmAppointment, handleCompleteAppointment, handleGetAppointmentDishes, handleAddAppointmentDish, handleRemoveAppointmentDish } from './handlers/appointmentHandler.js';
+import { handleUploadFile, handleGetFileInfo, handleDownloadFile, handleDeleteFile, handleListFiles, handleBatchDeleteFiles } from './handlers/fileHandler.js';
 
 // 获取access_token
 export async function getAccessToken(env) {
@@ -86,7 +87,15 @@ const routes = {
 
   // 管理员相关
   '/api/admin/appointment/list': { GET: handleGetAllAppointments },
-  '/api/admin/appointment/date': { GET: handleGetDateAppointments }
+  '/api/admin/appointment/date': { GET: handleGetDateAppointments },
+  
+  // 文件存储相关API
+  '/api/file/upload': { POST: handleUploadFile },
+  '/api/file/info': { GET: handleGetFileInfo },
+  '/api/file/download': { GET: handleDownloadFile },
+  '/api/file/delete': { DELETE: handleDeleteFile },
+  '/api/file/list': { GET: handleListFiles },
+  '/api/file/batch-delete': { POST: handleBatchDeleteFiles }
 };
 
 // 跨域头

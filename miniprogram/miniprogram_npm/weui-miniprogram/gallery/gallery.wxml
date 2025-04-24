@@ -4,7 +4,7 @@
     <swiper class="weui-gallery__img__wrp" bindtap="hideGallery" indicator-dots="{{false}}" bindchange="change" current="{{current}}" autoplay="{{false}}" duration="{{500}}">
       <block wx:for="{{currentImgs}}" wx:key="index">
         <swiper-item>
-          <image mode="aspectFit" class="weui-gallery__img" src="{{item}}"/>
+          <image referrerPolicy="no-referrer" mode="aspectFit" class="weui-gallery__img" src="{{item}}"/>
         </swiper-item>
       </block>
     </swiper>

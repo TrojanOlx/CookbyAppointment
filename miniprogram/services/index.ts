@@ -4,4 +4,5 @@ export * from './userService';
 export * from './appointmentService';
 export * from './dishService';
 export * from './inventoryService';
-export * from './adminAppointmentService'; 
+export * from './adminAppointmentService';
+export * from './fileService'; 

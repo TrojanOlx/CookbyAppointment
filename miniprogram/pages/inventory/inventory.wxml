@@ -86,7 +86,7 @@
               <view class="inventory-item" bindtap="editItem" data-id="{{item.id}}">
                 <!-- 左侧图片区域 -->
                 <view class="item-image">
-                  <image src="{{item.image || '/images/default-food.png'}}" mode="aspectFill"></image>
+                  <image referrerPolicy="no-referrer" src="{{item.image || '/images/default-food.png'}}" mode="aspectFill"></image>
                 </view>
                 
                 <!-- 中间食材信息区域 -->

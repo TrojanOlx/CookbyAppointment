@@ -7,7 +7,7 @@
       <button class="login-options-btn" bindtap="showLoginOptions">更多选项</button>
     </block>
     <view wx:else class="user-avatar-info">
-      <image class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}"></image>
+      <image referrerPolicy="no-referrer" class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}"></image>
       <view class="user-info-text">
         <view class="user-name">{{userInfo.nickName || '用户'}}</view>
         <view wx:if="{{!userInfo.nickName}}" class="get-info-btn" bindtap="getUserProfile">点击获取用户资料</view>
@@ -57,6 +57,11 @@
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/statistics">
         <text class="menu-icon">📈</text>
         <text class="menu-text">预约统计</text>
+        <text class="menu-arrow">></text>
+      </view>
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/files/files">
+        <text class="menu-icon">📁</text>
+        <text class="menu-text">文件管理</text>
         <text class="menu-arrow">></text>
       </view>
     </view>

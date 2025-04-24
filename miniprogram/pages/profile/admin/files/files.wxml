@@ -1,0 +1,140 @@
+<!-- 文件管理页面 -->
+<view class="container">
+  <view class="page-header">
+    <text class="page-title">文件管理</text>
+  </view>
+  
+  <!-- 文件夹选择器 -->
+  <view class="folder-selector">
+    <view class="section-title">选择文件夹</view>
+    <scroll-view scroll-x class="folder-list">
+      <view 
+        wx:for="{{folders}}" 
+        wx:key="*this" 
+        bindtap="changeFolder" 
+        data-folder="{{item}}"
+        class="folder-item {{currentFolder === item ? 'active' : ''}}"
+      >
+        {{item}}
+      </view>
+    </scroll-view>
+  </view>
+  
+  <!-- 操作按钮 -->
+  <view class="action-buttons">
+    <button bindtap="uploadFile" type="primary" size="mini" class="action-btn">上传文件</button>
+    <button bindtap="uploadImage" type="primary" size="mini" class="action-btn">上传图片</button>
+    <button bindtap="toggleSelectAll" type="default" size="mini" class="action-btn">
+      {{selectedFiles.length === files.length && files.length > 0 ? '取消全选' : '全选'}}
+    </button>
+    <button bindtap="batchDelete" type="warn" size="mini" disabled="{{selectedFiles.length === 0}}" class="action-btn">
+      批量删除
+    </button>
+  </view>
+  
+  <!-- 文件列表 -->
+  <view class="file-list">
+    <view class="section-title">文件列表 ({{files.length}}个)</view>
+    
+    <view wx:if="{{isLoading}}" class="loading">
+      <text>加载中...</text>
+    </view>
+    
+    <view wx:elif="{{files.length === 0}}" class="empty-list">
+      <text>暂无文件</text>
+    </view>
+    
+    <view wx:else class="files-grid">
+      <view 
+        wx:for="{{files}}" 
+        wx:key="filePath" 
+        class="file-item {{isSelected(item.filePath) ? 'selected' : ''}}"
+        bindtap="selectFile"
+        data-path="{{item.filePath}}"
+      >
+        <!-- 文件图标 -->
+        <view class="file-icon">
+          <image 
+            referrerPolicy="no-referrer"
+            wx:if="{{isImage(item.fileType, item.fileName)}}" 
+            src="{{item.url}}" 
+            mode="aspectFill" 
+            class="file-thumbnail"
+            catch:tap="previewImage"
+            data-url="{{item.url}}"
+          />
+          <view wx:else class="file-type-icon">
+            <text>{{getFileIcon(item.fileType, item.fileName)}}</text>
+          </view>
+        </view>
+        
+        <!-- 文件信息 -->
+        <view class="file-info">
+          <view class="file-name ellipsis">{{item.fileName}}</view>
+          <view class="file-meta">
+            <text class="file-size">{{formatFileSize(item.fileSize)}}</text>
+            <text class="file-date">{{formatDate(item.uploadTime)}}</text>
+          </view>
+        </view>
+        
+        <!-- 操作按钮 -->
+        <view class="file-actions">
+          <view 
+            class="action-icon" 
+            catch:tap="downloadFile" 
+            data-path="{{item.filePath}}"
+            data-name="{{item.fileName}}"
+          >⬇️</view>
+          <view 
+            class="action-icon" 
+            catch:tap="getFileInfo" 
+            data-path="{{item.filePath}}"
+          >ℹ️</view>
+          <view 
+            class="action-icon delete" 
+            catch:tap="deleteFile" 
+            data-path="{{item.filePath}}"
+          >🗑️</view>
+        </view>
+      </view>
+    </view>
+  </view>
+  
+  <!-- 文件信息弹窗 -->
+  <view class="file-info-modal" wx:if="{{showFileInfo}}">
+    <view class="modal-content">
+      <view class="modal-header">
+        <text class="modal-title">文件详情</text>
+        <text class="modal-close" bindtap="closeFileInfo">×</text>
+      </view>
+      <view class="modal-body">
+        <view class="info-item">
+          <text class="info-label">文件名:</text>
+          <text class="info-value">{{fileInfoData.fileName}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">路径:</text>
+          <text class="info-value">{{fileInfoData.filePath}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">类型:</text>
+          <text class="info-value">{{fileInfoData.fileType}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">大小:</text>
+          <text class="info-value">{{formatFileSize(fileInfoData.fileSize)}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">上传时间:</text>
+          <text class="info-value">{{formatDate(fileInfoData.uploadTime)}}</text>
+        </view>
+        <view class="info-item">
+          <text class="info-label">URL:</text>
+          <text class="info-value info-url" bindtap="copyToClipboard" data-text="{{fileInfoData.url}}">
+            {{fileInfoData.url}}
+          </text>
+        </view>
+      </view>
+    </view>
+  </view>
+</view> 

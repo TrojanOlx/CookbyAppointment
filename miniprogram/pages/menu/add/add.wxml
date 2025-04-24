@@ -34,7 +34,7 @@
         <view class="image-list">
           <block wx:for="{{dish.images}}" wx:key="*this">
             <view class="image-item">
-              <image src="{{item}}" mode="aspectFill"></image>
+              <image referrerPolicy="no-referrer" src="{{item}}" mode="aspectFill"></image>
               <view class="delete-btn" catchtap="deleteImage" data-index="{{index}}">×</view>
             </view>
           </block>
