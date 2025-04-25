@@ -140,9 +140,17 @@ Page<PageData, PageInstance>({
         // 根据文件类型选择合适的文件夹
         const fileType = file.type || this.getFileTypeFromName(file.name);
         const folder = FileService.getSuggestedFolder(fileType) || this.data.currentFolder;
+        const fileName = file.name || `file_${Date.now()}`;
+        
+        console.log('准备上传文件:', {
+          path: file.path,
+          name: fileName,
+          type: fileType,
+          folder: folder
+        });
 
         // 上传文件
-        const result = await FileService.uploadFile(file.path, folder, file.name);
+        const result = await FileService.uploadFile(file.path, folder, fileName);
 
         wx.hideLoading();
         if (result.success && result.data) {
@@ -180,10 +188,18 @@ Page<PageData, PageInstance>({
 
   // 上传图片
   async uploadImage() {
+    console.log('开始上传图片，当前文件夹:', this.data.currentFolder);
+    
     try {
+      // 使用try-catch包裹选择图片操作，以便捕获可能的选择取消
+      wx.showLoading({ title: '选择图片中...' });
+      
       const images = await FileService.uploadImage(this.data.currentFolder, 9);
-
-      if (images.length > 0) {
+      console.log('上传图片结果:', images);
+      
+      wx.hideLoading();
+      
+      if (images && images.length > 0) {
         wx.showToast({
           title: `成功上传${images.length}张图片`,
           icon: 'success'
@@ -192,15 +208,17 @@ Page<PageData, PageInstance>({
         // 重新加载文件列表
         this.loadFiles();
       } else {
+        console.warn('未获取到上传成功的图片信息');
         wx.showToast({
           title: '未选择图片或上传失败',
           icon: 'none'
         });
       }
-    } catch (error) {
-      console.error('上传图片失败:', error);
+    } catch (error: any) {
+      wx.hideLoading();
+      console.error('上传图片过程中发生错误:', error);
       wx.showToast({
-        title: '上传图片失败',
+        title: '上传图片失败: ' + (error.message || '未知错误'),
         icon: 'error'
       });
     }

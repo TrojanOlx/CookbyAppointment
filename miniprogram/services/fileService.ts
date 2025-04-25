@@ -1,25 +1,54 @@
 // 文件服务
-import { get, post, put, del } from './http';
+import { get, post, del } from './http';
 import { FileInfo, FileListResponse, FileUploadResponse, FileOperationResponse, BatchDeleteResponse } from '../models/file';
 
 // 文件服务类
 export class FileService {
   // 上传文件
   static async uploadFile(filePath: string, folder: string = 'default', fileName?: string): Promise<FileUploadResponse> {
+    // 从http.ts中获取基础URL
+    const BASE_URL = 'https://wx.oulongxing.com';
+    
     return new Promise((resolve, reject) => {
+      // 获取token
+      const token = wx.getStorageSync('token') || '';
+      
+      // 如果没有提供文件名，从路径中提取
+      if (!fileName) {
+        const pathParts = filePath.split('/');
+        fileName = pathParts[pathParts.length - 1];
+      }
+      
+      console.log('开始上传文件:', filePath, '到文件夹:', folder, '文件名:', fileName);
       wx.uploadFile({
-        url: '/api/file/upload',
+        url: `${BASE_URL}/api/file/upload`, // 使用完整URL
+        header: {
+          'content-type': 'multipart/form-data',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
         filePath,
         name: 'file',
         formData: {
           folder,
-          fileName
+          fileName: fileName || '' // 确保fileName不是undefined
         },
         success(res) {
+          console.log('上传文件成功，返回数据:', res.data);
           try {
             const data = JSON.parse(res.data);
+            
+            // 检查是否有token错误
+            if (data.error && (data.message === '未提供token' || data.message?.includes('token'))) {
+              console.error('认证失败，缺少有效token');
+              wx.showToast({
+                title: '请先登录',
+                icon: 'none'
+              });
+            }
+            
             resolve(data);
           } catch (error) {
+            console.error('解析响应数据失败:', error, '原始数据:', res.data);
             resolve({
               success: false,
               error: '解析响应失败'
@@ -153,7 +182,8 @@ export class FileService {
   // 获取文件下载链接
   static getDownloadUrl(filePath: string): string {
     if (!filePath) return '';
-    return `/api/file/download?filePath=${encodeURIComponent(filePath)}`;
+    const BASE_URL = 'https://wx.oulongxing.com';
+    return `${BASE_URL}/api/file/download?filePath=${encodeURIComponent(filePath)}`;
   }
   
   // 上传图片（从相册或相机）
