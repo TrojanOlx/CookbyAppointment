@@ -4,7 +4,7 @@ import { FileService } from '../../../../services/fileService';
 interface FileInfoData {
   filePath: string;
   fileName: string;
-  fileType: string;
+  fileType?: string;
   fileSize: number;
   uploadTime?: string;
   url: string;
@@ -57,20 +57,24 @@ Page<PageData, PageInstance>({
   },
 
   onLoad() {
+    console.log('文件管理页面加载');
     this.loadFiles();
   },
 
   onShow() {
-    //this.checkAdminPermission();
+    console.log('文件管理页面显示');
   },
 
   // 检查是否有管理员权限
-  async checkAdminPermission() { 
+  async checkAdminPermission() {
+    console.log('检查管理员权限');
   },
 
   // 切换文件夹
-  changeFolder(e: WechatMiniprogram.TouchEvent) {
+  changeFolder(e) {
     const folder = e.currentTarget.dataset.folder as string;
+    console.log('切换文件夹:', folder);
+    
     this.setData({
       currentFolder: folder,
       files: [],
@@ -81,17 +85,27 @@ Page<PageData, PageInstance>({
 
   // 加载文件列表
   async loadFiles() {
+    console.log('加载文件列表开始:', this.data.currentFolder);
     this.setData({ isLoading: true });
-    
+
     try {
       const fileList = await FileService.listFiles(this.data.currentFolder, 100);
+      console.log('获取到文件列表:', fileList);
+      
       if (fileList && fileList.files) {
+        // 确保每个文件都有fileType属性
+        const filesWithType = fileList.files.map(file => ({
+          ...file,
+          fileType: file.fileType || this.getFileTypeFromName(file.fileName)
+        }));
+
+        console.log('处理后的文件列表:', filesWithType);
         this.setData({
-          files: fileList.files,
+          files: filesWithType,
           isLoading: false
         });
       } else {
-        this.setData({ 
+        this.setData({
           files: [],
           isLoading: false
         });
@@ -118,25 +132,25 @@ Page<PageData, PageInstance>({
         count: 1,
         type: 'file'
       });
-      
+
       if (res.tempFiles && res.tempFiles.length > 0) {
         const file = res.tempFiles[0];
         wx.showLoading({ title: '上传中...' });
-        
+
         // 根据文件类型选择合适的文件夹
         const fileType = file.type || this.getFileTypeFromName(file.name);
         const folder = FileService.getSuggestedFolder(fileType) || this.data.currentFolder;
-        
+
         // 上传文件
         const result = await FileService.uploadFile(file.path, folder, file.name);
-        
+
         wx.hideLoading();
         if (result.success && result.data) {
           wx.showToast({
             title: '上传成功',
             icon: 'success'
           });
-          
+
           // 如果上传到当前文件夹，则重新加载文件列表
           if (folder === this.data.currentFolder) {
             this.loadFiles();
@@ -168,13 +182,13 @@ Page<PageData, PageInstance>({
   async uploadImage() {
     try {
       const images = await FileService.uploadImage(this.data.currentFolder, 9);
-      
+
       if (images.length > 0) {
         wx.showToast({
           title: `成功上传${images.length}张图片`,
           icon: 'success'
         });
-        
+
         // 重新加载文件列表
         this.loadFiles();
       } else {
@@ -193,18 +207,25 @@ Page<PageData, PageInstance>({
   },
 
   // 获取文件信息
-  async getFileInfo(e: WechatMiniprogram.TouchEvent) {
+  async getFileInfo(e) {
     const filePath = e.currentTarget.dataset.path as string;
-    
+    console.log('获取文件信息:', filePath);
+
     try {
       wx.showLoading({ title: '获取中...' });
       const fileInfo = await FileService.getFileInfo(filePath);
       wx.hideLoading();
-      
+
       if (fileInfo) {
+        // 确保文件类型存在
+        const fileInfoWithType = {
+          ...fileInfo,
+          fileType: fileInfo.fileType || this.getFileTypeFromName(fileInfo.fileName)
+        };
+
         this.setData({
           showFileInfo: true,
-          fileInfoData: fileInfo
+          fileInfoData: fileInfoWithType
         });
       } else {
         wx.showToast({
@@ -230,14 +251,15 @@ Page<PageData, PageInstance>({
   },
 
   // 下载文件
-  async downloadFile(e: WechatMiniprogram.TouchEvent) {
+  async downloadFile(e) {
     const filePath = e.currentTarget.dataset.path as string;
     const fileName = e.currentTarget.dataset.name as string;
-    
+    console.log('下载文件:', filePath, fileName);
+
     try {
       wx.showLoading({ title: '下载中...' });
       const downloadUrl = FileService.getDownloadUrl(filePath);
-      
+
       // 下载文件到本地
       const result = await new Promise<WechatMiniprogram.DownloadFileSuccessCallbackResult>((resolve, reject) => {
         wx.downloadFile({
@@ -247,12 +269,12 @@ Page<PageData, PageInstance>({
           fail: reject
         });
       });
-      
+
       wx.hideLoading();
       if (result.statusCode === 200) {
         // 打开文件
         wx.openDocument({
-          filePath: wx.env.USER_DATA_PATH + '/' + fileName,
+          filePath: result.filePath,
           showMenu: true,
           success: () => {
             console.log('打开文档成功');
@@ -282,9 +304,10 @@ Page<PageData, PageInstance>({
   },
 
   // 删除文件
-  async deleteFile(e: WechatMiniprogram.TouchEvent) {
+  async deleteFile(e) {
     const filePath = e.currentTarget.dataset.path as string;
-    
+    console.log('删除文件:', filePath);
+
     // 确认删除
     const confirm = await new Promise<boolean>(resolve => {
       wx.showModal({
@@ -297,20 +320,20 @@ Page<PageData, PageInstance>({
         }
       });
     });
-    
+
     if (!confirm) return;
-    
+
     try {
       wx.showLoading({ title: '删除中...' });
       const result = await FileService.deleteFile(filePath);
       wx.hideLoading();
-      
+
       if (result.success) {
         wx.showToast({
           title: '删除成功',
           icon: 'success'
         });
-        
+
         // 重新加载文件列表
         this.loadFiles();
       } else {
@@ -330,22 +353,24 @@ Page<PageData, PageInstance>({
   },
 
   // 选择/取消选择文件
-  selectFile(e: WechatMiniprogram.TouchEvent) {
+  selectFile(e) {
     const filePath = e.currentTarget.dataset.path as string;
+    console.log('选择/取消文件:', filePath);
+    
     const selectedFiles = [...this.data.selectedFiles];
     const index = selectedFiles.indexOf(filePath);
-    
+
     if (index === -1) {
       selectedFiles.push(filePath);
     } else {
       selectedFiles.splice(index, 1);
     }
-    
+
     this.setData({ selectedFiles });
   },
 
   // 判断文件是否被选中
-  isSelected(filePath: string): boolean {
+  isSelected(filePath) {
     return this.data.selectedFiles.includes(filePath);
   },
 
@@ -365,7 +390,7 @@ Page<PageData, PageInstance>({
   // 批量删除选中的文件
   async batchDelete() {
     const { selectedFiles } = this.data;
-    
+
     if (selectedFiles.length === 0) {
       wx.showToast({
         title: '请先选择文件',
@@ -373,7 +398,7 @@ Page<PageData, PageInstance>({
       });
       return;
     }
-    
+
     // 确认删除
     const confirm = await new Promise<boolean>(resolve => {
       wx.showModal({
@@ -386,40 +411,23 @@ Page<PageData, PageInstance>({
         }
       });
     });
-    
+
     if (!confirm) return;
-    
+
     wx.showLoading({ title: '删除中...' });
-    
+
     try {
-      // 使用批量删除接口
-      const result = await new Promise<{
-        statusCode: number, 
-        data: {
-          success: boolean,
-          data: {
-            total: number,
-            successful: number,
-            failed: number
-          }
-        }
-      }>((resolve, reject) => {
-        wx.request({
-          url: '/api/file/batch-delete',
-          method: 'POST',
-          data: { filePaths: selectedFiles },
-          success: resolve,
-          fail: reject
-        });
-      });
-      
+      // 使用FileService的批量删除方法
+      const result = await FileService.batchDeleteFiles(selectedFiles);
+
       wx.hideLoading();
-      if (result.statusCode === 200 && result.data.success) {
+      if (result.success) {
+        const { successful } = result.data || { successful: 0 };
         wx.showToast({
-          title: `成功删除 ${result.data.data.successful} 个文件`,
+          title: `成功删除 ${successful} 个文件`,
           icon: 'success'
         });
-        
+
         // 重新加载文件列表
         this.setData({ selectedFiles: [] });
         this.loadFiles();
@@ -440,7 +448,7 @@ Page<PageData, PageInstance>({
   },
 
   // 复制文本到剪贴板
-  copyToClipboard(e: WechatMiniprogram.TouchEvent) {
+  copyToClipboard(e) {
     const text = e.currentTarget.dataset.text as string;
     wx.setClipboardData({
       data: text,
@@ -454,8 +462,10 @@ Page<PageData, PageInstance>({
   },
 
   // 预览图片
-  previewImage(e: WechatMiniprogram.TouchEvent) {
+  previewImage(e) {
     const url = e.currentTarget.dataset.url as string;
+    console.log('预览图片:', url);
+    
     wx.previewImage({
       current: url,
       urls: [url]
@@ -463,28 +473,33 @@ Page<PageData, PageInstance>({
   },
 
   // 判断文件是否为图片
-  isImage(fileType?: string, fileName?: string): boolean {
-    console.info(fileName);
+  isImage(fileType, fileName) {
+    console.log('isImage执行:', fileType, fileName);
+    
     // 如果有fileType属性，直接判断
     if (fileType && fileType.startsWith('image/')) {
       return true;
     }
-    
+
     // 如果有fileName，通过文件扩展名判断
     if (fileName) {
       const ext = fileName.split('.').pop()?.toLowerCase() || '';
       return ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext);
     }
-    
+
     return false;
   },
 
   // 获取文件图标
-  getFileIcon(fileType?: string, fileName?: string): string {
+  getFileIcon(fileType, fileName) {
+    console.log('getFileIcon执行:', fileType, fileName);
+    
+    if (this.isImage(fileType, fileName)) {
+      return '🖼️';
+    }
+    
     if (fileType) {
-      if (fileType.startsWith('image/')) {
-        return '🖼️';
-      } else if (fileType.startsWith('video/')) {
+      if (fileType.startsWith('video/')) {
         return '🎬';
       } else if (fileType.startsWith('audio/')) {
         return '🎵';
@@ -498,14 +513,12 @@ Page<PageData, PageInstance>({
         return '🗜️';
       }
     }
-    
+
     // 如果没有fileType或无法识别，尝试通过文件名判断
     if (fileName) {
       const ext = fileName.split('.').pop()?.toLowerCase() || '';
-      
-      if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'].includes(ext)) {
-        return '🖼️';
-      } else if (['mp4', 'avi', 'mov', 'wmv', 'flv'].includes(ext)) {
+
+      if (['mp4', 'avi', 'mov', 'wmv', 'flv'].includes(ext)) {
         return '🎬';
       } else if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) {
         return '🎵';
@@ -519,15 +532,17 @@ Page<PageData, PageInstance>({
         return '🗜️';
       }
     }
-    
+
     return '📄';
   },
 
   // 从文件名获取文件类型
-  getFileTypeFromName(fileName: string): string {
-    const extension = fileName.split('.').pop()?.toLowerCase() || '';
+  getFileTypeFromName(fileName) {
+    if (!fileName) return 'application/octet-stream';
     
-    const mimeTypes: Record<string, string> = {
+    const extension = fileName.split('.').pop()?.toLowerCase() || '';
+
+    const mimeTypes: { [key: string]: string } = {
       'jpg': 'image/jpeg',
       'jpeg': 'image/jpeg',
       'png': 'image/png',
@@ -545,33 +560,33 @@ Page<PageData, PageInstance>({
       'zip': 'application/zip',
       'rar': 'application/x-rar-compressed'
     };
-    
+
     return mimeTypes[extension] || 'application/octet-stream';
   },
 
   // 格式化文件大小
-  formatFileSize(bytes?: number): string {
+  formatFileSize(bytes) {
     if (!bytes || isNaN(bytes)) return '0 B';
-    
+
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let i = 0;
     let value = bytes;
-    
+
     while (value >= 1024 && i < units.length - 1) {
       value /= 1024;
       i++;
     }
-    
+
     return value.toFixed(2) + ' ' + units[i];
   },
 
   // 格式化日期
-  formatDate(dateString?: string): string {
+  formatDate(dateString) {
     if (!dateString) return '';
-    
+
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
-    
+
     return date.toLocaleString('zh-CN', {
       year: 'numeric',
       month: '2-digit',

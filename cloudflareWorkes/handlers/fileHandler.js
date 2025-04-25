@@ -5,7 +5,7 @@ import { createJsonResponse, createErrorResponse } from '../wxApi.js';
  * 上传文件到 R2 存储
  * @param {Request} request 请求对象
  * @param {Object} env 环境变量
- * @returns {Response} 响应对象
+ * @returns {Promise<Response>} 响应对象的Promise
  */
 export async function handleUploadFile(request, env) {
   try {
@@ -88,7 +88,7 @@ export async function handleUploadFile(request, env) {
  * 获取文件详细信息
  * @param {Request} request 请求对象
  * @param {Object} env 环境变量
- * @returns {Response} 响应对象
+ * @returns {Promise<Response>} 响应对象的Promise
  */
 export async function handleGetFileInfo(request, env) {
   try {
@@ -111,6 +111,7 @@ export async function handleGetFileInfo(request, env) {
       return createErrorResponse('权限不足', 403);
     }
     
+    // 从URL参数获取文件路径
     const url = new URL(request.url);
     const filePath = url.searchParams.get('filePath');
     
@@ -147,7 +148,7 @@ export async function handleGetFileInfo(request, env) {
  * 下载文件
  * @param {Request} request 请求对象
  * @param {Object} env 环境变量
- * @returns {Response} 响应对象
+ * @returns {Promise<Response>} 响应对象的Promise
  */
 export async function handleDownloadFile(request, env) {
   try {
@@ -170,6 +171,7 @@ export async function handleDownloadFile(request, env) {
       return createErrorResponse('权限不足', 403);
     }
     
+    // 从URL参数获取文件路径
     const url = new URL(request.url);
     const filePath = url.searchParams.get('filePath');
     
@@ -206,7 +208,7 @@ export async function handleDownloadFile(request, env) {
  * 删除文件
  * @param {Request} request 请求对象
  * @param {Object} env 环境变量
- * @returns {Response} 响应对象
+ * @returns {Promise<Response>} 响应对象的Promise
  */
 export async function handleDeleteFile(request, env) {
   try {
@@ -229,8 +231,9 @@ export async function handleDeleteFile(request, env) {
       return createErrorResponse('权限不足', 403);
     }
     
-    const url = new URL(request.url);
-    const filePath = url.searchParams.get('filePath');
+    // 从请求体获取文件路径
+    const data = await request.json();
+    const { filePath } = data;
     
     if (!filePath) {
       return createErrorResponse('文件路径参数缺失', 400);
@@ -261,7 +264,7 @@ export async function handleDeleteFile(request, env) {
  * 列出指定文件夹中的文件
  * @param {Request} request 请求对象
  * @param {Object} env 环境变量
- * @returns {Response} 响应对象
+ * @returns {Promise<Response>} 响应对象的Promise
  */
 export async function handleListFiles(request, env) {
   try {
@@ -284,6 +287,7 @@ export async function handleListFiles(request, env) {
       return createErrorResponse('权限不足', 403);
     }
     
+    // 从URL参数获取查询条件
     const url = new URL(request.url);
     const folder = url.searchParams.get('folder') || 'default';
     const limit = parseInt(url.searchParams.get('limit') || '100');
@@ -321,7 +325,12 @@ export async function handleListFiles(request, env) {
   }
 }
 
-// 管理员批量删除文件
+/**
+ * 批量删除文件
+ * @param {Request} request 请求对象
+ * @param {Object} env 环境变量
+ * @returns {Promise<Response>} 响应对象的Promise
+ */
 export async function handleBatchDeleteFiles(request, env) {
   try {
     // 获取认证信息
@@ -343,7 +352,7 @@ export async function handleBatchDeleteFiles(request, env) {
       return createErrorResponse('只有管理员可以批量删除文件', 403);
     }
     
-    // 获取请求数据
+    // 从请求体获取文件路径列表
     const data = await request.json();
     const { filePaths } = data;
     
@@ -389,7 +398,12 @@ export async function handleBatchDeleteFiles(request, env) {
   }
 }
 
-// 数据库操作函数
+/**
+ * 验证token并获取用户信息
+ * @param {Object} db 数据库对象
+ * @param {string} token 认证token
+ * @returns {Promise<Object>} 包含登录信息和用户信息的Promise对象
+ */
 async function validateTokenAndGetUser(db, token) {
   // 验证token
   const loginInfoStmt = db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token);

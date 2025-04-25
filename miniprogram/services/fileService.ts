@@ -1,6 +1,6 @@
 // 文件服务
 import { get, post, put, del } from './http';
-import { FileInfo, FileListResponse, FileUploadResponse, FileOperationResponse } from '../models/file';
+import { FileInfo, FileListResponse, FileUploadResponse, FileOperationResponse, BatchDeleteResponse } from '../models/file';
 
 // 文件服务类
 export class FileService {
@@ -41,6 +41,15 @@ export class FileService {
   static async getFileInfo(filePath: string): Promise<FileInfo | null> {
     try {
       const result = await get<{success: boolean, data: FileInfo}>('/api/file/info', { filePath });
+      
+      // 确保文件类型字段存在
+      if (result.success && result.data) {
+        // 如果缺少fileType，根据文件名推断
+        if (!result.data.fileType) {
+          result.data.fileType = this.guessFileTypeByName(result.data.fileName);
+        }
+      }
+      
       return result.success ? result.data : null;
     } catch (error) {
       console.error('获取文件信息失败:', error);
@@ -48,9 +57,10 @@ export class FileService {
     }
   }
   
-  // 删除文件
+  // 删除文件 - 使用DELETE方法，参数放在请求体中
   static async deleteFile(filePath: string): Promise<FileOperationResponse> {
     try {
+      // 使用DELETE请求，参数通过请求体传递
       return await del<FileOperationResponse>('/api/file/delete', { filePath });
     } catch (error) {
       console.error('删除文件失败:', error);
@@ -61,10 +71,39 @@ export class FileService {
     }
   }
   
+  // 批量删除文件 - 新增方法
+  static async batchDeleteFiles(filePaths: string[]): Promise<BatchDeleteResponse> {
+    try {
+      return await post<BatchDeleteResponse>('/api/file/batch-delete', { filePaths });
+    } catch (error) {
+      console.error('批量删除文件失败:', error);
+      return {
+        success: false,
+        data: {
+          total: filePaths.length,
+          successful: 0,
+          failed: filePaths.length,
+          details: []
+        }
+      };
+    }
+  }
+  
   // 获取文件列表
   static async listFiles(folder: string = 'default', limit: number = 100): Promise<FileListResponse | null> {
     try {
       const result = await get<{success: boolean, data: FileListResponse}>('/api/file/list', { folder, limit });
+      
+      // 处理返回数据，确保文件类型字段存在
+      if (result.success && result.data && result.data.files) {
+        // 为缺少fileType的文件项添加默认值
+        result.data.files = result.data.files.map(file => ({
+          ...file,
+          // 如果缺少fileType，根据文件扩展名推断
+          fileType: file.fileType || this.guessFileTypeByName(file.fileName)
+        }));
+      }
+      
       return result.success ? result.data : null;
     } catch (error) {
       console.error('获取文件列表失败:', error);
@@ -72,8 +111,48 @@ export class FileService {
     }
   }
   
+  // 根据文件名推断文件类型
+  private static guessFileTypeByName(fileName: string): string {
+    if (!fileName) return 'application/octet-stream';
+    
+    const extension = fileName.split('.').pop()?.toLowerCase() || '';
+    
+    // 常见文件类型映射
+    const mimeTypes: Record<string, string> = {
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'png': 'image/png',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'svg': 'image/svg+xml',
+      'mp4': 'video/mp4',
+      'mov': 'video/quicktime',
+      'mp3': 'audio/mpeg',
+      'wav': 'audio/wav',
+      'pdf': 'application/pdf',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'ppt': 'application/vnd.ms-powerpoint',
+      'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'txt': 'text/plain',
+      'html': 'text/html',
+      'css': 'text/css',
+      'js': 'application/javascript',
+      'json': 'application/json',
+      'xml': 'application/xml',
+      'zip': 'application/zip',
+      'rar': 'application/x-rar-compressed',
+      '7z': 'application/x-7z-compressed'
+    };
+    
+    return mimeTypes[extension] || 'application/octet-stream';
+  }
+  
   // 获取文件下载链接
   static getDownloadUrl(filePath: string): string {
+    if (!filePath) return '';
     return `/api/file/download?filePath=${encodeURIComponent(filePath)}`;
   }
   
@@ -98,7 +177,14 @@ export class FileService {
             // 过滤并返回成功上传的图片信息
             const successFiles = results
               .filter(res => res.success && res.data)
-              .map(res => res.data as FileInfo);
+              .map(res => {
+                const fileInfo = res.data as FileInfo;
+                // 确保文件类型存在，图片默认为image/jpeg
+                if (!fileInfo.fileType) {
+                  fileInfo.fileType = this.guessFileTypeByName(fileInfo.fileName);
+                }
+                return fileInfo;
+              });
               
             resolve(successFiles);
           } catch (error) {
@@ -124,46 +210,32 @@ export class FileService {
     return await this.uploadImage(folder, maxCount);
   }
   
-  // 从文件URL中提取文件路径
+  // 从文件URL中提取文件路径 - 优化实现
   static extractFilePathFromUrl(url: string): string {
+    if (!url) return '';
+    
     try {
-      // 在微信小程序环境中，URL构造函数可能不可用，使用简单的字符串解析
-      // 去除协议和域名部分
-      let path = url;
-      
       // 移除协议和域名部分
-      const doubleSlashIndex = url.indexOf('//');
-      if (doubleSlashIndex !== -1) {
-        const domainStartIndex = doubleSlashIndex + 2;
-        const pathStartIndex = url.indexOf('/', domainStartIndex);
-        
-        if (pathStartIndex !== -1) {
-          path = url.substring(pathStartIndex);
-        }
-      }
+      const urlParts = url.split('/');
       
-      // 获取路径部分，去掉开头的斜杠
-      const pathParts = path.split('/').filter((part: string) => part.length > 0);
+      // 至少需要有两部分：文件夹和文件名
+      if (urlParts.length < 2) return url;
       
-      // 如果至少有文件夹和文件名两部分，取最后两部分
-      if (pathParts.length >= 2) {
-        return `${pathParts[pathParts.length-2]}/${pathParts[pathParts.length-1]}`;
-      }
+      // 获取最后两部分作为有效路径
+      const folder = urlParts[urlParts.length - 2];
+      const fileName = urlParts[urlParts.length - 1];
       
-      // 否则返回整个路径（去掉开头的斜杠）
-      return path.startsWith('/') ? path.substring(1) : path;
-    } catch (e) {
-      // 如果解析失败，尝试简单的字符串提取（取最后两部分）
-      const parts = url.split('/');
-      if (parts.length >= 2) {
-        return `${parts[parts.length-2]}/${parts[parts.length-1]}`;
-      }
+      return `${folder}/${fileName}`;
+    } catch (error) {
+      console.error('解析文件路径失败:', error);
       return url;
     }
   }
   
   // 根据文件类型获取适合的存储文件夹
   static getSuggestedFolder(fileType: string): string {
+    if (!fileType) return 'files';
+    
     if (fileType.startsWith('image/')) {
       return 'images';
     } else if (fileType.startsWith('video/')) {
