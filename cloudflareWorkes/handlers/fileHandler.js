@@ -47,8 +47,11 @@ export async function handleUploadFile(request, env) {
     const fileSize = file.size;
     const folder = formData.get('folder') || 'default';
     
-    // 生成文件存储路径
-    const filePath = `${folder}/${fileName}_${Date.now()}`;
+    // 取出文件名和后缀
+    const extIndex = fileName.lastIndexOf('.');
+    const baseName = extIndex !== -1 ? fileName.substring(0, extIndex) : fileName;
+    const ext = extIndex !== -1 ? fileName.substring(extIndex) : '';
+    const filePath = `${folder}/${baseName}_${Date.now()}${ext}`;
     
     // 读取文件内容
     const fileContent = await file.arrayBuffer();

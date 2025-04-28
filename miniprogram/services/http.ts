@@ -133,4 +133,32 @@ export const del = <T = any>(url: string, data?: any): Promise<T> => {
     method: 'DELETE',
     data
   });
-}; 
+};
+
+export function upload<T>(url: string, filePath: string, formData: Record<string, any> = {}, header: Record<string, any> = {}): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const token = wx.getStorageSync('token') || '';
+    wx.uploadFile({
+      url: url.startsWith('http') ? url : `${BASE_URL}${url}`,
+      filePath,
+      name: 'file',
+      formData,
+      header: {
+        'content-type': 'multipart/form-data',
+        'Authorization': token ? `Bearer ${token}` : '',
+        ...header
+      },
+      success(res) {
+        try {
+          const data = JSON.parse(res.data);
+          resolve(data);
+        } catch (err) {
+          reject(err);
+        }
+      },
+      fail(err) {
+        reject(err);
+      }
+    });
+  });
+} 

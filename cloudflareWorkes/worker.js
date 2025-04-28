@@ -1,7 +1,7 @@
 // 导入处理程序
 import { handleGetUserProfile } from './handlers/userProfile.js';
 import { handleGetUserPhoneNumber } from './handlers/phoneNumber.js';
-import { handleLogin, handleGetUserInfo, handleUpdateUserInfo, handleCheckAdmin, handleGetUserList, handleGetUserPhone } from './handlers/userHandler.js';
+import { handleLogin, handleGetUserInfo, handleUpdateUserInfo, handleCheckAdmin, handleGetUserList, handleGetUserPhone, handleUpdateAvatar } from './handlers/userHandler.js';
 import { handleGetInventoryList, handleGetInventoryDetail, handleAddInventory, handleUpdateInventory, handleDeleteInventory, handleSearchInventory, handleGetExpiringItems } from './handlers/inventoryHandler.js';
 import { handleGetDishList, handleGetDishDetail, handleAddDish, handleUpdateDish, handleDeleteDish, handleSearchDish, handleRecommendByIngredients, handleGetIngredientList, handleAddIngredient, handleUpdateIngredient, handleDeleteIngredient } from './handlers/dishHandler.js';
 import { handleGetAllAppointments, handleGetDateAppointments, handleGetAppointmentList, handleGetAppointmentDetail, handleCreateAppointment, handleUpdateAppointment, handleCancelAppointment, handleConfirmAppointment, handleCompleteAppointment, handleGetAppointmentDishes, handleAddAppointmentDish, handleRemoveAppointmentDish } from './handlers/appointmentHandler.js';
@@ -50,6 +50,7 @@ const routes = {
   '/api/user/admin': { GET: handleCheckAdmin },
   '/api/user/list': { GET: handleGetUserList },
   '/api/user/phone/wx': { POST: handleGetUserPhoneNumber },
+  '/api/user/avatar': { POST: handleUpdateAvatar },
 
   // 库存相关API
   '/api/inventory/list': { GET: handleGetInventoryList },

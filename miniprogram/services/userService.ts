@@ -1,5 +1,5 @@
 // 用户服务
-import { get, post, put, del } from './http';
+import { get, post, put, del, upload } from './http';
 import { User, LoginInfo, UserPhone } from '../models/user';
 
 // 登录接口响应
@@ -44,5 +44,14 @@ export class UserService {
   // 获取用户列表（仅管理员）
   static async getUserList(page: number = 1, pageSize: number = 10): Promise<{ total: number, list: User[] }> {
     return get<{ total: number, list: User[] }>('/api/user/list', { page, pageSize });
+  }
+
+  // 上传并更新用户头像
+  static async updateAvatar(localPath: string): Promise<{ filePath: string, url: string }> {
+    return upload<{ filePath: string, url: string }>(
+      '/api/user/avatar',
+      localPath,
+      { fileName: localPath.split('/').pop() || 'avatar.jpg' }
+    );
   }
 } 

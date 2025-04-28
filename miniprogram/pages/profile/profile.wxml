@@ -4,15 +4,23 @@
   <view class="user-info">
     <block wx:if="{{!userInfo}}">
       <button class="login-btn" bindtap="doLogin" loading="{{isLoggingIn}}">微信登录</button>
-      <button class="login-options-btn" bindtap="showLoginOptions">更多选项</button>
     </block>
-    <view wx:else class="user-avatar-info">
-      <image referrerPolicy="no-referrer" class="avatar" src="{{userInfo.avatarUrl || '/images/default-avatar.png'}}"></image>
+    <view wx:elif="{{userInfo}}" class="user-avatar-info">
+      <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
+        <image referrerPolicy="no-referrer" class="avatar" src="{{getAvatarUrl(userInfo.avatarUrl)}}"></image>
+      </button>
       <view class="user-info-text">
-        <view class="user-name">{{userInfo.nickName || '用户'}}</view>
-        <view wx:if="{{!userInfo.nickName}}" class="get-info-btn" bindtap="getUserProfile">点击获取用户资料</view>
+        <block wx:if="{{editingNickName}}">
+          <input class="user-name-input" value="{{userInfo.nickName}}" focus="true" bindinput="onNickNameInput" bindblur="onNickNameConfirm" bindconfirm="onNickNameConfirm" placeholder="请输入昵称" />
+        </block>
+        <block wx:else>
+          <view class="user-name" bindtap="onNickNameEdit">{{userInfo.nickName || '点击设置昵称'}}</view>
+        </block>
       </view>
     </view>
+  </view>
+  <view wx:if="{{userInfo && (!userInfo.avatarUrl || !userInfo.nickName)}}" class="user-tip">
+    请点击头像和昵称进行完善
   </view>
   
   <!-- 功能菜单 -->

@@ -2,6 +2,18 @@
 import { UserService } from '../../services/userService';
 import { User } from '../../models/user';
 import { showToast, showLoading, hideLoading } from '../../utils/util';
+import { FileService } from '../../services/fileService';
+
+// 头像云存储基础URL（如有全局配置可替换）
+const R2_PUBLIC_URL = 'https://your-r2-public-url.com';
+
+/**
+ * 获取头像展示用的完整URL
+ */
+export function getAvatarUrl(avatarUrl: string): string {
+  if (!avatarUrl) return '/images/default-avatar.png';
+  return avatarUrl.startsWith('http') ? avatarUrl : `${R2_PUBLIC_URL}/${avatarUrl}`;
+}
 
 // 页面数据接口
 interface IPageData {
@@ -11,6 +23,7 @@ interface IPageData {
   canIUseGetUserProfile: boolean;
   openid: string | null;
   isLoggingIn: boolean;
+  editingNickName?: boolean;
 }
 
 // 页面方法接口
@@ -26,16 +39,25 @@ interface IPageMethods {
   fetchUserInfo: () => Promise<void>;
   isUserInfoComplete: () => boolean;
   checkAndRedirect: (redirectUrl: string) => void;
+  saveNickName: (nickName: string) => void;
+  saveAvatar: (filePath: string) => Promise<void>;
 }
 
-Page<IPageData, IPageMethods>({
+Page<IPageData, IPageMethods & {
+  onChooseAvatar: (e?: any) => void;
+  onNickNameEdit: () => void;
+  onNickNameInput: (e: any) => void;
+  onNickNameConfirm: (e: any) => void;
+  saveAvatar: (filePath: string) => Promise<void>;
+}>({
   data: {
     userInfo: null,
     isAdmin: false,
     hasUserInfo: false,
     canIUseGetUserProfile: false,
     openid: null,
-    isLoggingIn: false
+    isLoggingIn: false,
+    editingNickName: false
   },
 
   onLoad() {
@@ -74,6 +96,13 @@ Page<IPageData, IPageMethods>({
           selected: 3
         });
       }
+    }
+    // 自动弹出头像上传弹窗
+    if (this.data.userInfo && !this.data.userInfo.avatarUrl) {
+      wx.showToast({ title: '请上传头像', icon: 'none' });
+      setTimeout(() => {
+        this.onChooseAvatar({});
+      }, 500);
     }
   },
   
@@ -474,6 +503,146 @@ Page<IPageData, IPageMethods>({
     const url = e.currentTarget.dataset.url;
     wx.navigateTo({
       url
+    });
+  },
+
+  /**
+   * 选择头像，支持微信chooseAvatar和自定义上传
+   */
+  async onChooseAvatar(e?: any) {
+    if (e && e.detail && e.detail.avatarUrl) {
+      const localPath = e.detail.avatarUrl;
+      // 如果是本地临时文件，直接用 updateAvatar 上传
+      if (localPath.startsWith('http://tmp/') || localPath.startsWith('wxfile://')) {
+        try {
+          const uploadRes = await UserService.updateAvatar(localPath);
+          if (uploadRes && uploadRes.filePath) {
+            await (this as any).saveAvatar(uploadRes.filePath);
+          } else {
+            showToast('头像上传失败');
+          }
+        } catch {
+          showToast('头像上传失败');
+        }
+        return;
+      }
+      // 否则直接保存（如公网 http(s) 链接）
+      await (this as any).saveAvatar(localPath);
+      return;
+    }
+    // 兜底：手动选择
+    const fileInfo = await FileService.uploadSingleImage('avatars');
+    if (fileInfo && fileInfo.filePath) {
+      try {
+        const uploadRes = await UserService.updateAvatar(fileInfo.filePath);
+        if (uploadRes && uploadRes.filePath) {
+          await (this as any).saveAvatar(uploadRes.filePath);
+        } else {
+          showToast('头像上传失败');
+        }
+      } catch {
+        showToast('头像上传失败');
+      }
+    }
+  },
+
+  /**
+   * 保存头像到用户信息
+   */
+  async saveAvatar(filePath: string) {
+    const userInfo = {
+      ...this.data.userInfo,
+      avatarUrl: filePath
+    };
+    showLoading('更新头像...');
+    try {
+      const updatedUser = await UserService.updateUserInfo(userInfo);
+      wx.setStorageSync('userInfo', updatedUser);
+      this.setData({
+        userInfo: updatedUser,
+        hasUserInfo: this.isUserInfoComplete()
+      });
+      hideLoading();
+      showToast('头像已更新');
+    } catch {
+      hideLoading();
+      showToast('头像更新失败');
+    }
+  },
+
+  /**
+   * 点击昵称，弹出选择框
+   */
+  onNickNameEdit() {
+    const wxNickName = this.data.userInfo?.nickName || '';
+    wx.showActionSheet({
+      itemList: [
+        wxNickName ? `使用微信昵称（${wxNickName}）` : '使用微信昵称',
+        '自定义昵称'
+      ],
+      success: (res) => {
+        if (res.tapIndex === 0) {
+          // 选择微信昵称
+          this.setData({
+            'userInfo.nickName': wxNickName,
+            editingNickName: false
+          });
+          (this as any).saveNickName(wxNickName);
+        } else if (res.tapIndex === 1) {
+          // 进入自定义昵称编辑状态
+          this.setData({ editingNickName: true });
+        }
+      }
+    });
+  },
+
+  /**
+   * 保存昵称到后端
+   */
+  saveNickName(nickName: string) {
+    if (!nickName) return;
+    const userInfo = {
+      ...this.data.userInfo,
+      nickName
+    };
+    showLoading('更新昵称...');
+    UserService.updateUserInfo(userInfo)
+      .then(updatedUser => {
+        wx.setStorageSync('userInfo', updatedUser);
+        this.setData({
+          userInfo: updatedUser,
+          editingNickName: false,
+          hasUserInfo: this.isUserInfoComplete()
+        });
+        hideLoading();
+        showToast('昵称已更新');
+      })
+      .catch(err => {
+        hideLoading();
+        showToast('昵称更新失败');
+        this.setData({ editingNickName: false });
+      });
+  },
+
+  /**
+   * 昵称输入完成（失焦或回车）
+   */
+  onNickNameConfirm(e) {
+    const nickName = e.detail.value;
+    if (!nickName) {
+      this.setData({ editingNickName: false });
+      return;
+    }
+    (this as any).saveNickName(nickName);
+  },
+
+  /**
+   * 输入昵称
+   */
+  onNickNameInput(e) {
+    const nickName = e.detail.value;
+    this.setData({
+      'userInfo.nickName': nickName
     });
   }
 }); 

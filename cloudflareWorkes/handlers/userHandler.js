@@ -101,6 +101,11 @@ export async function handleGetUserInfo(request, env) {
       return createErrorResponse('用户不存在', 404);
     }
     
+    // 拼接头像完整路径
+    if (user.avatarUrl && !user.avatarUrl.startsWith('http')) {
+      user.avatarUrl = env.R2_PUBLIC_URL + '/' + user.avatarUrl;
+    }
+    
     return createJsonResponse(user);
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
@@ -143,6 +148,11 @@ export async function handleUpdateUserInfo(request, env) {
     };
     
     await updateUser(env.DB, updatedUser);
+    
+    // 拼接头像完整路径
+    if (updatedUser.avatarUrl && !updatedUser.avatarUrl.startsWith('http')) {
+      updatedUser.avatarUrl = env.R2_PUBLIC_URL + '/' + updatedUser.avatarUrl;
+    }
     
     return createJsonResponse(updatedUser);
   } catch (error) {
@@ -297,6 +307,71 @@ export async function handleGetUserPhone(request, env) {
     return createJsonResponse(userPhone);
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
+  }
+}
+
+// 新增：用户上传头像
+export async function handleUpdateAvatar(request, env) {
+  try {
+    // 获取认证信息
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) {
+      return createErrorResponse('未提供token', 401);
+    }
+    // 验证token和获取用户信息
+    const loginInfo = await getLoginInfoByToken(env.DB, token);
+    if (!loginInfo) {
+      return createErrorResponse('无效的token', 401);
+    }
+    const user = await getUserByOpenid(env.DB, loginInfo.openid);
+    if (!user) {
+      return createErrorResponse('用户不存在', 404);
+    }
+    // 只允许POST
+    if (request.method !== 'POST') {
+      return createErrorResponse('请使用 POST 方法上传头像', 405);
+    }
+    // 解析formData
+    const formData = await request.formData();
+    const file = formData.get('file');
+    if (!file || !(file instanceof File)) {
+      return createErrorResponse('未找到头像文件', 400);
+    }
+    // 获取文件名和类型
+    const fileName = formData.get('fileName') || file.name;
+    const fileType = file.type;
+    const fileSize = file.size;
+    const folder = 'avatars';
+    // 生成带后缀的唯一文件名
+    const extIndex = fileName.lastIndexOf('.');
+    const baseName = extIndex !== -1 ? fileName.substring(0, extIndex) : fileName;
+    const ext = extIndex !== -1 ? fileName.substring(extIndex) : '';
+    const filePath = `${folder}/${baseName}_${Date.now()}${ext}`;
+    // 上传到 R2
+    const fileContent = await file.arrayBuffer();
+    await env.FILE_BUCKET.put(filePath, fileContent, {
+      httpMetadata: { contentType: fileType },
+      customMetadata: {
+        originalName: fileName,
+        size: fileSize.toString(),
+        uploadTime: new Date().toISOString(),
+        userId: user.id,
+        openid: user.openid,
+      },
+    });
+    // 更新用户头像
+    user.avatarUrl = filePath;
+    await updateUser(env.DB, user);
+    // 返回成功响应
+    return createJsonResponse({
+      success: true,
+      filePath,
+      url: `${env.R2_PUBLIC_URL}/${filePath}`
+    });
+  } catch (error) {
+    console.error('上传头像错误:', error);
+    return createErrorResponse(`上传头像失败: ${error.message}`, 500);
   }
 }
 
