@@ -38,6 +38,7 @@ Page<IPageData, IPageMethods & {
   onNickNameInput: (e: any) => void;
   onNickNameConfirm: (e: any) => void;
   saveAvatar: (filePath: string) => Promise<void>;
+  onInputChange: (e: any) => void;
 }>({
   data: {
     userInfo: null,
@@ -517,6 +518,11 @@ Page<IPageData, IPageMethods & {
       }
       // 否则直接保存（如公网 http(s) 链接）
       await (this as any).saveAvatar(localPath);
+      // 新增：同步判断 hasUserInfo
+      const nickName = this.data.userInfo?.nickName;
+      this.setData({
+        hasUserInfo: !!(nickName && localPath)
+      });
       return;
     }
     // 兜底：手动选择
@@ -533,6 +539,12 @@ Page<IPageData, IPageMethods & {
         showToast('头像上传失败');
       }
     }
+    // 新增：同步判断 hasUserInfo
+    const nickName = this.data.userInfo?.nickName;
+    const avatarUrl = this.data.userInfo?.avatarUrl;
+    this.setData({
+      hasUserInfo: !!(nickName && avatarUrl)
+    });
   },
 
   /**
@@ -560,29 +572,10 @@ Page<IPageData, IPageMethods & {
   },
 
   /**
-   * 点击昵称，弹出选择框
+   * 点击昵称，直接进入编辑状态
    */
   onNickNameEdit() {
-    const wxNickName = this.data.userInfo?.nickName || '';
-    wx.showActionSheet({
-      itemList: [
-        wxNickName ? `使用微信昵称（${wxNickName}）` : '使用微信昵称',
-        '自定义昵称'
-      ],
-      success: (res) => {
-        if (res.tapIndex === 0) {
-          // 选择微信昵称
-          this.setData({
-            'userInfo.nickName': wxNickName,
-            editingNickName: false
-          });
-          (this as any).saveNickName(wxNickName);
-        } else if (res.tapIndex === 1) {
-          // 进入自定义昵称编辑状态
-          this.setData({ editingNickName: true });
-        }
-      }
-    });
+    this.setData({ editingNickName: true });
   },
 
   /**
@@ -630,6 +623,18 @@ Page<IPageData, IPageMethods & {
    */
   onNickNameInput(e) {
     const nickName = e.detail.value;
+    this.setData({
+      'userInfo.nickName': nickName
+    });
+  },
+
+  onInputChange(e: any) {
+    const nickName = e.detail.value;
+    if (!nickName) {
+      this.setData({ editingNickName: false });
+      return;
+    }
+    (this as any).saveNickName(nickName);
     this.setData({
       'userInfo.nickName': nickName
     });

@@ -11,7 +11,16 @@
       </button>
       <view class="user-info-text">
         <block wx:if="{{editingNickName}}">
-          <input class="user-name-input" value="{{userInfo.nickName}}" focus="true" bindinput="onNickNameInput" bindblur="onNickNameConfirm" bindconfirm="onNickNameConfirm" placeholder="请输入昵称" />
+          <input
+            type="nickname"
+            class="nickname-input"
+            placeholder="请输入昵称"
+            value="{{userInfo.nickName}}"
+            focus="true"
+            bind:change="onInputChange"
+            bind:blur="onNickNameConfirm"
+            bind:confirm="onNickNameConfirm"
+          />
         </block>
         <block wx:else>
           <view class="user-name" bindtap="onNickNameEdit">{{userInfo.nickName || '点击设置昵称'}}</view>
