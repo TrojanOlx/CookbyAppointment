@@ -36,7 +36,7 @@
   <view class="menu-list">
     <view class="menu-section">
       <view class="menu-title">用户功能</view>
-      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/appointments/appointments">
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/appointment/appointment">
         <text class="menu-icon">📅</text>
         <text class="menu-text">我的预约</text>
         <text class="menu-arrow">></text>

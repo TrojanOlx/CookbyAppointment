@@ -491,9 +491,18 @@ Page<IPageData, IPageMethods & {
   // 页面导航
   navigateTo(e: WechatMiniprogram.TouchEvent) {
     const url = e.currentTarget.dataset.url;
-    wx.navigateTo({
-      url
-    });
+    const tabPages = [
+      '/pages/index/index',
+      '/pages/menu/menu',
+      '/pages/appointment/appointment',
+      '/pages/profile/profile'
+    ];
+    const isTabPage = tabPages.includes(url);
+    if (isTabPage) {
+      wx.switchTab({ url });
+    } else {
+      wx.navigateTo({ url });
+    }
   },
 
   /**
