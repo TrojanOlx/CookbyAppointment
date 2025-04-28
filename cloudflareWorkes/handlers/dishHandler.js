@@ -1,5 +1,20 @@
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
 
+// R2 文件服务辅助函数
+function processImageUrls(images, env) {
+  if (!images || !Array.isArray(images)) return [];
+  
+  return images.map(image => {
+    // 如果已经是完整URL，则不处理
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image;
+    }
+    
+    // 否则拼接完整URL
+    return `${env.R2_PUBLIC_URL}/${image}`;
+  });
+}
+
 // 获取菜品列表
 export async function handleGetDishList(request, env) {
   try {
@@ -23,8 +38,8 @@ export async function handleGetDishList(request, env) {
     const pageSize = parseInt(query.get('pageSize')) || 10;
     const type = query.get('type') || null;
     
-    // 查询菜品列表
-    const { total, dishes } = await getDishList(env.DB, page, pageSize, type);
+    // 查询菜品列表，传递env
+    const { total, dishes } = await getDishList(env.DB, page, pageSize, type, env);
     
     return createJsonResponse({ total, list: dishes });
   } catch (error) {
@@ -57,8 +72,8 @@ export async function handleGetDishDetail(request, env) {
       return createErrorResponse('缺少id参数');
     }
     
-    // 查询菜品详情
-    const dish = await getDishById(env.DB, id);
+    // 查询菜品详情，传递env
+    const dish = await getDishById(env.DB, id, env);
     
     if (!dish) {
       return createErrorResponse('菜品不存在', 404);
@@ -342,11 +357,11 @@ export async function handleSearchDish(request, env) {
     const pageSize = parseInt(query.get('pageSize')) || 10;
     
     if (!keyword) {
-      return createErrorResponse('缺少keyword参数');
+      return createErrorResponse('缺少关键词参数');
     }
     
-    // 搜索菜品
-    const { total, dishes } = await searchDishes(env.DB, keyword, page, pageSize);
+    // 查询菜品，传递env
+    const { total, dishes } = await searchDishes(env.DB, keyword, page, pageSize, env);
     
     return createJsonResponse({ total, list: dishes });
   } catch (error) {
@@ -373,19 +388,16 @@ export async function handleRecommendByIngredients(request, env) {
     
     // 获取请求数据
     const data = await request.json();
-    const { ingredientIds, page = 1, pageSize = 10 } = data;
+    const { ingredientIds } = data;
+    const page = data.page || 1;
+    const pageSize = data.pageSize || 10;
     
     if (!Array.isArray(ingredientIds) || ingredientIds.length === 0) {
-      return createErrorResponse('缺少或无效的ingredientIds参数');
+      return createErrorResponse('缺少或无效的食材ID列表');
     }
     
-    // 根据食材IDs推荐菜品
-    const { total, dishes } = await recommendDishesByIngredients(
-      env.DB, 
-      ingredientIds, 
-      page, 
-      pageSize
-    );
+    // 查询菜品，传递env
+    const { total, dishes } = await recommendDishesByIngredients(env.DB, ingredientIds, page, pageSize, env);
     
     return createJsonResponse({ total, list: dishes });
   } catch (error) {
@@ -610,7 +622,8 @@ async function validateTokenAndGetUser(db, token) {
   return { loginInfo, user };
 }
 
-async function getDishList(db, page, pageSize, type = null) {
+// 更新getDishList函数以处理图片URL
+async function getDishList(db, page, pageSize, type = null, env) {
   // 计算偏移量
   const offset = (page - 1) * pageSize;
   
@@ -639,9 +652,11 @@ async function getDishList(db, page, pageSize, type = null) {
   
   // 解析JSON字段
   const dishes = result.results.map(dish => {
+    const parsedImages = parseJsonField(dish.images, []);
+    
     return {
       ...dish,
-      images: parseJsonField(dish.images, []),
+      images: env ? processImageUrls(parsedImages, env) : parsedImages,
       steps: parseJsonField(dish.steps, [])
     };
   });
@@ -649,16 +664,19 @@ async function getDishList(db, page, pageSize, type = null) {
   return { total, dishes };
 }
 
-async function getDishById(db, id) {
+// 更新getDishById函数以处理图片URL
+async function getDishById(db, id, env) {
   const stmt = db.prepare('SELECT * FROM dishes WHERE id = ?').bind(id);
   const dish = await stmt.first();
   
   if (!dish) return null;
   
   // 解析JSON字段
+  const parsedImages = parseJsonField(dish.images, []);
+  
   return {
     ...dish,
-    images: parseJsonField(dish.images, []),
+    images: env ? processImageUrls(parsedImages, env) : parsedImages,
     steps: parseJsonField(dish.steps, [])
   };
 }
@@ -721,7 +739,8 @@ async function deleteDish(db, id) {
   return true;
 }
 
-async function searchDishes(db, keyword, page, pageSize) {
+// 修改searchDishes函数处理图片URL
+async function searchDishes(db, keyword, page, pageSize, env) {
   // 计算偏移量
   const offset = (page - 1) * pageSize;
   
@@ -753,9 +772,11 @@ async function searchDishes(db, keyword, page, pageSize) {
   
   // 解析JSON字段
   const dishes = result.results.map(dish => {
+    const parsedImages = parseJsonField(dish.images, []);
+    
     return {
       ...dish,
-      images: parseJsonField(dish.images, []),
+      images: env ? processImageUrls(parsedImages, env) : parsedImages,
       steps: parseJsonField(dish.steps, [])
     };
   });
@@ -763,7 +784,8 @@ async function searchDishes(db, keyword, page, pageSize) {
   return { total, dishes };
 }
 
-async function recommendDishesByIngredients(db, ingredientIds, page, pageSize) {
+// 修改recommendDishesByIngredients函数处理图片URL
+async function recommendDishesByIngredients(db, ingredientIds, page, pageSize, env) {
   // 计算偏移量
   const offset = (page - 1) * pageSize;
   
@@ -797,9 +819,11 @@ async function recommendDishesByIngredients(db, ingredientIds, page, pageSize) {
   
   // 解析JSON字段
   const dishes = result.results.map(dish => {
+    const parsedImages = parseJsonField(dish.images, []);
+    
     return {
       ...dish,
-      images: parseJsonField(dish.images, []),
+      images: env ? processImageUrls(parsedImages, env) : parsedImages,
       steps: parseJsonField(dish.steps, [])
     };
   });

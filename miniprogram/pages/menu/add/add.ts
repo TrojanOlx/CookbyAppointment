@@ -10,6 +10,39 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
+// 从URL中提取路径部分的辅助函数
+function extractPathFromUrl(url: string): string {
+  if (!url) return '';
+  
+  try {
+    // 由于微信小程序环境下没有全局URL类，使用字符串处理
+    // 移除协议和域名部分
+    const parts = url.split('//');
+    if (parts.length > 1) {
+      const pathParts = parts[1].split('/');
+      // 移除域名
+      pathParts.shift();
+      return pathParts.join('/');
+    }
+    
+    // 如果没有协议部分，检查是否以域名开头
+    const slashIndex = url.indexOf('/');
+    if (slashIndex !== -1) {
+      // 检查是否是首个斜杠
+      const firstPart = url.substring(0, slashIndex);
+      if (firstPart.includes('.')) {
+        // 可能是域名，移除域名部分
+        return url.substring(slashIndex + 1);
+      }
+    }
+    
+    return url;
+  } catch (error) {
+    console.error('提取路径失败:', error);
+    return url;
+  }
+}
+
 Page({
   /**
    * 页面的初始数据
@@ -294,8 +327,12 @@ Page({
               newFileName
             );
             
-            if (result.success && result.data && result.data.url) {
-              return result.data.url;
+            if (result.success && result.data && result.data.filePath) {
+              // 只存储路径，不存储域名
+              return result.data.filePath;
+            } else if (result.success && result.data && result.data.url) {
+              // 如果返回了url但没有filePath，从url中提取路径部分
+              return extractPathFromUrl(result.data.url);
             } else {
               console.error('上传图片失败:', result.error || '未知错误');
               return null;
@@ -324,7 +361,7 @@ Page({
         name: formData.name,
         type: dish.type,
         spicy: dish.spicy,
-        images: uploadedImages, // 使用上传后的图片URL数组
+        images: uploadedImages, // 使用上传后的图片路径数组
         ingredients: validIngredients,
         steps: validSteps,
         notice: formData.notice || '',

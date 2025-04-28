@@ -48,7 +48,7 @@ export async function handleUploadFile(request, env) {
     const folder = formData.get('folder') || 'default';
     
     // 生成文件存储路径
-    const filePath = `${folder}/${Date.now()}_${fileName}`;
+    const filePath = `${folder}/${fileName}_${Date.now()}`;
     
     // 读取文件内容
     const fileContent = await file.arrayBuffer();

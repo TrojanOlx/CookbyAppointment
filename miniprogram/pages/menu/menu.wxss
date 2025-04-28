@@ -6,6 +6,7 @@
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* 添加溢出隐藏 */
 }
 
 /* 类型选择器 */
@@ -99,13 +100,11 @@
 /* 菜品列表 */
 .dish-list {
   flex: 1;
-  padding: 20rpx;
-  padding-top: 140rpx; /* 为固定定位的类型选择器留出空间 */
-  padding-bottom: 120rpx; /* 为底部导航栏留出空间 */
   width: 100%;
   box-sizing: border-box;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch; /* 增加 iOS 滚动流畅度 */
+  padding: 20rpx;
+  padding-top: 140rpx; /* 为固定定位的类型选择器留出空间 */
+  height: calc(100vh - 120rpx); /* 减去类型选择器的高度 */
 }
 
 .dish-item {
@@ -200,4 +199,48 @@
   justify-content: center;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
   z-index: 100;
+}
+
+/* 加载状态样式 */
+.loading-container {
+  width: 100%;
+  padding: 20rpx 0 30rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 24rpx;
+}
+
+.loading-icon {
+  width: 40rpx;
+  height: 40rpx;
+  margin-right: 10rpx;
+  border: 4rpx solid #f0f0f0;
+  border-top: 4rpx solid #1AAD19;
+  border-radius: 50%;
+  animation: loading-rotate 1s linear infinite;
+}
+
+@keyframes loading-rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.no-more-tip {
+  color: #999;
+  font-size: 24rpx;
+  padding: 10rpx 0;
+  text-align: center;
 } 
