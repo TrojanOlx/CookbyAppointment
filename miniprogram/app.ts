@@ -61,27 +61,23 @@ App({
   
   // 注册页面跳转拦截器
   registerPageInterceptor() {
+    const app = this; // 保存 App 实例，防止 this 指向错误
     // 重写wx.navigateTo方法
     const originalNavigateTo = wx.navigateTo;
     Object.defineProperty(wx, 'navigateTo', {
       configurable: true,
       enumerable: true,
       writable: true,
-      value: <T extends WechatMiniprogram.NavigateToOption>(options: T) => {
+      value: function <T extends WechatMiniprogram.NavigateToOption>(options: T) {
         const { url } = options;
-        const path = this.getPathFromUrl(url);
-        
-        if (this.needLogin(path) && !isLoggedIn()) {
-          // 保存原始要跳转的路径，登录后可以返回
+        const path = app.getPathFromUrl(url);
+        if (app.needLogin(path) && !isLoggedIn()) {
           wx.setStorageSync('redirectUrl', url);
-          
           wx.showToast({
             title: '请先登录',
             icon: 'none',
             duration: 1500
           });
-          
-          // 跳转到登录页
           return new Promise<GeneralCallbackResult>((resolve) => {
             setTimeout(() => {
               wx.switchTab({
@@ -96,32 +92,26 @@ App({
             }, 1500);
           }) as any;
         } else {
-          return originalNavigateTo(options);
+          return originalNavigateTo.call(wx, options);
         }
       }
     });
-    
     // 重写wx.redirectTo方法
     const originalRedirectTo = wx.redirectTo;
     Object.defineProperty(wx, 'redirectTo', {
       configurable: true,
       enumerable: true,
       writable: true,
-      value: <T extends WechatMiniprogram.RedirectToOption>(options: T) => {
+      value: function <T extends WechatMiniprogram.RedirectToOption>(options: T) {
         const { url } = options;
-        const path = this.getPathFromUrl(url);
-        
-        if (this.needLogin(path) && !isLoggedIn()) {
-          // 保存原始要跳转的路径，登录后可以返回
+        const path = app.getPathFromUrl(url);
+        if (app.needLogin(path) && !isLoggedIn()) {
           wx.setStorageSync('redirectUrl', url);
-          
           wx.showToast({
             title: '请先登录',
             icon: 'none',
             duration: 1500
           });
-          
-          // 跳转到登录页
           return new Promise<GeneralCallbackResult>((resolve) => {
             setTimeout(() => {
               wx.switchTab({
@@ -136,31 +126,25 @@ App({
             }, 1500);
           }) as any;
         } else {
-          return originalRedirectTo(options);
+          return originalRedirectTo.call(wx, options);
         }
       }
     });
-    
     // 重写wx.switchTab方法
     const originalSwitchTab = wx.switchTab;
     Object.defineProperty(wx, 'switchTab', {
       configurable: true,
       enumerable: true,
       writable: true,
-      value: <T extends WechatMiniprogram.SwitchTabOption>(options: T) => {
+      value: function <T extends WechatMiniprogram.SwitchTabOption>(options: T) {
         const { url } = options;
-        const path = this.getPathFromUrl(url);
-        
-        if (this.needLogin(path) && !isLoggedIn()) {
-          // 由于switchTab不能带参数，无法保存原始跳转路径
-          
+        const path = app.getPathFromUrl(url);
+        if (app.needLogin(path) && !isLoggedIn()) {
           wx.showToast({
             title: '请先登录',
             icon: 'none',
             duration: 1500
           });
-          
-          // 跳转到登录页
           return new Promise<GeneralCallbackResult>((resolve) => {
             setTimeout(() => {
               originalSwitchTab({
@@ -173,34 +157,28 @@ App({
                 }
               });
             }, 1500);
-          }) as any;
+          });
         } else {
-          return originalSwitchTab(options);
+          return originalSwitchTab.call(wx, options);
         }
       }
     });
-    
     // 重写wx.reLaunch方法
     const originalReLaunch = wx.reLaunch;
     Object.defineProperty(wx, 'reLaunch', {
       configurable: true,
       enumerable: true,
       writable: true,
-      value: <T extends WechatMiniprogram.ReLaunchOption>(options: T) => {
+      value: function <T extends WechatMiniprogram.ReLaunchOption>(options: T) {
         const { url } = options;
-        const path = this.getPathFromUrl(url);
-        
-        if (this.needLogin(path) && !isLoggedIn()) {
-          // 保存原始要跳转的路径，登录后可以返回
+        const path = app.getPathFromUrl(url);
+        if (app.needLogin(path) && !isLoggedIn()) {
           wx.setStorageSync('redirectUrl', url);
-          
           wx.showToast({
             title: '请先登录',
             icon: 'none',
             duration: 1500
           });
-          
-          // 跳转到登录页
           return new Promise<GeneralCallbackResult>((resolve) => {
             setTimeout(() => {
               wx.switchTab({
@@ -215,7 +193,7 @@ App({
             }, 1500);
           }) as any;
         } else {
-          return originalReLaunch(options);
+          return originalReLaunch.call(wx, options);
         }
       }
     });

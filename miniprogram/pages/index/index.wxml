@@ -13,17 +13,17 @@
   <!-- 可滚动的内容部分 -->
   <scroll-view class="features-scroll" scroll-y enable-flex="true" enhanced="true" show-scrollbar="false">
     <view class="features">
-      <navigator url="/pages/menu/menu" open-type="switchTab" class="feature-item">
+      <view class="feature-item" bindtap="navigateToMenu">
         <view class="feature-icon menu-icon">🍳</view>
         <view class="feature-name">菜单</view>
         <view class="feature-desc">管理您喜爱的菜品</view>
-      </navigator>
+      </view>
       
-      <navigator url="/pages/appointment/appointment" open-type="switchTab" class="feature-item">
+      <view class="feature-item" bindtap="navigateToAppointment">
         <view class="feature-icon calendar-icon">📅</view>
         <view class="feature-name">预约</view>
         <view class="feature-desc">规划每日餐饮</view>
-      </navigator>
+      </view>
       
       <view class="feature-item" bindtap="navigateToInventory" data-url="/pages/inventory/inventory">
         <view class="feature-icon fridge-icon">🧊</view>
