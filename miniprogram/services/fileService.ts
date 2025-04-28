@@ -9,7 +9,7 @@ export class FileService {
     // 从http.ts中获取基础URL
     const BASE_URL = 'https://wx.oulongxing.com';
     
-    return new Promise((resolve, reject) => {
+    return new Promise((resolve) => {
       // 获取token
       const token = wx.getStorageSync('token') || '';
       
