@@ -1,6 +1,5 @@
 {
   "pages": [
-    "pages/privacy/privacy",
     "pages/index/index",
     "pages/menu/menu",
     "pages/menu/add/add",
@@ -58,9 +57,5 @@
   "requiredPrivateInfos": [
     "chooseLocation",
     "getLocation"
-  ],
-  "privacyPlugin": {
-    "version": "2.1",
-    "provider": "微信官方"
-  }
+  ]
 }
