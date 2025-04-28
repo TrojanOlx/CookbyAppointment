@@ -4,17 +4,6 @@ import { User } from '../../models/user';
 import { showToast, showLoading, hideLoading } from '../../utils/util';
 import { FileService } from '../../services/fileService';
 
-// 头像云存储基础URL（如有全局配置可替换）
-const R2_PUBLIC_URL = 'https://your-r2-public-url.com';
-
-/**
- * 获取头像展示用的完整URL
- */
-export function getAvatarUrl(avatarUrl: string): string {
-  if (!avatarUrl) return '/images/default-avatar.png';
-  return avatarUrl.startsWith('http') ? avatarUrl : `${R2_PUBLIC_URL}/${avatarUrl}`;
-}
-
 // 页面数据接口
 interface IPageData {
   userInfo: User | null;

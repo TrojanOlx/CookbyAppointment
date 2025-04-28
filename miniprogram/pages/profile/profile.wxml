@@ -7,7 +7,7 @@
     </block>
     <view wx:elif="{{userInfo}}" class="user-avatar-info">
       <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
-        <image referrerPolicy="no-referrer" class="avatar" src="{{getAvatarUrl(userInfo.avatarUrl)}}"></image>
+        <image referrerPolicy="no-referrer" class="avatar" src="{{userInfo.avatarUrl}}"></image>
       </button>
       <view class="user-info-text">
         <block wx:if="{{editingNickName}}">
