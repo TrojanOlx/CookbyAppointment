@@ -8,7 +8,7 @@
         <view wx:for="{{buttons}}" wx:key="index" class="btn weui-slideview__btn__wrp btn-{{index}} {{item.className}}">
           <view bind:tap="buttonTap" data-index="{{index}}" class="weui-slideview__btn {{item.extClass}}" aria-role="button">
             <view wx:if="{{!icon}}">{{item.text}}</view>
-            <image referrerPolicy="no-referrer" class="weui-slideview__btn__icon" wx:else src="{{item.src}}"/>
+            <image class="weui-slideview__btn__icon" wx:else src="{{item.src}}"/>
           </view>
         </view>
       </view>

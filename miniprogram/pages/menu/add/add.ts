@@ -1,6 +1,9 @@
 import { DishType, Dish, Ingredient, SpicyLevel } from '../../../models/dish';
 import { DishService } from '../../../services/dishService';
+import { FileService } from '../../../services/fileService';
 import { showSuccess, showError, showLoading, hideLoading, showToast } from '../../../utils/util';
+import cnchar from 'cnchar';
+import 'cnchar-poly'; // 引入多音字功能
 
 // 生成唯一ID
 function generateId(): string {
@@ -278,22 +281,73 @@ Page({
       return;
     }
 
-    // 构建保存的数据对象
-    const saveDish: Dish = {
-      id: dish.id || generateId(),
-      name: formData.name,
-      type: dish.type,
-      spicy: dish.spicy,
-      images: dish.images,
-      ingredients: validIngredients,
-      steps: validSteps,
-      notice: formData.notice || '',
-      remark: formData.remark || '',
-      reference: formData.reference || '',
-      createTime: dish.createTime || Date.now()
-    };
-
     try {
+      showLoading('处理图片中...');
+      
+      // 获取菜品名称的拼音首字母（小写）
+      const dishName = formData.name.trim();
+      const pinyinResult = cnchar.spell(dishName, 'first', 'low');
+      const pinyinInitials = Array.isArray(pinyinResult) ? pinyinResult.join('') : pinyinResult;
+      console.log('菜品拼音首字母:', pinyinInitials);
+      
+      // 处理并上传图片
+      let uploadedImages: string[] = [];
+      if (dish.images && dish.images.length > 0) {
+        const uploadPromises = dish.images.map(async (tempFilePath, index) => {
+          try {
+            // 提取原始文件扩展名
+            const fileExt = tempFilePath.substring(tempFilePath.lastIndexOf('.')).toLowerCase();
+            
+            // 生成新的文件名：拼音首字母 + 序号 + 原始扩展名
+            const newFileName = `${pinyinInitials}${index + 1}${fileExt}`;
+            console.log(`处理图片 ${index + 1}/${dish.images.length}:`, newFileName);
+            
+            // 上传图片到服务器
+            const result = await FileService.uploadFile(
+              tempFilePath,
+              'dishes', // 将图片上传到dishes文件夹
+              newFileName
+            );
+            
+            if (result.success && result.data && result.data.url) {
+              return result.data.url;
+            } else {
+              console.error('上传图片失败:', result.error || '未知错误');
+              return null;
+            }
+          } catch (error) {
+            console.error(`上传图片 ${index + 1} 失败:`, error);
+            return null;
+          }
+        });
+        
+        // 等待所有图片上传完成
+        const results = await Promise.all(uploadPromises);
+        uploadedImages = results.filter(url => url !== null) as string[];
+        
+        console.log('成功上传图片数量:', uploadedImages.length);
+        if (uploadedImages.length === 0 && dish.images.length > 0) {
+          hideLoading();
+          showError('图片上传失败，请重试');
+          return;
+        }
+      }
+      
+      // 构建保存的数据对象
+      const saveDish: Dish = {
+        id: dish.id || generateId(),
+        name: formData.name,
+        type: dish.type,
+        spicy: dish.spicy,
+        images: uploadedImages, // 使用上传后的图片URL数组
+        ingredients: validIngredients,
+        steps: validSteps,
+        notice: formData.notice || '',
+        remark: formData.remark || '',
+        reference: formData.reference || '',
+        createTime: dish.createTime || Date.now()
+      };
+
       showLoading(this.data.isEdit ? '更新中' : '添加中');
       
       // 保存或更新菜品
