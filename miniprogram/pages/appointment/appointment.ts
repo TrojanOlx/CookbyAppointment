@@ -1,11 +1,10 @@
-import { MealType, AppointmentStatus, Appointment as AppointmentModel } from '../../models/appointment';
+import { MealType } from '../../models/appointment';
 import { Dish } from '../../models/dish';
 import { AppointmentService } from '../../services/appointmentService';
-import { DishService } from '../../services/dishService';
-import { formatDate, getCurrentDate, getDaysInMonth, showConfirm, showSuccess, showLoading, hideLoading, showToast } from '../../utils/util';
+import { getCurrentDate, showConfirm, showSuccess, showLoading, hideLoading, showToast } from '../../utils/util';
 // 引入wx-calendar和农历插件
 const { WxCalendar } = require('@lspriv/wx-calendar/lib');
-const { LunarPlugin, LUNAR_PLUGIN_KEY } = require('@lspriv/wc-plugin-lunar');
+const { LunarPlugin } = require('@lspriv/wc-plugin-lunar');
 
 // 初始化日历插件
 WxCalendar.use(LunarPlugin);
@@ -39,7 +38,9 @@ Page({
     todayAppointments: [] as DisplayAppointment[], // 当前选中日期的预约
     plugins: [LunarPlugin],  // 使用农历插件
     safeAreaBottom: 0,
-    isLoading: false // 加载状态
+    isLoading: false, // 加载状态
+    firstDay: '', // 日历初始化时选中的第一天
+    lastDay: '' // 日历初始化时选中的最后一天
   },
 
   onLoad() {
@@ -52,17 +53,11 @@ Page({
     });
 
     console.log('初始化选择日期:', today);
-
-    this.updateCalendarMarks();
-    this.loadAppointments();
     this.setSafeArea();
   },
 
   onShow() {
     console.log('页面显示');
-    // 每次显示页面时重新加载预约数据
-    this.updateCalendarMarks();
-    
     // 加载当前选中日期的预约
     if (this.data.selectedDate) {
       this.loadAppointments();
@@ -101,22 +96,28 @@ Page({
 
   // 处理安全区域数据
   processSafeArea(systemInfo: WechatMiniprogram.SystemInfo) {
-    const safeAreaBottom = systemInfo.safeArea ? 
+    const safeAreaBottom = systemInfo.safeArea ?
       (systemInfo.screenHeight - systemInfo.safeArea.bottom) : 0;
-    
+
     this.setData({
       safeAreaBottom
     });
   },
 
   // 更新日历标记
-  async updateCalendarMarks() {
+  async updateCalendarMarks(firstDay: string, lastDay: string) {
+    console.log('更新日历标记');
     try {
       showLoading('加载数据中');
       this.setData({ isLoading: true });
-      
       // 获取所有预约
-      const result = await AppointmentService.getAppointmentList(1, 100);  // 获取足够多的预约
+      const result = await AppointmentService.getAppointmentList(
+        1,
+        100,
+        undefined,
+        firstDay,
+        lastDay
+      );
       const appointments = result.list;
 
       // 创建日期到预约类型的映射
@@ -134,7 +135,7 @@ Page({
         }
 
         const [year, month, day] = appointment.date.split('-').map(Number);
-        
+
         // 验证年月日值是否有效
         if (!year || !month || !day || month < 1 || month > 12 || day < 1 || day > 31) {
           console.warn('预约日期格式无效:', appointment.date);
@@ -174,21 +175,21 @@ Page({
           const year = parseInt(yearStr, 10);
           const month = parseInt(monthStr, 10);
           const day = parseInt(dayStr, 10);
-          
+
           // 验证年月日是有效的
-          if (isNaN(year) || isNaN(month) || isNaN(day) || 
-              year < 1900 || year > 2100 || 
-              month < 1 || month > 12 || 
-              day < 1 || day > 31) {
+          if (isNaN(year) || isNaN(month) || isNaN(day) ||
+            year < 1900 || year > 2100 ||
+            month < 1 || month > 12 ||
+            day < 1 || day > 31) {
             console.warn(`日期值无效: ${dateKey}`);
             continue;
           }
 
           // 计算预约的餐次数量
-          const mealCount = (meals.breakfast ? 1 : 0) + 
-                           (meals.lunch ? 1 : 0) + 
-                           (meals.dinner ? 1 : 0);
-                           
+          const mealCount = (meals.breakfast ? 1 : 0) +
+            (meals.lunch ? 1 : 0) +
+            (meals.dinner ? 1 : 0);
+
           // 如果有多个餐次预约，显示"预"
           if (mealCount > 1) {
             marks.push({
@@ -204,7 +205,7 @@ Page({
             if (meals.breakfast) {
               marks.push({
                 year,
-                month, 
+                month,
                 day,
                 type: 'corner',
                 text: '早',
@@ -259,7 +260,7 @@ Page({
 
       // 使用新的getAppointmentListByDate方法获取预约数据
       const result = await AppointmentService.getAppointmentListByDate(this.data.selectedDate);
-      
+
       // 按餐次分类预约
       const appointments = result.list;
       const displayAppointments: DisplayAppointment[] = [];
@@ -284,9 +285,9 @@ Page({
       });
 
       console.log('加载到的预约:', displayAppointments);
-      this.setData({ 
+      this.setData({
         todayAppointments: displayAppointments,
-        isLoading: false 
+        isLoading: false
       });
       hideLoading();
     } catch (error) {
@@ -314,32 +315,20 @@ Page({
         return;
       }
 
-      // 根据实际数据结构获取当前年月
-      let currentYear, currentMonth;
+      const { range } = e.detail;
+      const firstDay = `${range[0].year}-${range[0].month}-${range[0].day}`;
+      const lastDay = `${range[1].year}-${range[1].month}-${range[1].day}`;
 
-      if (e.detail.current) {
-        currentYear = e.detail.current.year;
-        currentMonth = e.detail.current.month;
-      } else if (e.detail.year && e.detail.month) {
-        currentYear = e.detail.year;
-        currentMonth = e.detail.month;
+      if (firstDay !== this.data.firstDay || lastDay !== this.data.lastDay) {
+        console.log('日历变化重新请求标记:', e.detail);
+        this.setData({
+          firstDay,
+          lastDay
+        });
+        this.updateCalendarMarks(firstDay, lastDay);
       }
-
-      // 验证年月是否有效
-      if (currentYear && currentMonth && 
-          typeof currentYear === 'number' && typeof currentMonth === 'number' &&
-          !isNaN(currentYear) && !isNaN(currentMonth)) {
-        console.log(`日历切换到 ${currentYear}年${currentMonth}月`);
-      } else {
-        console.warn('日历变化事件中的年月数据无效', e.detail);
-      }
-
-      // 不管怎样，更新标记
-      this.updateCalendarMarks();
     } catch (error) {
       console.error('处理日历变化事件时出错:', error);
-      // 即使出错也尝试更新标记
-      this.updateCalendarMarks();
     }
   },
 
@@ -364,9 +353,9 @@ Page({
       const { year, month, day } = e.detail.checked;
 
       // 验证年月日是否有效
-      if (!year || !month || !day || 
-          typeof year !== 'number' || typeof month !== 'number' || typeof day !== 'number' ||
-          isNaN(year) || isNaN(month) || isNaN(day)) {
+      if (!year || !month || !day ||
+        typeof year !== 'number' || typeof month !== 'number' || typeof day !== 'number' ||
+        isNaN(year) || isNaN(month) || isNaN(day)) {
         console.error('日历点击事件中的checked数据不完整或无效', e.detail.checked);
         return;
       }
@@ -422,9 +411,9 @@ Page({
           hideLoading();
           this.setData({ isLoading: false });
           showSuccess('删除成功');
-          
+
           // 重新加载数据
-          this.updateCalendarMarks();
+          this.updateCalendarMarks(this.data.firstDay, this.data.lastDay);
           this.loadAppointments();
         } else {
           throw new Error('删除失败');
@@ -440,20 +429,25 @@ Page({
 
   // 日历加载完成事件
   onCalendarLoad(e: any) {
-    console.log('日历加载完成完整数据:', e.detail);
+    console.log('日历加载完成完整数据:', e);
 
     // 从事件中获取当前视图信息
-    const { view, current } = e.detail;
+    const { view, checked, range } = e.detail;
 
     if (view) {
       console.log(`日历初始化视图: ${view}`);
     }
 
-    if (current && current.year && current.month) {
-      console.log(`日历初始化年月: ${current.year}年${current.month}月`);
-    }
+    const firstDay = `${range[0].year}-${range[0].month}-${range[0].day}`;
+    const lastDay = `${range[1].year}-${range[1].month}-${range[1].day}`;
+
+    this.setData({
+      firstDay,
+      lastDay
+    });
 
     // 日历加载完成后，确保标记已更新
-    this.updateCalendarMarks();
+    // todo: 需要加载 range 日期数据
+    this.updateCalendarMarks(firstDay, lastDay);
   },
 });

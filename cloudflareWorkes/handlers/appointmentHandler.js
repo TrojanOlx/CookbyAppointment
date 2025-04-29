@@ -133,37 +133,39 @@ export async function handleGetAppointmentList(request, env) {
     // 获取认证信息
     const authHeader = request.headers.get('Authorization') || '';
     const token = authHeader.replace('Bearer ', '');
-
+    
     if (!token) {
       return createErrorResponse('未提供token', 401);
     }
-
+    
     // 验证token和获取用户信息
     const { loginInfo, user } = await validateTokenAndGetUser(env.DB, token);
     if (!loginInfo || !user) {
       return createErrorResponse('无效的token或用户不存在', 401);
     }
-
+    
     // 获取查询参数
     const query = new URL(request.url).searchParams;
     const page = parseInt(query.get('page')) || 1;
     const pageSize = parseInt(query.get('pageSize')) || 10;
     const status = query.get('status') || null;
-    const date = query.get('date') || null;
-
+    const startDate = query.get('startDate') || null;
+    const endDate = query.get('endDate') || null;
+    
     // 普通用户只能查看自己的预约
     const userId = user.id;
-
+    
     // 查询预约列表
     const { total, appointments } = await getAppointmentList(
-      env.DB,
-      userId,
-      page,
-      pageSize,
-      status,
-      date
+      env.DB, 
+      userId, 
+      page, 
+      pageSize, 
+      status, 
+      startDate,
+      endDate
     );
-
+    
     return createJsonResponse({ total, list: appointments });
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
@@ -863,51 +865,55 @@ async function validateTokenAndGetUser(db, token) {
   return { loginInfo, user };
 }
 
-async function getAppointmentList(db, userId, page, pageSize, status = null, date = null) {
+async function getAppointmentList(db, userId, page, pageSize, status = null, startDate = null, endDate = null) {
   // 计算偏移量
   const offset = (page - 1) * pageSize;
-
+  
   // 构建SQL
   let countSql = 'SELECT COUNT(*) as total FROM appointments';
   let listSql = 'SELECT * FROM appointments';
   let params = [];
   let conditions = [];
-
+  
   // 添加用户过滤
   if (userId) {
     conditions.push('userId = ?');
     params.push(userId);
   }
-
+  
   // 添加状态过滤
   if (status) {
     conditions.push('status = ?');
     params.push(status);
   }
-
-  // 添加日期过滤
-  if (date) {
-    conditions.push('date = ?');
-    params.push(date);
+  
+  // 添加日期范围过滤
+  if (startDate) {
+    conditions.push('date >= ?');
+    params.push(startDate);
   }
-
+  if (endDate) {
+    conditions.push('date <= ?');
+    params.push(endDate);
+  }
+  
   // 组合条件
   if (conditions.length > 0) {
     countSql += ' WHERE ' + conditions.join(' AND ');
     listSql += ' WHERE ' + conditions.join(' AND ');
   }
-
+  
   // 添加排序和分页
   listSql += ' ORDER BY date DESC, createTime DESC LIMIT ? OFFSET ?';
-
+  
   // 获取总数
   const countStmt = db.prepare(countSql).bind(...params);
   const { total } = await countStmt.first();
-
+  
   // 获取列表
   const listStmt = db.prepare(listSql).bind(...params, pageSize, offset);
   const result = await listStmt.all();
-
+  
   return { total, appointments: result.results };
 }
 
