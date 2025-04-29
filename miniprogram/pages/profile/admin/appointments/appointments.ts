@@ -288,6 +288,7 @@ Page({
       // 使用AdminAppointmentService.getDateAppointments获取特定日期的预约
       const result = await AdminAppointmentService.getDateAppointments(1, 50, selectedDate);
       const dateAppointments = result.list;
+      console.log('dateAppointments:', dateAppointments);
       
       // 创建用户到餐次的映射
       const userAppointmentMap = new Map<string, UserAppointment>();
@@ -365,6 +366,7 @@ Page({
       }
 
       console.log(`加载到${userAppointments.length}个用户的预约`);
+      console.log('userAppointments:', userAppointments);
       
       this.setData({
         userAppointments,

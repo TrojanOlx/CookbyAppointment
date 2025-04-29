@@ -99,6 +99,7 @@ export async function handleGetDateAppointments(request, env) {
       page,
       pageSize,
       status,
+      date,
       date
     );
 
