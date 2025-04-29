@@ -12,7 +12,7 @@
             data-index="{{index}}">
         <view class="dish-header">
           <view class="dish-info">
-            <image class="dish-image" src="{{item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
+            <image referrerPolicy="no-referrer" class="dish-image" src="{{item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
             <view class="dish-details">
               <text class="dish-name">{{item.name}}</text>
               <view class="dish-tags">

@@ -324,24 +324,18 @@ export async function handleDeleteReview(request, env) {
 
 // 辅助函数 - 验证token并获取用户信息
 async function validateTokenAndGetUser(db, token) {
-  // 在login_info表中查询token
-  const loginInfoQuery = await db.prepare(`
-    SELECT * FROM login_info WHERE session_key = ? LIMIT 1
-  `).bind(token).all();
-  
-  const loginInfo = loginInfoQuery.results[0];
-  
+  // 验证token
+  const loginInfoStmt = db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token);
+  const loginInfo = await loginInfoStmt.first();
+
   if (!loginInfo) {
     return { loginInfo: null, user: null };
   }
-  
-  // 查询用户信息
-  const userQuery = await db.prepare(`
-    SELECT * FROM users WHERE openid = ? LIMIT 1
-  `).bind(loginInfo.openid).all();
-  
-  const user = userQuery.results[0];
-  
+
+  // 获取用户信息
+  const userStmt = db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid);
+  const user = await userStmt.first();
+
   return { loginInfo, user };
 }
 

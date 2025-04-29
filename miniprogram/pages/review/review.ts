@@ -57,7 +57,7 @@ Page({
       const dishes = appointment.dishes as Dish[];
       
       // 获取预约的评价列表
-      const reviews = await this.getAppointmentReviews(appointmentId);
+      const reviews = await AppointmentService.getAppointmentReviews(appointmentId);
       
       // 处理菜品和评价数据
       const dishesWithReviewStatus: DishWithReviewStatus[] = dishes.map(dish => {
@@ -93,28 +93,6 @@ Page({
       hideLoading();
       console.error('加载失败:', error);
       showToast('加载失败，请重试');
-    }
-  },
-
-  // 获取预约的所有评价
-  async getAppointmentReviews(appointmentId: string): Promise<any[]> {
-    try {
-      const res: any = await wx.request({
-        url: `${getApp<any>().globalData.apiBaseUrl}/api/review/appointment`,
-        method: 'GET',
-        data: { appointmentId },
-        header: {
-          'Authorization': `Bearer ${wx.getStorageSync('token')}`
-        }
-      });
-      
-      if (res.statusCode === 200 && res.data) {
-        return res.data.list || [];
-      }
-      return [];
-    } catch (error) {
-      console.error('获取评价列表失败:', error);
-      return [];
     }
   },
 

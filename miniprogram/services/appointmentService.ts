@@ -92,6 +92,12 @@ export class AppointmentService {
     });
   }
 
+  // 获取预约的所有评价
+  static async getAppointmentReviews(appointmentId: string): Promise<Review[]> {
+    const result = await get<{ list: Review[] }>('/api/review/appointment', { appointmentId });
+    return result.list || [];
+  }
+
   // 添加评价
   static async addReview(review: Partial<Review>): Promise<Review> {
     return post<Review>('/api/review/add', review);
