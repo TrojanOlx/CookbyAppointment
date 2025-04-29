@@ -248,124 +248,52 @@ Page({
 
   // 加载选定日期的预约
   async loadAppointments() {
-    try {
-      const { selectedDate } = this.data;
-      
-      // 验证日期格式
-      if (!selectedDate || typeof selectedDate !== 'string' || !selectedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-        console.warn('选定日期无效:', selectedDate);
-        
-        // 如果日期无效，使用当前日期
-        const today = getCurrentDate();
-        this.setData({ selectedDate: today, selectedDateDisplay: '今日', isLoading: false });
-        
-        console.log('使用今日日期:', today);
-        return;
-      }
+    if (!this.data.selectedDate) {
+      console.warn('没有选择日期');
+      return;
+    }
 
+    try {
       showLoading('加载预约中');
       this.setData({ isLoading: true });
 
-      console.log(`加载${selectedDate}的预约数据`);
+      // 使用新的getAppointmentListByDate方法获取预约数据
+      const result = await AppointmentService.getAppointmentListByDate(this.data.selectedDate);
       
-      // 获取当天所有预约
-      const result = await AppointmentService.getAppointmentList(1, 20, undefined, selectedDate);
-      const dateAppointments = result.list;
-      
-      // 转换为展示数据
-      const todayAppointments: DisplayAppointment[] = [];
-      
-      for (const appointment of dateAppointments) {
-        try {
-          // 获取预约详情
-          const appointmentDetail = await AppointmentService.getAppointmentDetail(appointment.id);
-          
-          // 检查dishes是否存在且是数组
-          if (!appointmentDetail.dishes || !Array.isArray(appointmentDetail.dishes)) {
-            console.warn('预约中菜品列表无效:', appointmentDetail);
-            continue;
-          }
-          
-          const dishList: Dish[] = [];
-          
-          // 判断dishes是字符串数组还是对象数组
-          if (appointmentDetail.dishes.length > 0) {
-            if (typeof appointmentDetail.dishes[0] === 'string') {
-              // 如果是字符串数组，需要获取每个菜品的详情
-              console.log('使用菜品ID数组，需要获取每个菜品详情');
-              for (const dishId of appointmentDetail.dishes as string[]) {
-                try {
-                  const dish = await DishService.getDishDetail(dishId);
-                  if (dish) {
-                    dishList.push(dish);
-                  } else {
-                    console.warn(`未找到菜品: ${dishId}`);
-                  }
-                } catch (error) {
-                  console.error(`获取菜品详情失败: ${dishId}`, error);
-                }
-              }
-            } else {
-              // 如果是对象数组，直接使用
-              console.log('使用API返回的完整菜品信息');
-              dishList.push(...(appointmentDetail.dishes as Dish[]));
-            }
-          }
+      // 按餐次分类预约
+      const appointments = result.list;
+      const displayAppointments: DisplayAppointment[] = [];
 
-          todayAppointments.push({
-            id: appointmentDetail.id,
-            mealType: appointmentDetail.mealType,
-            dishList
-          });
-        } catch (error) {
-          console.error(`获取预约详情失败: ${appointment.id}`, error);
-        }
+      // 遍历所有预约
+      for (const appointment of appointments) {
+        displayAppointments.push({
+          id: appointment.id,
+          mealType: appointment.mealType,
+          dishList: (appointment.dishes || []) as Dish[]
+        });
       }
 
-      // 按餐次排序
-      todayAppointments.sort((a, b) => {
-        const order = { [MealType.Breakfast]: 1, [MealType.Lunch]: 2, [MealType.Dinner]: 3 };
-        return order[a.mealType as MealType] - order[b.mealType as MealType];
+      // 按餐次排序：早餐 -> 午餐 -> 晚餐
+      displayAppointments.sort((a, b) => {
+        const mealOrder = {
+          [MealType.Breakfast]: 1,
+          [MealType.Lunch]: 2,
+          [MealType.Dinner]: 3
+        };
+        return mealOrder[a.mealType as MealType] - mealOrder[b.mealType as MealType];
       });
 
-      // 格式化选中日期的显示
-      let selectedDateDisplay = '今日';
-      if (selectedDate !== getCurrentDate()) {
-        try {
-          const date = new Date(selectedDate);
-          
-          // 验证日期对象是否有效
-          if (isNaN(date.getTime())) {
-            console.warn('无法创建有效的日期对象:', selectedDate);
-          } else {
-            selectedDateDisplay = `${date.getMonth() + 1}月${date.getDate()}日`;
-          }
-        } catch (error) {
-          console.error('格式化日期显示时出错:', error);
-        }
-      }
-
-      console.log(`加载到${todayAppointments.length}个预约`);
-      
-      this.setData({
-        todayAppointments,
-        selectedDateDisplay,
-        isLoading: false
+      console.log('加载到的预约:', displayAppointments);
+      this.setData({ 
+        todayAppointments: displayAppointments,
+        isLoading: false 
       });
-      
       hideLoading();
     } catch (error) {
       console.error('加载预约数据时出错:', error);
-      
-      // 发生错误时，至少确保有一个空列表显示
-      this.setData({
-        todayAppointments: [],
-        selectedDateDisplay: '今日',
-        isLoading: false
-      });
-      
+      this.setData({ isLoading: false });
       hideLoading();
-      showToast('获取预约数据失败');
+      showToast('加载预约失败');
     }
   },
 

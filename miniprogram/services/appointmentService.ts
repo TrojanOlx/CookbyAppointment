@@ -19,6 +19,17 @@ export class AppointmentService {
     });
   }
 
+  // 获取指定日期预约列表
+  static async getAppointmentListByDate(
+    date: string,
+    status?: string
+  ): Promise<{ total: number, list: Appointment[] }> {
+    return get<{ total: number, list: Appointment[] }>('/api/appointment/date', { 
+      date,
+      status
+    });
+  }
+
   // 获取预约详情
   static async getAppointmentDetail(id: string): Promise<Appointment> {
     return get<Appointment>('/api/appointment/detail', { id });
