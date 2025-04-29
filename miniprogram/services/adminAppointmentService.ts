@@ -9,13 +9,15 @@ export class AdminAppointmentService {
     page: number = 1, 
     pageSize: number = 10, 
     status?: string,
-    date?: string
+    startDate?: string,
+    endDate?: string
   ): Promise<{ total: number, list: Appointment[] }> {
     return get<{ total: number, list: Appointment[] }>('/api/admin/appointment/list', { 
       page, 
       pageSize, 
       status,
-      date
+      startDate,
+      endDate
     });
   }
 

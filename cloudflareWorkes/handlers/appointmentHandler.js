@@ -29,7 +29,16 @@ export async function handleGetAllAppointments(request, env) {
     const page = parseInt(query.get('page')) || 1;
     const pageSize = parseInt(query.get('pageSize')) || 10;
     const status = query.get('status') || null;
-    const date = query.get('date') || null;
+    const startDate = query.get('startDate') || null;
+    const endDate = query.get('endDate') || null;
+
+    // 验证日期格式
+    if (startDate && !startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return createErrorResponse('开始日期格式无效，应为YYYY-MM-DD', 400);
+    }
+    if (endDate && !endDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      return createErrorResponse('结束日期格式无效，应为YYYY-MM-DD', 400);
+    }
 
     // 查询所有预约列表
     const { total, appointments } = await getAppointmentList(
@@ -38,7 +47,8 @@ export async function handleGetAllAppointments(request, env) {
       page,
       pageSize,
       status,
-      date
+      startDate,
+      endDate
     );
 
     return createJsonResponse({ total, list: appointments });

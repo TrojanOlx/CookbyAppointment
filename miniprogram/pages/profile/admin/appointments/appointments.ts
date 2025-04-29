@@ -120,8 +120,26 @@ Page({
       showLoading('加载数据中');
       this.setData({ isLoading: true });
       
+      // 获取当前日历视图的月份范围
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      
+      // 计算日期范围：当前月份的前后各一个月
+      const startDate = `${currentYear}-${String(currentMonth - 1 || 12).padStart(2, '0')}-01`;
+      const endMonth = currentMonth + 1 > 12 ? 1 : currentMonth + 1;
+      const endYear = currentMonth + 1 > 12 ? currentYear + 1 : currentYear;
+      const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${new Date(endYear, endMonth, 0).getDate()}`;
+      
       // 获取所有预约
-      const result = await AdminAppointmentService.getAllAppointments(1, 100);  // 获取足够多的预约
+      const result = await AdminAppointmentService.getAllAppointments(
+        1,
+        100,
+        undefined,
+        startDate,
+        endDate
+      );
+      
       const appointments = result.list;
 
       // 创建日期到预约类型的映射
