@@ -33,10 +33,10 @@ export async function handleGetAllAppointments(request, env) {
     const endDate = query.get('endDate') || null;
 
     // 验证日期格式
-    if (startDate && !startDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    if (startDate && !isValidDateFormat(startDate)) {
       return createErrorResponse('开始日期格式无效，应为YYYY-MM-DD', 400);
     }
-    if (endDate && !endDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    if (endDate && !isValidDateFormat(endDate)) {
       return createErrorResponse('结束日期格式无效，应为YYYY-MM-DD', 400);
     }
 
@@ -87,7 +87,7 @@ export async function handleGetDateAppointments(request, env) {
     const date = query.get('date') || null;
 
     // 验证日期参数
-    if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    if (!date || !isValidDateFormat(date)) {
       // 如果没有提供有效的日期参数，返回空结果
       return createJsonResponse({ total: 0, list: [] });
     }
@@ -205,7 +205,7 @@ export async function handleGetAppointmentListByDate(request, env) {
     const status = query.get('status') || null;
     
     // 验证日期参数
-    if (!date || !date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    if (!date || !isValidDateFormat(date)) {
       return createErrorResponse('日期参数无效，格式应为YYYY-MM-DD', 400);
     }
     
@@ -340,7 +340,7 @@ export async function handleCreateAppointment(request, env) {
     }
 
     // 检查日期格式
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date)) {
+    if (!isValidDateFormat(data.date)) {
       return createErrorResponse('日期格式不正确，应为YYYY-MM-DD');
     }
 
@@ -1045,4 +1045,37 @@ function parseJsonField(field, defaultValue) {
 async function getUserById(db, userId) {
   const stmt = db.prepare('SELECT * FROM users WHERE id = ?').bind(userId);
   return await stmt.first();
+}
+
+// 在文件末尾添加日期验证函数
+function isValidDateFormat(dateStr) {
+  // 严格检查格式：YYYY-MM-DD
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return false;
+  }
+
+  // 解析年月日
+  const [year, month, day] = dateStr.split('-').map(Number);
+
+  // 验证年份范围（假设我们支持1900年到2100年）
+  if (year < 1900 || year > 2100) {
+    return false;
+  }
+
+  // 验证月份范围（01-12）
+  if (month < 1 || month > 12) {
+    return false;
+  }
+
+  // 获取指定年月的最后一天
+  const lastDayOfMonth = new Date(year, month, 0).getDate();
+
+  // 验证日期范围（01到当月最后一天）
+  if (day < 1 || day > lastDayOfMonth) {
+    return false;
+  }
+
+  // 确保月份和日期都是两位数
+  const formattedDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return formattedDate === dateStr;
 } 

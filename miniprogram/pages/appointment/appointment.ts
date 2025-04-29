@@ -316,8 +316,8 @@ Page({
       }
 
       const { range, checked } = e.detail;
-      const firstDay = `${range[0].year}-${range[0].month}-${range[0].day}`;
-      const lastDay = `${range[1].year}-${range[1].month}-${range[1].day}`;
+      const firstDay = `${range[0].year}-${String(range[0].month).padStart(2, '0')}-${String(range[0].day).padStart(2, '0')}`;
+      const lastDay = `${range[1].year}-${String(range[1].month).padStart(2, '0')}-${String(range[1].day).padStart(2, '0')}`;
 
       // 如果选中日期发生变化，则更新选中的日期
       if (firstDay !== this.data.firstDay || lastDay !== this.data.lastDay) {
@@ -454,8 +454,8 @@ Page({
       console.log(`日历初始化视图: ${view}`);
     }
 
-    const firstDay = `${range[0].year}-${range[0].month}-${range[0].day}`;
-    const lastDay = `${range[1].year}-${range[1].month}-${range[1].day}`;
+    const firstDay = `${range[0].year}-${String(range[0].month).padStart(2, '0')}-${String(range[0].day).padStart(2, '0')}`;
+    const lastDay = `${range[1].year}-${String(range[1].month).padStart(2, '0')}-${String(range[1].day).padStart(2, '0')}`;
 
     console.log('日历加载数据', firstDay, lastDay);
     this.setData({
@@ -478,7 +478,6 @@ Page({
     }
 
     // 日历加载完成后，确保标记已更新
-    // todo: 需要加载 range 日期数据
     this.updateCalendarMarks(firstDay, lastDay);
   },
 });
