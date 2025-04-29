@@ -1,4 +1,4 @@
-import { MealType } from '../../models/appointment';
+import { AppointmentStatus, MealType } from '../../models/appointment';
 import { Dish } from '../../models/dish';
 import { AppointmentService } from '../../services/appointmentService';
 import { getCurrentDate, showConfirm, showSuccess, showLoading, hideLoading, showToast } from '../../utils/util';
@@ -19,6 +19,7 @@ interface DisplayAppointment {
   id: string;
   mealType: string;
   dishList: Dish[];
+  status: AppointmentStatus;
 }
 
 interface MarkItem {
@@ -264,13 +265,13 @@ Page({
       // 按餐次分类预约
       const appointments = result.list;
       const displayAppointments: DisplayAppointment[] = [];
-
       // 遍历所有预约
       for (const appointment of appointments) {
         displayAppointments.push({
           id: appointment.id,
           mealType: appointment.mealType,
-          dishList: (appointment.dishes || []) as Dish[]
+          dishList: (appointment.dishes || []) as Dish[],
+          status: appointment.status || AppointmentStatus.Pending
         });
       }
 

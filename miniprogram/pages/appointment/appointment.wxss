@@ -244,3 +244,40 @@
   overflow: hidden;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
 }
+
+/* 预约状态通用样式 */
+.appointment-status {
+  font-size: 24rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 20rpx;
+  margin-left: 16rpx;
+  font-weight: 500;
+}
+
+/* 待确认状态 */
+.appointment-status.status-pending {
+  color: #ff9800;
+  background-color: rgba(255, 152, 0, 0.1);
+  border: 1rpx solid rgba(255, 152, 0, 0.3);
+}
+
+/* 已确认状态 */
+.appointment-status.status-confirmed {
+  color: #2196f3;
+  background-color: rgba(33, 150, 243, 0.1);
+  border: 1rpx solid rgba(33, 150, 243, 0.3);
+}
+
+/* 已完成状态 */
+.appointment-status.status-completed {
+  color: #4caf50;
+  background-color: rgba(76, 175, 80, 0.1);
+  border: 1rpx solid rgba(76, 175, 80, 0.3);
+}
+
+/* 已取消状态 */
+.appointment-status.status-cancelled {
+  color: #f44336;
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1rpx solid rgba(244, 67, 54, 0.3);
+}

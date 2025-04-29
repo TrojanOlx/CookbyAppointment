@@ -42,6 +42,7 @@
             <view class="meal-info">
               <text class="meal-type">{{item.mealType}}</text>
               <text class="dish-count">{{item.dishList.length}}道菜</text>
+              <text class="appointment-status status-{{item.status === '待确认' ? 'pending' : item.status === '已确认' ? 'confirmed' : item.status === '已完成' ? 'completed' : 'cancelled'}}">{{item.status}}</text>
             </view>
             <view class="meal-actions">
               <view class="action-btn edit" bindtap="editAppointment" data-id="{{item.id}}">
