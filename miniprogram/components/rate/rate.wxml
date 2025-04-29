@@ -1,0 +1,22 @@
+<view class="rate-container">
+  <view class="stars">
+    <view class="star {{value >= 1 ? 'active' : ''}}" bindtap="onTap" data-value="1">
+      <image src="{{value >= 1 ? '/images/star-active.png' : '/images/star-inactive.png'}}"></image>
+    </view>
+    <view class="star {{value >= 2 ? 'active' : ''}}" bindtap="onTap" data-value="2">
+      <image src="{{value >= 2 ? '/images/star-active.png' : '/images/star-inactive.png'}}"></image>
+    </view>
+    <view class="star {{value >= 3 ? 'active' : ''}}" bindtap="onTap" data-value="3">
+      <image src="{{value >= 3 ? '/images/star-active.png' : '/images/star-inactive.png'}}"></image>
+    </view>
+    <view class="star {{value >= 4 ? 'active' : ''}}" bindtap="onTap" data-value="4">
+      <image src="{{value >= 4 ? '/images/star-active.png' : '/images/star-inactive.png'}}"></image>
+    </view>
+    <view class="star {{value >= 5 ? 'active' : ''}}" bindtap="onTap" data-value="5">
+      <image src="{{value >= 5 ? '/images/star-active.png' : '/images/star-inactive.png'}}"></image>
+    </view>
+  </view>
+  <view class="rate-text" wx:if="{{showText}}">
+    <text>{{rateText[value-1] || '请评分'}}</text>
+  </view>
+</view> 

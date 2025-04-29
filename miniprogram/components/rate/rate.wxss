@@ -1,0 +1,30 @@
+.rate-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stars {
+  display: flex;
+  justify-content: center;
+}
+
+.star {
+  margin: 0 10rpx;
+  transition: all 0.2s ease;
+}
+
+.star.active {
+  transform: scale(1.1);
+}
+
+.star image {
+  width: 60rpx;
+  height: 60rpx;
+}
+
+.rate-text {
+  margin-top: 20rpx;
+  font-size: 28rpx;
+  color: #ffc107;
+} 

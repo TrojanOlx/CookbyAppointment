@@ -1,0 +1,86 @@
+<view class="container">
+  <view class="page-header">
+    <text class="appointment-info">{{date}} {{mealType}}</text>
+  </view>
+
+  <view class="dishes-list">
+    <block wx:if="{{dishes.length > 0}}">
+      <view class="dish-card {{currentDishIndex === index ? 'active' : ''}}" 
+            wx:for="{{dishes}}" 
+            wx:key="id"
+            bindtap="selectDish"
+            data-index="{{index}}">
+        <view class="dish-header">
+          <view class="dish-info">
+            <image class="dish-image" src="{{item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
+            <view class="dish-details">
+              <text class="dish-name">{{item.name}}</text>
+              <view class="dish-tags">
+                <text class="dish-tag type">{{item.type}}</text>
+                <text class="dish-tag spicy" wx:if="{{item.spicy !== '不辣'}}">{{item.spicy}}</text>
+              </view>
+            </view>
+          </view>
+          <view class="review-status">
+            <text class="{{item.reviewed ? 'reviewed' : 'not-reviewed'}}">{{item.reviewed ? '已评价' : '待评价'}}</text>
+          </view>
+        </view>
+      </view>
+    </block>
+    <view class="empty-state" wx:else>
+      <text class="empty-text">暂无可评价的菜品</text>
+    </view>
+  </view>
+
+  <view class="review-form" wx:if="{{currentDishIndex !== null && !dishes[currentDishIndex].reviewed}}">
+    <view class="form-title">菜品评价</view>
+    <view class="rating-section">
+      <text class="rating-title">评分</text>
+      <rate value="{{rating}}" bindchange="onRatingChange"></rate>
+    </view>
+    <view class="comment-section">
+      <text class="comment-title">评价内容</text>
+      <textarea class="comment-input" 
+                placeholder="请输入您对这道菜的评价..." 
+                value="{{content}}"
+                bindinput="onContentInput"
+                maxlength="200"></textarea>
+      <view class="comment-counter">{{content.length}}/200</view>
+    </view>
+    <view class="image-section">
+      <text class="image-title">上传图片（可选）</text>
+      <view class="image-uploader">
+        <view class="image-list">
+          <view class="image-item" wx:for="{{images}}" wx:key="*this">
+            <image class="uploaded-image" src="{{item}}" mode="aspectFill"></image>
+            <view class="delete-btn" catchtap="deleteImage" data-index="{{index}}">×</view>
+          </view>
+          <view class="upload-btn" bindtap="chooseImage" wx:if="{{images.length < 3}}">
+            <text class="upload-icon">+</text>
+          </view>
+        </view>
+      </view>
+    </view>
+    <button class="submit-btn" bindtap="submitReview" disabled="{{!rating}}">提交评价</button>
+  </view>
+
+  <view class="review-result" wx:elif="{{currentDishIndex !== null && dishes[currentDishIndex].reviewed}}">
+    <view class="result-title">您已完成评价</view>
+    <view class="result-rating">
+      <rate value="{{dishes[currentDishIndex].rating}}" disabled="{{true}}"></rate>
+    </view>
+    <view class="result-content" wx:if="{{dishes[currentDishIndex].content}}">
+      <text>{{dishes[currentDishIndex].content}}</text>
+    </view>
+    <view class="result-images" wx:if="{{dishes[currentDishIndex].images && dishes[currentDishIndex].images.length > 0}}">
+      <image wx:for="{{dishes[currentDishIndex].images}}" wx:key="*this" src="{{item}}" mode="aspectFill" bindtap="previewImage" data-url="{{item}}"></image>
+    </view>
+    <view class="result-time">
+      <text>评价时间：{{dishes[currentDishIndex].createTimeFormat}}</text>
+    </view>
+  </view>
+
+  <view class="empty-form" wx:else>
+    <text>请选择菜品进行评价</text>
+  </view>
+</view> 
