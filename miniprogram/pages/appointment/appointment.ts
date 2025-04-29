@@ -198,101 +198,102 @@ Page({
               month,
               day,
               type: 'corner',
-              text: '预',
-              style: { color: '#4CAF50' } // 绿色
+              color: '#ffffff',
+              bgColor: '#4CAF50',
+              text: '预'
             });
-          } else {
-            // 只有一个餐次预约时，显示具体是哪一餐
+          }
+          // 如果只有一个餐次预约，显示相应的餐次标记
+          else {
             if (meals.breakfast) {
               marks.push({
                 year,
                 month,
                 day,
-                type: 'corner',
-                text: '早',
-                style: { color: '#2196F3' } // 蓝色
+                type: 'dot',
+                color: '#ff9800'  // 早餐用橙色标记
               });
             } else if (meals.lunch) {
               marks.push({
                 year,
                 month,
                 day,
-                type: 'corner',
-                text: '午',
-                style: { color: '#FF9800' } // 橙色
+                type: 'dot',
+                color: '#2196f3'  // 午餐用蓝色标记
               });
             } else if (meals.dinner) {
               marks.push({
                 year,
                 month,
                 day,
-                type: 'corner',
-                text: '晚',
-                style: { color: '#9C27B0' } // 紫色
+                type: 'dot',
+                color: '#9c27b0'  // 晚餐用紫色标记
               });
             }
           }
         } catch (error) {
-          console.error(`处理日期标记时出错: ${dateKey}`, error);
+          console.error(`处理日期标记时出错 ${dateKey}:`, error);
         }
       }
 
-      console.log('设置日历标记:', marks);
-      this.setData({ markedDates: marks, isLoading: false });
+      // 更新日历标记
+      this.setData({
+        markedDates: marks,
+        isLoading: false
+      });
+
       hideLoading();
     } catch (error) {
-      console.error('更新日历标记时出错:', error);
+      console.error('更新日历标记失败:', error);
       this.setData({ isLoading: false });
       hideLoading();
-      showToast('获取预约数据失败');
+      showToast('加载数据失败');
     }
   },
 
-  // 加载选定日期的预约
+  // 加载预约
   async loadAppointments() {
+    console.log('加载预约数据:', this.data.selectedDate);
     if (!this.data.selectedDate) {
-      console.warn('没有选择日期');
       return;
     }
 
     try {
-      showLoading('加载预约中');
+      showLoading('加载中');
       this.setData({ isLoading: true });
 
-      // 使用新的getAppointmentListByDate方法获取预约数据
+      // 调用API获取当天预约
       const result = await AppointmentService.getAppointmentListByDate(this.data.selectedDate);
+      console.log('预约数据:', result);
 
-      // 按餐次分类预约
-      const appointments = result.list;
-      const displayAppointments: DisplayAppointment[] = [];
-      // 遍历所有预约
-      for (const appointment of appointments) {
-        displayAppointments.push({
-          id: appointment.id,
-          mealType: appointment.mealType,
-          dishList: (appointment.dishes || []) as Dish[],
-          status: appointment.status || AppointmentStatus.Pending
-        });
-      }
+      // 处理数据
+      const appointments = result.list.map((item: any) => ({
+        id: item.id,
+        mealType: item.mealType,
+        dishList: item.dishes || [],
+        status: item.status || '待确认'
+      }));
 
-      // 按餐次排序：早餐 -> 午餐 -> 晚餐
-      displayAppointments.sort((a, b) => {
-        const mealOrder = {
-          [MealType.Breakfast]: 1,
-          [MealType.Lunch]: 2,
-          [MealType.Dinner]: 3
-        };
-        return mealOrder[a.mealType as MealType] - mealOrder[b.mealType as MealType];
+      // 根据餐次顺序排序
+      const mealTypeOrder = {
+        [MealType.Breakfast]: 1,
+        [MealType.Lunch]: 2,
+        [MealType.Dinner]: 3
+      };
+
+      appointments.sort((a: DisplayAppointment, b: DisplayAppointment) => {
+        return mealTypeOrder[a.mealType as MealType] - mealTypeOrder[b.mealType as MealType];
       });
 
-      console.log('加载到的预约:', displayAppointments);
+      // 更新页面数据
       this.setData({
-        todayAppointments: displayAppointments,
+        todayAppointments: appointments,
         isLoading: false
       });
+
       hideLoading();
     } catch (error) {
-      console.error('加载预约数据时出错:', error);
+      console.error('加载预约数据失败:', error);
       this.setData({ isLoading: false });
       hideLoading();
       showToast('加载预约失败');
@@ -301,101 +302,75 @@ Page({
 
   // 日历视图变化事件
   onViewChange(e: any) {
-    const { view } = e.detail;
-    console.log(`视图切换到: ${view}`);
+    console.log('视图变化:', e.detail);
+    // 监听日历视图变化
   },
 
-  // 日历变化事件（月份切换等）
+  // 日历选择月份变化事件
   onCalendarChange(e: any) {
-    console.log('日历变化事件完整数据:', e.detail);
-
-    try {
-      // 检查事件数据是否存在
-      if (!e || !e.detail) {
-        console.error('日历变化事件数据无效');
-        return;
-      }
-
-      const { range, checked } = e.detail;
-      const firstDay = `${range[0].year}-${String(range[0].month).padStart(2, '0')}-${String(range[0].day).padStart(2, '0')}`;
-      const lastDay = `${range[1].year}-${String(range[1].month).padStart(2, '0')}-${String(range[1].day).padStart(2, '0')}`;
-
-      // 如果选中日期发生变化，则更新选中的日期
-      if (firstDay !== this.data.firstDay || lastDay !== this.data.lastDay) {
-        console.log('日历变化重新请求标记:', e.detail);
-        this.setData({
-          firstDay,
-          lastDay
-        });
-        this.updateCalendarMarks(firstDay, lastDay);
-      }
-
-      // 如果选中今日，则更新选中的日期
-      if(checked.today){
-        console.log('选中今日');
-        // 从 checked 中获取年月日
-        const { year, month, day } = e.detail.checked;
-        const month2Digits = String(month).padStart(2, '0');
-        const day2Digits = String(day).padStart(2, '0');
-        const selectedDate = `${year}-${month2Digits}-${day2Digits}`;
-        this.setData({
-          selectedDate: selectedDate
-        });
-        this.loadAppointments();
-      }
-
-    } catch (error) {
-      console.error('处理日历变化事件时出错:', error);
+    console.log('日历变化事件:', e.detail);
+    const { range } = e.detail;
+    
+    // 确保range存在且包含起止日期
+    if (range && range.length >= 2) {
+      const startYear = range[0].year;
+      const startMonth = range[0].month;
+      const startDay = range[0].day;
+      
+      const endYear = range[1].year;
+      const endMonth = range[1].month;
+      const endDay = range[1].day;
+      
+      // 格式化为YYYY-MM-DD
+      const startDate = `${startYear}-${String(startMonth).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+      const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-${String(endDay).padStart(2, '0')}`;
+      
+      console.log('日历范围更新:', startDate, '到', endDate);
+      
+      // 存储当前查看的日期范围
+      this.setData({
+        firstDay: startDate,
+        lastDay: endDate
+      });
+      
+      // 更新日历标记
+      this.updateCalendarMarks(startDate, endDate);
     }
   },
 
-  // 日历选择日期事件处理
+  // 日历选择日期事件
   onCalendarSelect(e: any) {
-    console.log('日历点击事件完整数据:', e.detail);
-
-    try {
-      // 检查事件数据是否存在
-      if (!e || !e.detail) {
-        console.error('日历点击事件数据无效');
-        return;
-      }
-
-      // 新版 wx-calendar 返回的格式是 e.detail.checked
-      if (!e.detail.checked) {
-        console.error('日历点击事件未返回checked数据', e.detail);
-        return;
-      }
-
-      // 从 checked 中获取年月日
-      const { year, month, day } = e.detail.checked;
-
-      // 验证年月日是否有效
-      if (!year || !month || !day ||
-        typeof year !== 'number' || typeof month !== 'number' || typeof day !== 'number' ||
-        isNaN(year) || isNaN(month) || isNaN(day)) {
-        console.error('日历点击事件中的checked数据不完整或无效', e.detail.checked);
-        return;
-      }
-
-      // 格式化选中的日期为 YYYY-MM-DD 格式
+    console.log('日历选择事件:', e.detail);
+    const { value } = e.detail;
+    
+    if (value) {
+      const { year, month, day } = value;
+      
+      // 格式化选中的日期
       const month2Digits = String(month).padStart(2, '0');
       const day2Digits = String(day).padStart(2, '0');
       const selectedDate = `${year}-${month2Digits}-${day2Digits}`;
-
+      
       console.log('选中日期:', selectedDate);
-
-      // 更新数据并加载该日期的预约
-      this.setData({ selectedDate }, () => {
-        this.loadAppointments();
-      });
-
-      // checked中可能包含农历信息
-      const lunar = e.detail.checked.lunar;
-      if (lunar) {
-        console.log('农历信息:', lunar);
+      
+      // 设置日期显示文本
+      const today = getCurrentDate();
+      let dateDisplay = '';
+      
+      if (selectedDate === today) {
+        dateDisplay = '今日';
+      } else {
+        dateDisplay = `${month}月${day}日`;
       }
-    } catch (error) {
-      console.error('处理日历选择事件时出错:', error);
+      
+      // 更新数据
+      this.setData({
+        selectedDate,
+        selectedDateDisplay: dateDisplay
+      });
+      
+      // 加载当天预约
+      this.loadAppointments();
     }
   },
 
@@ -481,4 +456,12 @@ Page({
     // 日历加载完成后，确保标记已更新
     this.updateCalendarMarks(firstDay, lastDay);
   },
+
+  // 前往评价页面
+  goToReview(e: any) {
+    const appointmentId = e.currentTarget.dataset.id;
+    wx.navigateTo({
+      url: `/pages/review/review?appointmentId=${appointmentId}`
+    });
+  }
 });
