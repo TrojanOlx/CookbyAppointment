@@ -53,18 +53,36 @@ export const request = <T = any>(options: RequestOptions): Promise<T> => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data as T);
         } else if (res.statusCode === 401 || res.statusCode === 403) {
-          // token失效或权限不足，清除本地token
+          // token失效或权限不足，清除本地token和用户信息
           wx.removeStorageSync('token');
           wx.removeStorageSync('userInfo');
           
           // 构建错误信息
           const errMsg = res.statusCode === 401 ? '登录已过期，请重新登录' : '权限不足';
           
+          // 保存当前页面路径
+          const pages = getCurrentPages();
+          const currentPage = pages[pages.length - 1];
+          const currentPath = `/${currentPage.route}`;
+          
+          // 如果当前不在登录页面，则保存当前页面路径用于重新登录后跳回
+          if (!currentPath.includes('/pages/profile/profile')) {
+            wx.setStorageSync('redirectUrl', currentPath);
+          }
+          
           // 提示用户
-          wx.showToast({
-            title: errMsg,
-            icon: 'none',
-            duration: 2000
+          wx.showModal({
+            title: '提示',
+            content: errMsg,
+            showCancel: false,
+            success: () => {
+              // 如果当前不在登录页面，则跳转到登录页面
+              if (!currentPath.includes('/pages/profile/profile')) {
+                wx.switchTab({
+                  url: '/pages/profile/profile'
+                });
+              }
+            }
           });
           
           reject(new Error(errMsg));
