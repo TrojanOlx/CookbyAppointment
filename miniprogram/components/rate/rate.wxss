@@ -12,15 +12,19 @@
 .star {
   margin: 0 10rpx;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .star.active {
   transform: scale(1.1);
 }
 
-.star image {
-  width: 60rpx;
-  height: 60rpx;
+.star-icon {
+  font-size: 60rpx;
+  line-height: 1;
+  color: #ffc107;
 }
 
 .rate-text {

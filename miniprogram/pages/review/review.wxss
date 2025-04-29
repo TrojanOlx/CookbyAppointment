@@ -1,37 +1,50 @@
 .container {
   min-height: 100vh;
+  width: 100%;
   background-color: #f8f9fa;
-  padding: 0 30rpx 50rpx;
+  padding: 0;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 /* 页面头部 */
 .page-header {
-  padding: 30rpx 0;
+  width: 100%;
+  padding: 30rpx 20rpx;
   border-bottom: 1rpx solid #f0f0f0;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .appointment-info {
   font-size: 34rpx;
   font-weight: 600;
   color: #333;
+  text-align: center;
 }
 
 /* 菜品列表 */
 .dishes-list {
+  width: 100%;
   margin-top: 30rpx;
   margin-bottom: 30rpx;
+  padding: 0 20rpx;
+  box-sizing: border-box;
 }
 
 .dish-card {
+  width: 100%;
   background-color: #fff;
   border-radius: 16rpx;
   padding: 24rpx;
   margin-bottom: 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  box-sizing: border-box;
 }
 
 .dish-card.active {
@@ -44,6 +57,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  width: 100%;
 }
 
 .dish-info {
@@ -119,11 +133,13 @@
 
 /* 评价表单 */
 .review-form {
+  width: 100%;
   background-color: #fff;
   border-radius: 16rpx;
-  padding: 30rpx;
+  padding: 30rpx 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
   margin-bottom: 30rpx;
+  box-sizing: border-box;
 }
 
 .form-title {
@@ -132,10 +148,13 @@
   color: #333;
   margin-bottom: 30rpx;
   text-align: center;
+  width: 100%;
 }
 
 .rating-section, .comment-section, .image-section {
+  width: 100%;
   margin-bottom: 30rpx;
+  box-sizing: border-box;
 }
 
 .rating-title, .comment-title, .image-title {
@@ -143,6 +162,7 @@
   color: #666;
   margin-bottom: 20rpx;
   display: block;
+  width: 100%;
 }
 
 .comment-input {
@@ -162,11 +182,13 @@
   font-size: 24rpx;
   color: #999;
   margin-top: 10rpx;
+  width: 100%;
 }
 
 .image-list {
   display: flex;
   flex-wrap: wrap;
+  width: 100%;
 }
 
 .image-item {
@@ -224,6 +246,7 @@
   border-radius: 8rpx;
   width: 100%;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .submit-btn[disabled] {
@@ -233,10 +256,12 @@
 
 /* 评价结果 */
 .review-result {
+  width: 100%;
   background-color: #fff;
   border-radius: 16rpx;
-  padding: 30rpx;
+  padding: 30rpx 20rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
+  box-sizing: border-box;
 }
 
 .result-title {
@@ -245,15 +270,18 @@
   color: #333;
   margin-bottom: 30rpx;
   text-align: center;
+  width: 100%;
 }
 
 .result-rating {
   margin-bottom: 30rpx;
   display: flex;
   justify-content: center;
+  width: 100%;
 }
 
 .result-content {
+  width: 100%;
   background-color: #f8f9fa;
   border-radius: 8rpx;
   padding: 20rpx;
@@ -261,12 +289,15 @@
   font-size: 28rpx;
   color: #666;
   line-height: 1.6;
+  box-sizing: border-box;
 }
 
 .result-images {
+  width: 100%;
   display: flex;
   flex-wrap: wrap;
   margin-bottom: 20rpx;
+  box-sizing: border-box;
 }
 
 .result-images image {
@@ -278,17 +309,47 @@
 }
 
 .result-time {
+  width: 100%;
   font-size: 24rpx;
   color: #999;
   text-align: right;
+  box-sizing: border-box;
 }
 
 /* 空状态 */
-.empty-state, .empty-form {
+.empty-state {
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 60rpx 0;
   color: #999;
   font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+/* 空表单 */
+.empty-form {
+  width: 100%;
+  padding: 60rpx 20rpx;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+/* 菜品部分 */
+.dishes-section {
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* 评价内容部分 */
+.review-content {
+  width: 100%;
+  padding: 0 20rpx;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  margin-bottom: 30rpx;
 } 

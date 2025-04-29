@@ -66,12 +66,22 @@ Page({
         
         // 添加评价状态
         if (review) {
+          // 过滤掉无效的图片URL
+          let filteredImages = review.images || [];
+          if (Array.isArray(filteredImages)) {
+            filteredImages = filteredImages.filter(img => 
+              typeof img === 'string' && img.trim() !== '' && !img.includes('[')
+            );
+          } else {
+            filteredImages = [];
+          }
+          
           return {
             ...dish,
             reviewed: true,
             rating: review.rating,
             content: review.content,
-            images: review.images,
+            images: filteredImages,
             createTimeFormat: formatTime(new Date(review.createTime))
           };
         } else {
@@ -199,11 +209,20 @@ Page({
   // 预览图片
   previewImage(e: any) {
     const url = e.currentTarget.dataset.url;
-    const images = this.data.dishes[this.data.currentDishIndex as number].images || [];
+    const currentDishIndex = this.data.currentDishIndex as number;
+    const images = this.data.dishes[currentDishIndex].images || [];
+    
+    // 确保所有图片URL格式正确
+    const validImages = images.filter(img => typeof img === 'string' && img.trim() !== '' && !img.includes('['));
+    
+    if (validImages.length === 0) {
+      showToast('暂无可预览的图片');
+      return;
+    }
     
     wx.previewImage({
       current: url,
-      urls: images
+      urls: validImages
     });
   },
 
