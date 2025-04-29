@@ -86,6 +86,11 @@
 
   <!-- 设置选项 -->
   <view class="settings">
+    <view class="menu-item" bindtap="clearCache">
+      <text class="menu-icon">🗑️</text>
+      <text class="menu-text">清除缓存</text>
+      <text class="menu-arrow">></text>
+    </view>
     <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/settings/settings">
       <text class="menu-icon">⚙️</text>
       <text class="menu-text">设置</text>

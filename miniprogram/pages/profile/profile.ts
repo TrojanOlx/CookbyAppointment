@@ -30,6 +30,7 @@ interface IPageMethods {
   checkAndRedirect: (redirectUrl: string) => void;
   saveNickName: (nickName: string) => void;
   saveAvatar: (filePath: string) => Promise<void>;
+  clearCache: () => void;
 }
 
 Page<IPageData, IPageMethods & {
@@ -646,6 +647,53 @@ Page<IPageData, IPageMethods & {
     (this as any).saveNickName(nickName);
     this.setData({
       'userInfo.nickName': nickName
+    });
+  },
+
+  // 清除缓存
+  clearCache() {
+    wx.showModal({
+      title: '清除缓存',
+      content: '确定要清除本地缓存吗？清除后需要重新登录',
+      success: (res) => {
+        if (res.confirm) {
+          try {
+            // 清除本地缓存
+            wx.clearStorageSync();
+            
+            // 重置页面数据
+            this.setData({
+              userInfo: null,
+              isAdmin: false,
+              hasUserInfo: false,
+              openid: null,
+              isLoggingIn: false,
+              editingNickName: false
+            });
+            
+            // 显示成功提示
+            wx.showToast({
+              title: '缓存已清除',
+              icon: 'success',
+              duration: 2000
+            });
+            
+            // 2秒后重启小程序
+            setTimeout(() => {
+              wx.reLaunch({
+                url: '/pages/index/index'
+              });
+            }, 2000);
+          } catch (e) {
+            console.error('清除缓存失败:', e);
+            wx.showToast({
+              title: '清除缓存失败',
+              icon: 'error',
+              duration: 2000
+            });
+          }
+        }
+      }
     });
   }
 }); 
