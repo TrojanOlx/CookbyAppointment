@@ -315,10 +315,11 @@ Page({
         return;
       }
 
-      const { range } = e.detail;
+      const { range, checked } = e.detail;
       const firstDay = `${range[0].year}-${range[0].month}-${range[0].day}`;
       const lastDay = `${range[1].year}-${range[1].month}-${range[1].day}`;
 
+      // 如果选中日期发生变化，则更新选中的日期
       if (firstDay !== this.data.firstDay || lastDay !== this.data.lastDay) {
         console.log('日历变化重新请求标记:', e.detail);
         this.setData({
@@ -327,6 +328,21 @@ Page({
         });
         this.updateCalendarMarks(firstDay, lastDay);
       }
+
+      // 如果选中今日，则更新选中的日期
+      if(checked.today){
+        console.log('选中今日');
+        // 从 checked 中获取年月日
+        const { year, month, day } = e.detail.checked;
+        const month2Digits = String(month).padStart(2, '0');
+        const day2Digits = String(day).padStart(2, '0');
+        const selectedDate = `${year}-${month2Digits}-${day2Digits}`;
+        this.setData({
+          selectedDate: selectedDate
+        });
+        this.loadAppointments();
+      }
+
     } catch (error) {
       console.error('处理日历变化事件时出错:', error);
     }
@@ -441,10 +457,25 @@ Page({
     const firstDay = `${range[0].year}-${range[0].month}-${range[0].day}`;
     const lastDay = `${range[1].year}-${range[1].month}-${range[1].day}`;
 
+    console.log('日历加载数据', firstDay, lastDay);
     this.setData({
       firstDay,
       lastDay
     });
+    console.log('日历加载数据today:', checked.today);
+
+    if(checked.today){
+      console.log('选中今日');
+      // 从 checked 中获取年月日
+      const { year, month, day } = e.detail.checked;
+      const month2Digits = String(month).padStart(2, '0');
+      const day2Digits = String(day).padStart(2, '0');
+      const selectedDate = `${year}-${month2Digits}-${day2Digits}`;
+      this.setData({
+        selectedDate: selectedDate
+      });
+      this.loadAppointments();
+    }
 
     // 日历加载完成后，确保标记已更新
     // todo: 需要加载 range 日期数据
