@@ -13,6 +13,24 @@ interface RequestOptions {
   header?: Record<string, string>;
 }
 
+// 获取全局应用实例
+const getGlobalApp = (): WechatMiniprogram.App.Instance<{
+  globalData: {
+    eventBus: {
+      emit: (event: string, ...args: any[]) => void;
+    };
+  };
+}> => {
+  return getApp();
+};
+
+// 清除所有登录相关信息
+const clearLoginInfo = () => {
+  wx.removeStorageSync('token');
+  wx.removeStorageSync('userInfo');
+  // 可能还有其他需要清除的登录信息，根据实际情况添加
+};
+
 // 统一请求函数
 export const request = <T = any>(options: RequestOptions): Promise<T> => {
   return new Promise((resolve, reject) => {
@@ -54,8 +72,7 @@ export const request = <T = any>(options: RequestOptions): Promise<T> => {
           resolve(res.data as T);
         } else if (res.statusCode === 401 || res.statusCode === 403) {
           // token失效或权限不足，清除本地token和用户信息
-          wx.removeStorageSync('token');
-          wx.removeStorageSync('userInfo');
+          clearLoginInfo();
           
           // 构建错误信息
           const errMsg = res.statusCode === 401 ? '登录已过期，请重新登录' : '权限不足';
@@ -78,6 +95,8 @@ export const request = <T = any>(options: RequestOptions): Promise<T> => {
             success: () => {
               // 如果当前不在登录页面，则跳转到登录页面
               if (!currentPath.includes('/pages/profile/profile')) {
+                // 发送事件通知登录页面需要初始化
+                getGlobalApp().globalData.eventBus.emit('initLoginPage');
                 wx.switchTab({
                   url: '/pages/profile/profile'
                 });

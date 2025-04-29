@@ -76,6 +76,30 @@ Page<IPageData, IPageMethods & {
         this.fetchUserInfo();
       }
     }
+
+    // 监听初始化事件
+    const app = getApp<{
+      globalData: {
+        eventBus: {
+          on: (event: string, callback: (...args: any[]) => void) => void;
+        };
+      };
+    }>();
+    
+    app.globalData.eventBus.on('initLoginPage', () => {
+      console.log('收到登录页面初始化事件');
+      // 清除登录状态
+      this.setData({
+        userInfo: null,
+        hasUserInfo: false,
+        isAdmin: false,
+        openid: null,
+        isLoggingIn: false
+      });
+      // 清除本地存储的登录信息
+      wx.removeStorageSync('token');
+      wx.removeStorageSync('userInfo');
+    });
   },
   
   onShow() {

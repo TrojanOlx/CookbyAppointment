@@ -2,6 +2,7 @@
 import { initTestData } from './utils/storage';
 import { hasUserAcceptedPrivacy, requestPrivacyAuthorization } from './utils/privacy';
 import { isLoggedIn } from './utils/auth';
+import { eventBus } from './utils/eventBus';
 
 // 需要登录才能访问的页面路径
 const needLoginPages = [
@@ -32,7 +33,8 @@ interface GeneralCallbackResult {
 App({
   globalData: {
     systemInfo: null as WechatMiniprogram.SystemInfo | null,
-    needLoginPages: needLoginPages
+    needLoginPages: needLoginPages,
+    eventBus: eventBus
   },
   
   onLaunch() {
