@@ -1,9 +1,8 @@
 .container {
   background-color: #f6f6f6;
   min-height: 100vh;
-  padding-bottom: calc(48px + env(safe-area-inset-bottom)); /* 基础TabBar高度 + 安全区域 */
   box-sizing: border-box;
-  padding: 0 0 calc(48px + env(safe-area-inset-bottom)) 0; /* 确保底部安全区域 */
+  padding: 0;
 }
 
 /* 轮播图样式 */
@@ -167,6 +166,33 @@
   padding-top: 8rpx;
 }
 
+/* 底部固定区域 */
+.bottom-fixed-area {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background-color: transparent;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  transform: translateZ(0);
+}
+
+/* 底部安全区域 */
+.bottom-safe-area {
+  width: 100%;
+  height: 120rpx; /* 预留操作按钮的高度 */
+}
+
+.safe-area-bottom {
+  width: 100%;
+  height: constant(safe-area-inset-bottom);
+  height: env(safe-area-inset-bottom);
+  background-color: #fff;
+}
+
 /* 按钮区域 */
 .action-buttons {
   width: 100%;
@@ -175,6 +201,7 @@
   justify-content: space-between;
   box-sizing: border-box;
   background-color: #fff;
+  box-shadow: 0 -1rpx 10rpx rgba(0, 0, 0, 0.05);
 }
 
 .action-btn {

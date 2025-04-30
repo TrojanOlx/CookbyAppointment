@@ -1,4 +1,4 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '85rpx'}};">
+<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 'px') : '120rpx'}};">
   <form bindsubmit="submitForm">
     <!-- 基本信息部分 -->
     <view class="form-section">
@@ -95,11 +95,17 @@
       </view>
     </view>
 
-    <!-- 提交按钮 -->
-    <view class="form-actions">
-      <button class="cancel-btn" bindtap="cancel">取消</button>
-      <button class="submit-btn" form-type="submit">保存</button>
-    </view>
+    <!-- 底部安全区域，留出固定按钮的空间 -->
+    <view class="bottom-safe-area"></view>
   </form>
+</view>
+
+<!-- 底部固定操作按钮 -->
+<view class="bottom-fixed-area">
+  <view class="form-actions">
+    <button class="cancel-btn" bindtap="cancel">取消</button>
+    <button class="submit-btn" form-type="submit">保存</button>
+  </view>
+  <view class="safe-area-bottom"></view>
 </view>
  
