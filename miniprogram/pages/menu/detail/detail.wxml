@@ -3,7 +3,7 @@
   <swiper 
     class="dish-swiper" 
     indicator-dots="{{true}}" 
-    autoplay="{{true}}" 
+    autoplay="{{!isEdit}}" 
     interval="3500" 
     duration="800"
     circular="{{true}}"
@@ -13,9 +13,17 @@
     indicator-color="rgba(255, 255, 255, 0.5)"
     indicator-active-color="#ffffff"
   >
-    <block wx:if="{{dish.images && dish.images.length > 0}}">
-      <swiper-item wx:for="{{dish.images}}" wx:key="*this" class="swiper-item">
-        <image referrerPolicy="no-referrer" src="{{item}}" mode="aspectFill" class="swiper-image" lazy-load="{{true}}"></image>
+    <block wx:if="{{(!isEdit && dish.images && dish.images.length > 0) || (isEdit && tempDish.images && tempDish.images.length > 0)}}">
+      <swiper-item wx:for="{{isEdit ? tempDish.images : dish.images}}" wx:key="*this" class="swiper-item">
+        <image 
+          referrerPolicy="no-referrer" 
+          src="{{item}}" 
+          mode="aspectFill" 
+          class="swiper-image" 
+          lazy-load="{{true}}"
+          bindtap="previewImage"
+          data-src="{{item}}"
+        ></image>
       </swiper-item>
     </block>
     <swiper-item wx:else class="swiper-item">
@@ -23,53 +31,153 @@
     </swiper-item>
   </swiper>
 
+  <!-- 编辑模式下的图片管理界面 -->
+  <view class="image-edit-section" wx:if="{{isEdit}}">
+    <view class="section-title">图片管理</view>
+    <view class="image-grid">
+      <view class="image-item" wx:for="{{tempDish.images}}" wx:key="*this">
+        <image 
+          src="{{item}}" 
+          mode="aspectFill" 
+          class="thumbnail" 
+          bindtap="previewImage" 
+          data-src="{{item}}"
+        ></image>
+        <view class="image-delete" bindtap="deleteImage" data-index="{{index}}">×</view>
+      </view>
+      <view class="image-add" bindtap="chooseImage" wx:if="{{tempDish.images.length < 9}}">
+        <view class="add-icon">+</view>
+        <view class="add-text">添加图片</view>
+      </view>
+    </view>
+  </view>
+
   <!-- 基本信息 -->
   <view class="info-section">
-    <view class="dish-name">{{dish.name}}</view>
-    <view class="dish-tags">
-      <view class="dish-tag type">{{dish.type}}</view>
-      <view class="dish-tag spicy" wx:if="{{dish.spicy !== '不辣'}}">{{dish.spicy}}</view>
-    </view>
+    <!-- 查看模式 -->
+    <block wx:if="{{!isEdit}}">
+      <view class="dish-name">{{dish.name}}</view>
+      <view class="dish-tags">
+        <view class="dish-tag type">{{dish.type}}</view>
+        <view class="dish-tag spicy" wx:if="{{dish.spicy !== '不辣'}}">{{dish.spicy}}</view>
+      </view>
+    </block>
+    
+    <!-- 编辑模式 -->
+    <block wx:else>
+      <view class="edit-item">
+        <view class="edit-label">菜品名称</view>
+        <input class="edit-input" value="{{tempDish.name}}" bindinput="nameInput" placeholder="请输入菜品名称" />
+      </view>
+      
+      <view class="edit-item">
+        <view class="edit-label">菜品类型</view>
+        <picker mode="selector" range="{{dishTypes}}" value="{{dishTypes.indexOf(tempDish.type)}}" bindchange="typeChange">
+          <view class="edit-picker">{{tempDish.type || '请选择菜品类型'}}</view>
+        </picker>
+      </view>
+      
+      <view class="edit-item">
+        <view class="edit-label">辣度</view>
+        <picker mode="selector" range="{{spicyLevels}}" value="{{spicyLevels.indexOf(tempDish.spicy)}}" bindchange="spicyChange">
+          <view class="edit-picker">{{tempDish.spicy || '请选择辣度'}}</view>
+        </picker>
+      </view>
+    </block>
   </view>
 
   <!-- 食材部分 -->
   <view class="detail-section">
     <view class="section-title">食材</view>
-    <view class="ingredients-container">
-      <view class="ingredient-row" wx:for="{{dish.ingredients}}" wx:key="id">
-        <text class="ingredient-name">{{item.name}}</text>
-        <text class="ingredient-amount">{{item.amount}}</text>
+    <!-- 查看模式 -->
+    <block wx:if="{{!isEdit}}">
+      <view class="ingredients-container">
+        <view class="ingredient-row" wx:for="{{dish.ingredients}}" wx:key="id">
+          <text class="ingredient-name">{{item.name}}</text>
+          <text class="ingredient-amount">{{item.amount}}</text>
+        </view>
       </view>
-    </view>
+    </block>
+    
+    <!-- 编辑模式 -->
+    <block wx:else>
+      <view class="ingredients-edit-container">
+        <view class="ingredient-edit-row" wx:for="{{tempDish.ingredients}}" wx:key="id" wx:for-index="idx">
+          <input class="ingredient-name-input" data-index="{{idx}}" bindinput="ingredientNameInput" value="{{item.name}}" placeholder="食材名称" />
+          <input class="ingredient-amount-input" data-index="{{idx}}" bindinput="ingredientAmountInput" value="{{item.amount}}" placeholder="用量" />
+          <view class="ingredient-delete" data-index="{{idx}}" bindtap="deleteIngredient">×</view>
+        </view>
+        <view class="add-button" bindtap="addIngredient">添加食材</view>
+      </view>
+    </block>
   </view>
 
   <!-- 制作步骤 -->
   <view class="detail-section">
     <view class="section-title">制作步骤</view>
-    <view class="steps-list">
-      <view class="step-item" wx:for="{{dish.steps}}" wx:key="index">
-        <view class="step-number">{{index + 1}}</view>
-        <view class="step-content">{{item}}</view>
+    <!-- 查看模式 -->
+    <block wx:if="{{!isEdit}}">
+      <view class="steps-list">
+        <view class="step-item" wx:for="{{dish.steps}}" wx:key="index">
+          <view class="step-number">{{index + 1}}</view>
+          <view class="step-content">{{item}}</view>
+        </view>
       </view>
-    </view>
+    </block>
+    
+    <!-- 编辑模式 -->
+    <block wx:else>
+      <view class="steps-edit-list">
+        <view class="step-edit-item" wx:for="{{tempDish.steps}}" wx:key="index" wx:for-index="idx">
+          <view class="step-number">{{idx + 1}}</view>
+          <textarea class="step-content-input" data-index="{{idx}}" bindinput="stepInput" value="{{item}}" placeholder="请输入步骤内容" auto-height="true" />
+          <view class="step-delete" data-index="{{idx}}" bindtap="deleteStep">×</view>
+        </view>
+        <view class="add-button" bindtap="addStep">添加步骤</view>
+      </view>
+    </block>
   </view>
 
   <!-- 注意事项 -->
-  <view class="detail-section" wx:if="{{dish.notice}}">
+  <view class="detail-section">
     <view class="section-title">注意事项</view>
-    <view class="section-content">{{dish.notice}}</view>
+    <!-- 查看模式 -->
+    <block wx:if="{{!isEdit}}">
+      <view class="section-content">{{dish.notice || '无'}}</view>
+    </block>
+    
+    <!-- 编辑模式 -->
+    <block wx:else>
+      <textarea class="edit-textarea" bindinput="noticeInput" value="{{tempDish.notice}}" placeholder="请输入注意事项（可选）" auto-height="true" />
+    </block>
   </view>
 
   <!-- 备注 -->
-  <view class="detail-section" wx:if="{{dish.remark}}">
+  <view class="detail-section">
     <view class="section-title">备注</view>
-    <view class="section-content">{{dish.remark}}</view>
+    <!-- 查看模式 -->
+    <block wx:if="{{!isEdit}}">
+      <view class="section-content">{{dish.remark || '无'}}</view>
+    </block>
+    
+    <!-- 编辑模式 -->
+    <block wx:else>
+      <textarea class="edit-textarea" bindinput="remarkInput" value="{{tempDish.remark}}" placeholder="请输入备注（可选）" auto-height="true" />
+    </block>
   </view>
 
   <!-- 参考链接 -->
-  <view class="detail-section" wx:if="{{dish.reference}}">
+  <view class="detail-section">
     <view class="section-title">参考链接</view>
-    <view class="section-content reference">{{dish.reference}}</view>
+    <!-- 查看模式 -->
+    <block wx:if="{{!isEdit}}">
+      <view class="section-content reference">{{dish.reference || '无'}}</view>
+    </block>
+    
+    <!-- 编辑模式 -->
+    <block wx:else>
+      <input class="edit-input" bindinput="referenceInput" value="{{tempDish.reference}}" placeholder="请输入参考链接（可选）" />
+    </block>
   </view>
 
   <!-- 底部安全区域，留出固定按钮的空间 -->
@@ -78,9 +186,17 @@
 
 <!-- 底部固定操作按钮 -->
 <view class="bottom-fixed-area" wx:if="{{isAdmin}}">
-  <view class="action-buttons">
-    <button class="action-btn edit" bindtap="editDish">编辑</button>
+  <!-- 查看模式的按钮 -->
+  <view class="action-buttons" wx:if="{{!isEdit}}">
+    <button class="action-btn edit" bindtap="startEdit">编辑</button>
     <button class="action-btn delete" bindtap="deleteDish">删除</button>
   </view>
+  
+  <!-- 编辑模式的按钮 -->
+  <view class="action-buttons" wx:else>
+    <button class="action-btn save" bindtap="saveDish">保存</button>
+    <button class="action-btn cancel" bindtap="cancelEdit">取消</button>
+  </view>
+  
   <view class="safe-area-bottom"></view>
 </view> 

@@ -1,4 +1,5 @@
 {
   "navigationBarTitleText": "菜品详情",
-  "usingComponents": {}
+  "usingComponents": {},
+  "enablePullDownRefresh": false
 } 

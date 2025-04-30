@@ -1,6 +1,19 @@
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
 
-
+// R2 文件服务辅助函数
+function processImageUrls(images, env) {
+  if (!images || !Array.isArray(images)) return [];
+  
+  return images.map(image => {
+    // 如果已经是完整URL，则不处理
+    if (image.startsWith('http://') || image.startsWith('https://')) {
+      return image;
+    }
+    
+    // 否则拼接完整URL
+    return `${env.R2_PUBLIC_URL}/${image}`;
+  });
+}
 
 // 管理员获取所有预约列表
 export async function handleGetAllAppointments(request, env) {
@@ -118,6 +131,10 @@ export async function handleGetDateAppointments(request, env) {
       for (const dishId of dishIds) {
         const dish = await getDishById(env.DB, dishId);
         if (dish) {
+          // 处理菜品图片URL
+          if (dish.images && Array.isArray(dish.images)) {
+            dish.images = processImageUrls(dish.images, env);
+          }
           dishes.push(dish);
         }
       }
@@ -233,6 +250,10 @@ export async function handleGetAppointmentListByDate(request, env) {
       for (const dishId of dishIds) {
         const dish = await getDishById(env.DB, dishId);
         if (dish) {
+          // 处理菜品图片URL
+          if (dish.images && Array.isArray(dish.images)) {
+            dish.images = processImageUrls(dish.images, env);
+          }
           dishes.push(dish);
         }
       }
@@ -296,6 +317,10 @@ export async function handleGetAppointmentDetail(request, env) {
     for (const dishId of dishIds) {
       const dish = await getDishById(env.DB, dishId);
       if (dish) {
+        // 处理菜品图片URL
+        if (dish.images && Array.isArray(dish.images)) {
+          dish.images = processImageUrls(dish.images, env);
+        }
         dishes.push(dish);
       }
     }
