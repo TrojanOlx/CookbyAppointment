@@ -668,6 +668,47 @@ Page({
     }
   },
 
+  // 重新预约（恢复已取消的预约）
+  async reactivateAppointment(e: any) {
+    try {
+      const { appointmentId } = e.currentTarget.dataset;
+      
+      if (!appointmentId) {
+        showToast('未找到预约ID');
+        return;
+      }
+      
+      // 弹窗确认是否重新预约
+      wx.showModal({
+        title: '确认重新预约',
+        content: '确定要恢复此已取消的预约吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            showLoading('处理中');
+            
+            // 调用AppointmentService的reactivateAppointment方法
+            const result = await AppointmentService.reactivateAppointment(appointmentId);
+            
+            if (result.success) {
+              hideLoading();
+              showToast('重新预约成功');
+              
+              // 重新加载预约列表
+              this.loadUserAppointments();
+            } else {
+              hideLoading();
+              showToast('重新预约失败');
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('重新预约失败:', error);
+      hideLoading();
+      showToast('重新预约失败');
+    }
+  },
+
   // 切换用户预约列表的展开/折叠状态
   toggleUserExpand(e: any) {
     const { index } = e.currentTarget.dataset;

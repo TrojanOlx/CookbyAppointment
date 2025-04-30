@@ -74,6 +74,11 @@
                   <view class="action-btn review-btn" bindtap="viewReview" data-appointment-id="{{meal.id}}" data-user-name="{{user.userName}}">查看评价</view>
                 </block>
               </view>
+              
+              <!-- 已取消状态按钮 -->
+              <view class="action-buttons" wx:elif="{{meal.status === '已取消'}}">
+                <view class="action-btn reactivate-btn" bindtap="reactivateAppointment" data-appointment-id="{{meal.id}}">重新预约</view>
+              </view>
             </view>
           </view>
         </view>
