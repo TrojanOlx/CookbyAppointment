@@ -24,10 +24,12 @@ interface UserAppointment {
   userName: string;
   userPhone: string;
   userAvatar: string;
+  userId: string;
   meals: {
     type: string;
     dishes: string[];
-    status?: string; // 添加状态字段
+    status?: string;
+    id?: string;
   }[];
 }
 
@@ -311,6 +313,7 @@ Page({
             userName: appointment.userName || '未知用户',
             userPhone: appointment.userPhone || '',
             userAvatar: appointment.userAvatar || '',
+            userId: userId,
             meals: []
           } as UserAppointment;
           
@@ -331,11 +334,12 @@ Page({
           }
         }
         
-        // 添加餐次信息，包括状态
+        // 添加餐次信息，包括状态和ID
         userAppointment.meals.push({
           type: appointment.mealType,
           dishes: dishNames,
-          status: appointment.status || '待确认' // 添加预约状态
+          status: appointment.status || '待确认',
+          id: appointment.id
         });
       }
       
@@ -527,5 +531,128 @@ Page({
 
     // 日历加载完成后，确保标记已更新
     this.updateCalendarMarks(firstDay, lastDay);
+  },
+
+  // 确认预约
+  async confirmAppointment(e: any) {
+    try {
+      const { appointmentId } = e.currentTarget.dataset;
+      
+      if (!appointmentId) {
+        showToast('未找到预约ID');
+        return;
+      }
+      
+      showLoading('确认预约中');
+      
+      // 调用管理员服务更新预约状态
+      const result = await AdminAppointmentService.updateAppointmentStatus(appointmentId, '已确认');
+      
+      if (result.success) {
+        hideLoading();
+        showToast('预约已确认');
+        
+        // 重新加载预约列表
+        this.loadUserAppointments();
+      } else {
+        throw new Error('确认预约失败');
+      }
+    } catch (error) {
+      console.error('确认预约失败:', error);
+      hideLoading();
+      showToast('确认预约失败');
+    }
+  },
+  
+  // 取消预约
+  async cancelAppointment(e: any) {
+    try {
+      const { appointmentId } = e.currentTarget.dataset;
+      
+      if (!appointmentId) {
+        showToast('未找到预约ID');
+        return;
+      }
+      
+      // 弹窗确认是否取消预约
+      wx.showModal({
+        title: '确认取消',
+        content: '确定要取消此预约吗？',
+        success: async (res) => {
+          if (res.confirm) {
+            showLoading('取消预约中');
+            
+            // 调用管理员服务更新预约状态
+            const result = await AdminAppointmentService.updateAppointmentStatus(appointmentId, '已取消');
+            
+            if (result.success) {
+              hideLoading();
+              showToast('预约已取消');
+              
+              // 重新加载预约列表
+              this.loadUserAppointments();
+            } else {
+              hideLoading();
+              showToast('取消预约失败');
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('取消预约失败:', error);
+      hideLoading();
+      showToast('取消预约失败');
+    }
+  },
+  
+  // 完成预约
+  async completeAppointment(e: any) {
+    try {
+      const { appointmentId } = e.currentTarget.dataset;
+      
+      if (!appointmentId) {
+        showToast('未找到预约ID');
+        return;
+      }
+      
+      showLoading('更新状态中');
+      
+      // 调用管理员服务更新预约状态
+      const result = await AdminAppointmentService.updateAppointmentStatus(appointmentId, '已完成');
+      
+      if (result.success) {
+        hideLoading();
+        showToast('预约已完成');
+        
+        // 重新加载预约列表
+        this.loadUserAppointments();
+      } else {
+        throw new Error('更新状态失败');
+      }
+    } catch (error) {
+      console.error('完成预约失败:', error);
+      hideLoading();
+      showToast('完成预约失败');
+    }
+  },
+  
+  // 查看评价
+  viewReview(e: any) {
+    try {
+      const { appointmentId, userName } = e.currentTarget.dataset;
+      
+      if (!appointmentId) {
+        showToast('未找到预约ID');
+        return;
+      }
+      
+      // 跳转到评价详情页面
+      wx.navigateTo({
+        url: `../reviews/reviews?appointmentId=${appointmentId}&userName=${userName || '用户'}`
+      });
+    } catch (error) {
+      console.error('查看评价失败:', error);
+      showToast('查看评价失败');
+    }
   }
 }); 

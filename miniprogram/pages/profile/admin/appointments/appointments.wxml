@@ -46,6 +46,26 @@
               <view class="dish-list">
                 <text class="dish-name" wx:for="{{meal.dishes}}" wx:key="*this" wx:for-item="dish">{{dish}}</text>
               </view>
+              
+              <!-- 根据状态显示不同按钮 -->
+              <view class="action-buttons" wx:if="{{meal.status !== '已取消'}}">
+                <!-- 待确认状态按钮 -->
+                <block wx:if="{{meal.status === '待确认'}}">
+                  <view class="action-btn confirm-btn" bindtap="confirmAppointment" data-appointment-id="{{meal.id}}">确认预约</view>
+                  <view class="action-btn cancel-btn" bindtap="cancelAppointment" data-appointment-id="{{meal.id}}">取消预约</view>
+                </block>
+                
+                <!-- 已确认状态按钮 -->
+                <block wx:elif="{{meal.status === '已确认'}}">
+                  <view class="action-btn complete-btn" bindtap="completeAppointment" data-appointment-id="{{meal.id}}">已完成</view>
+                  <view class="action-btn cancel-btn" bindtap="cancelAppointment" data-appointment-id="{{meal.id}}">取消预约</view>
+                </block>
+                
+                <!-- 已完成状态按钮 -->
+                <block wx:elif="{{meal.status === '已完成'}}">
+                  <view class="action-btn review-btn" bindtap="viewReview" data-appointment-id="{{meal.id}}" data-user-name="{{user.userName}}">查看评价</view>
+                </block>
+              </view>
             </view>
           </view>
         </view>

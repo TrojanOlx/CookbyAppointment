@@ -1,5 +1,5 @@
 // 管理员预约服务
-import { get } from './http';
+import { get, post } from './http';
 import { Appointment } from '../models/appointment';
 
 // 管理员预约服务类，用于管理员操作预约
@@ -45,6 +45,17 @@ export class AdminAppointmentService {
       page, 
       pageSize, 
       date,
+      status
+    });
+  }
+
+  // 更新预约状态
+  static async updateAppointmentStatus(
+    appointmentId: string,
+    status: string
+  ): Promise<{ success: boolean, message?: string }> {
+    return post<{ success: boolean, message?: string }>('/api/admin/appointment/update-status', {
+      appointmentId,
       status
     });
   }
