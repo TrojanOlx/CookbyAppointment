@@ -48,15 +48,4 @@ export class AdminAppointmentService {
       status
     });
   }
-
-  // 更新预约状态
-  static async updateAppointmentStatus(
-    appointmentId: string,
-    status: string
-  ): Promise<{ success: boolean, message?: string }> {
-    return post<{ success: boolean, message?: string }>('/api/admin/appointment/update-status', {
-      appointmentId,
-      status
-    });
-  }
 } 

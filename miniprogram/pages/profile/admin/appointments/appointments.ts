@@ -1,5 +1,6 @@
 // 引入数据管理工具和类型定义
 import { AdminAppointmentService } from '../../../../services/adminAppointmentService';
+import { AppointmentService } from '../../../../services/appointmentService';
 import { Appointment } from '../../../../models/appointment';
 import { formatDate, getCurrentDate, showLoading, hideLoading, showToast } from '../../../../utils/util';
 import { MealType } from '../../../../utils/model';
@@ -556,8 +557,8 @@ Page({
       
       showLoading('确认预约中');
       
-      // 调用管理员服务更新预约状态
-      const result = await AdminAppointmentService.updateAppointmentStatus(appointmentId, '已确认');
+      // 调用AppointmentService的confirmAppointment方法
+      const result = await AppointmentService.confirmAppointment(appointmentId);
       
       if (result.success) {
         hideLoading();
@@ -593,8 +594,8 @@ Page({
           if (res.confirm) {
             showLoading('取消预约中');
             
-            // 调用管理员服务更新预约状态
-            const result = await AdminAppointmentService.updateAppointmentStatus(appointmentId, '已取消');
+            // 调用AppointmentService的cancelAppointment方法
+            const result = await AppointmentService.cancelAppointment(appointmentId, '管理员取消');
             
             if (result.success) {
               hideLoading();
@@ -628,8 +629,8 @@ Page({
       
       showLoading('更新状态中');
       
-      // 调用管理员服务更新预约状态
-      const result = await AdminAppointmentService.updateAppointmentStatus(appointmentId, '已完成');
+      // 调用AppointmentService的completeAppointment方法
+      const result = await AppointmentService.completeAppointment(appointmentId);
       
       if (result.success) {
         hideLoading();
