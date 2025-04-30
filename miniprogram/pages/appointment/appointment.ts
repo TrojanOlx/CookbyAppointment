@@ -418,28 +418,28 @@ Page({
   async deleteAppointment(e: any) {
     const id = e.currentTarget.dataset.id;
 
-    const confirmed = await showConfirm('确认删除', '确定要删除这个预约吗？');
+    const confirmed = await showConfirm('确认取消', '确定要取消这个预约吗？');
     if (confirmed) {
       try {
-        showLoading('删除中');
+        showLoading('取消中');
         this.setData({ isLoading: true });
-        const result = await AppointmentService.cancelAppointment(id, '用户手动删除');
+        const result = await AppointmentService.cancelAppointment(id, '用户取消预约');
         if (result.success) {
           hideLoading();
           this.setData({ isLoading: false });
-          showSuccess('删除成功');
+          showSuccess('取消成功');
 
           // 重新加载数据
           this.updateCalendarMarks(this.data.firstDay, this.data.lastDay);
           this.loadAppointments();
         } else {
-          throw new Error('删除失败');
+          throw new Error('取消失败');
         }
       } catch (error) {
         hideLoading();
         this.setData({ isLoading: false });
-        console.error('删除预约失败:', error);
-        showToast('删除预约失败');
+        console.error('取消预约失败:', error);
+        showToast('取消预约失败');
       }
     }
   },

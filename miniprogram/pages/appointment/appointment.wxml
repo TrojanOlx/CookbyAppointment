@@ -45,12 +45,25 @@
               <text class="appointment-status status-{{item.status === '待确认' ? 'pending' : item.status === '已确认' ? 'confirmed' : item.status === '已完成' ? 'completed' : 'cancelled'}}">{{item.status}}</text>
             </view>
             <view class="meal-actions">
-              <view class="action-btn edit" bindtap="editAppointment" data-id="{{item.id}}">
-                <text class="action-text">修改</text>
-              </view>
-              <view class="action-btn delete" bindtap="deleteAppointment" data-id="{{item.id}}">
-                <text class="action-text">删除</text>
-              </view>
+              <!-- 根据状态显示不同按钮 -->
+              <block wx:if="{{item.status === '待确认' || item.status === '已确认'}}">
+                <!-- 可修改和取消的状态 -->
+                <view class="action-btn edit" bindtap="editAppointment" data-id="{{item.id}}">
+                  <text class="action-text">修改</text>
+                </view>
+                <view class="action-btn delete" bindtap="deleteAppointment" data-id="{{item.id}}">
+                  <text class="action-text">取消预约</text>
+                </view>
+              </block>
+              <block wx:elif="{{item.status !== '已取消' && item.status !== '已完成'}}">
+                <!-- 其他非取消非完成状态 -->
+                <view class="action-btn edit" bindtap="editAppointment" data-id="{{item.id}}">
+                  <text class="action-text">修改</text>
+                </view>
+                <view class="action-btn delete" bindtap="deleteAppointment" data-id="{{item.id}}">
+                  <text class="action-text">删除</text>
+                </view>
+              </block>
             </view>
           </view>
           <scroll-view class="dishes-list" scroll-x enable-flex show-scrollbar="false" enhanced="true">
