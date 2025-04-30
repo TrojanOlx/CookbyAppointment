@@ -97,8 +97,7 @@ Page<IPageData, IPageMethods & {
         isLoggingIn: false
       });
       // 清除本地存储的登录信息
-      wx.removeStorageSync('token');
-      wx.removeStorageSync('userInfo');
+      this.doLogout();
     });
   },
   
