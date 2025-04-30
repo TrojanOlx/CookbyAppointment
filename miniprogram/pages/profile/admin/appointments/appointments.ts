@@ -25,6 +25,7 @@ interface UserAppointment {
   userPhone: string;
   userAvatar: string;
   userId: string;
+  isExpanded?: boolean;
   meals: {
     type: string;
     dishes: string[];
@@ -353,6 +354,16 @@ Page({
           return order[a.type as MealType] - order[b.type as MealType];
         });
       }
+
+      // 如果只有一个用户，则默认展开
+      if (userAppointments.length === 1) {
+        userAppointments[0].isExpanded = true;
+      } else {
+        // 多个用户时默认全部折叠
+        userAppointments.forEach(user => {
+          user.isExpanded = false;
+        });
+      }
       
       // 格式化选中日期的显示
       let selectedDateDisplay = '今日';
@@ -654,5 +665,22 @@ Page({
       console.error('查看评价失败:', error);
       showToast('查看评价失败');
     }
+  },
+
+  // 切换用户预约列表的展开/折叠状态
+  toggleUserExpand(e: any) {
+    const { index } = e.currentTarget.dataset;
+    
+    // 使用setTimeout确保UI更新优先级较高
+    setTimeout(() => {
+      const userAppointments = [...this.data.userAppointments];
+    
+      // 切换当前用户的展开状态
+      userAppointments[index].isExpanded = !userAppointments[index].isExpanded;
+      
+      this.setData({
+        userAppointments
+      });
+    }, 10);
   }
 }); 

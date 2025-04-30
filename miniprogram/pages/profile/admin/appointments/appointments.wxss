@@ -205,6 +205,34 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s ease-out;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.user-header:active {
+  background: linear-gradient(to right, #e6f0fa, #d8e8f7);
+}
+
+.expand-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40rpx;
+  height: 40rpx;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.expand-icon.expanded {
+  transform: rotate(0deg);
+}
+
+.expand-icon .iconfont {
+  font-size: 24rpx;
+  color: #666;
 }
 
 .user-name {
@@ -228,10 +256,28 @@
 
 /* 餐次列表样式 */
 .meals-list {
-  padding: 16rpx 30rpx;
   width: 100%;
   box-sizing: border-box;
   background-color: #fff;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, opacity, max-height;
+}
+
+.meals-list.expanded {
+  padding: 16rpx 30rpx;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  max-height: 3000rpx;
+}
+
+.meals-list.collapsed {
+  padding: 0 30rpx;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8rpx);
+  visibility: hidden;
 }
 
 .meal-item {
@@ -239,6 +285,32 @@
   border-bottom: 1rpx solid #f0f0f0;
   margin-bottom: 16rpx;
   position: relative;
+  opacity: 0;
+  transform: translateY(10rpx);
+  animation: fadeInUp 0.3s forwards;
+}
+
+@keyframes fadeInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(10rpx);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.meals-list.expanded .meal-item:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.meals-list.expanded .meal-item:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.meals-list.expanded .meal-item:nth-child(3) {
+  animation-delay: 0.2s;
 }
 
 .meal-item:not(:last-child) {

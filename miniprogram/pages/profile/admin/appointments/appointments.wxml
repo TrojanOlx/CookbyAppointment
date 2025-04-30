@@ -33,11 +33,14 @@
       
       <!-- 预约列表 -->
       <block wx:elif="{{userAppointments.length > 0}}">
-        <view class="user-card" wx:for="{{userAppointments}}" wx:key="userName" wx:for-item="user">
-          <view class="user-header">
+        <view class="user-card" wx:for="{{userAppointments}}" wx:key="userName" wx:for-item="user" wx:for-index="userIndex">
+          <view class="user-header" bindtap="toggleUserExpand" data-index="{{userIndex}}">
             <text class="user-name">{{user.userName}}</text>
+            <view class="expand-icon {{user.isExpanded ? 'expanded' : ''}}">
+              <text class="iconfont">{{user.isExpanded ? '▼' : '▶'}}</text>
+            </view>
           </view>
-          <view class="meals-list">
+          <view class="meals-list {{user.isExpanded ? 'expanded' : 'collapsed'}}">
             <view class="meal-item" wx:for="{{user.meals}}" wx:key="type" wx:for-item="meal">
               <view class="meal-type-wrapper">
                 <view class="meal-type">
