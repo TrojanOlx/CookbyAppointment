@@ -38,34 +38,34 @@ export class DishService {
   }
 
   // 搜索菜品
-  static async searchDish(
-    keyword: string, 
-    page: number = 1, 
+  static async searchDishes(
+    keyword: string,
+    page: number = 1,
     pageSize: number = 10
   ): Promise<{ total: number, list: Dish[] }> {
-    return get<{ total: number, list: Dish[] }>('/api/dish/search', { 
-      keyword, 
-      page, 
-      pageSize 
+    return get<{ total: number, list: Dish[] }>('/api/dish/search', {
+      keyword,
+      page,
+      pageSize
     });
   }
 
   // 根据食材推荐菜品
   static async recommendByIngredients(
-    ingredientIds: string[], 
-    page: number = 1, 
+    ingredientIds: string[],
+    page: number = 1,
     pageSize: number = 10
   ): Promise<{ total: number, list: Dish[] }> {
-    return post<{ total: number, list: Dish[] }>('/api/dish/recommend', { 
-      ingredientIds, 
-      page, 
-      pageSize 
+    return post<{ total: number, list: Dish[] }>('/api/dish/recommend', {
+      ingredientIds,
+      page,
+      pageSize
     });
   }
 
   // 获取食材列表
   static async getIngredientList(dishId?: string): Promise<Ingredient[]> {
-    return get<Ingredient[]>('/api/dish/ingredients', { dishId });
+    return get<Ingredient[]>('/api/dish/ingredient/list', { dishId });
   }
 
   // 添加食材

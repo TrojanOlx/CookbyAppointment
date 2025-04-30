@@ -48,9 +48,10 @@ export async function handleUploadFile(request, env) {
     const folder = formData.get('folder') || 'default';
     
     // 取出文件名和后缀
-    const extIndex = fileName.lastIndexOf('.');
-    const baseName = extIndex !== -1 ? fileName.substring(0, extIndex) : fileName;
-    const ext = extIndex !== -1 ? fileName.substring(extIndex) : '';
+    const fileNameStr = String(fileName); // 确保fileName是字符串
+    const extIndex = fileNameStr.lastIndexOf('.');
+    const baseName = extIndex !== -1 ? fileNameStr.substring(0, extIndex) : fileNameStr;
+    const ext = extIndex !== -1 ? fileNameStr.substring(extIndex) : '';
     const filePath = `${folder}/${baseName}_${Date.now()}${ext}`;
     
     // 读取文件内容
@@ -234,9 +235,9 @@ export async function handleDeleteFile(request, env) {
       return createErrorResponse('权限不足', 403);
     }
     
-    // 从请求体获取文件路径
-    const data = await request.json();
-    const { filePath } = data;
+    // 从URL参数获取文件路径，而不是请求体
+    const url = new URL(request.url);
+    const filePath = url.searchParams.get('filePath');
     
     if (!filePath) {
       return createErrorResponse('文件路径参数缺失', 400);

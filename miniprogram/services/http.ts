@@ -46,7 +46,7 @@ export const request = <T = any>(options: RequestOptions): Promise<T> => {
     
     // 处理GET请求参数，过滤掉undefined的值
     let data = options.data;
-    if (options.method === 'GET' && data) {
+    if ((options.method === 'GET' || options.method === 'DELETE') && data) {
       data = Object.entries(data).reduce((acc, [key, value]) => {
         if (value !== undefined && value !== null) {
           acc[key] = value;
@@ -164,11 +164,22 @@ export const put = <T = any>(url: string, data?: any): Promise<T> => {
 };
 
 // 封装DELETE请求
-export const del = <T = any>(url: string, data?: any): Promise<T> => {
+export const del = <T = any>(url: string, params?: Record<string, any>): Promise<T> => {
+  // 构建带查询参数的URL
+  if (params) {
+    const queryString = Object.entries(params)
+      .filter(([_, value]) => value !== undefined && value !== null)
+      .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+      .join('&');
+    
+    if (queryString) {
+      url = url.includes('?') ? `${url}&${queryString}` : `${url}?${queryString}`;
+    }
+  }
+  
   return request<T>({
     url,
-    method: 'DELETE',
-    data
+    method: 'DELETE'
   });
 };
 

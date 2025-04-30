@@ -89,7 +89,7 @@ export class FileService {
   // 删除文件 - 使用DELETE方法，参数放在请求体中
   static async deleteFile(filePath: string): Promise<FileOperationResponse> {
     try {
-      // 使用DELETE请求，参数通过请求体传递
+      // 使用DELETE请求，参数通过URL传递
       return await del<FileOperationResponse>('/api/file/delete', { filePath });
     } catch (error) {
       console.error('删除文件失败:', error);

@@ -296,14 +296,14 @@ export async function handleDeleteReview(request, env) {
     
     // 获取查询参数
     const query = new URL(request.url).searchParams;
-    const reviewId = query.get('reviewId');
+    const id = query.get('id');
     
-    if (!reviewId) {
+    if (!id) {
       return createErrorResponse('评价ID不能为空', 400);
     }
     
     // 查询评价信息
-    const review = await getReviewById(env.DB, reviewId);
+    const review = await getReviewById(env.DB, id);
     if (!review) {
       return createErrorResponse('评价不存在', 404);
     }
@@ -314,7 +314,7 @@ export async function handleDeleteReview(request, env) {
     }
     
     // 删除评价
-    await deleteReview(env.DB, reviewId);
+    await deleteReview(env.DB, id);
     
     return createJsonResponse({ success: true });
   } catch (error) {
