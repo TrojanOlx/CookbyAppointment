@@ -217,6 +217,7 @@ export async function handleGetAppointmentListByDate(request, env) {
       1, // 页码
       100, // 每页数量
       status,
+      date,
       date
     );
     
