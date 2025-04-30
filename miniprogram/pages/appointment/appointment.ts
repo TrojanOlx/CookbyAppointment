@@ -488,5 +488,37 @@ Page({
     wx.navigateTo({
       url: `/pages/review/review?appointmentId=${appointmentId}`
     });
+  },
+
+  // 重新预约（恢复已取消的预约）
+  async reactivateAppointment(e: any) {
+    const id = e.currentTarget.dataset.id;
+
+    const confirmed = await showConfirm('确认重新预约', '确定要恢复这个已取消的预约吗？');
+    if (confirmed) {
+      try {
+        showLoading('处理中');
+        this.setData({ isLoading: true });
+        
+        const result = await AppointmentService.reactivateAppointment(id);
+        
+        if (result.success) {
+          hideLoading();
+          this.setData({ isLoading: false });
+          showSuccess('重新预约成功');
+
+          // 重新加载数据
+          this.updateCalendarMarks(this.data.firstDay, this.data.lastDay);
+          this.loadAppointments();
+        } else {
+          throw new Error('重新预约失败');
+        }
+      } catch (error) {
+        hideLoading();
+        this.setData({ isLoading: false });
+        console.error('重新预约失败:', error);
+        showToast('重新预约失败');
+      }
+    }
   }
 });

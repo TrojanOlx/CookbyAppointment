@@ -4,7 +4,7 @@ import { handleGetUserPhoneNumber } from './handlers/phoneNumber.js';
 import { handleLogin, handleGetUserInfo, handleUpdateUserInfo, handleCheckAdmin, handleGetUserList, handleGetUserPhone, handleUpdateAvatar } from './handlers/userHandler.js';
 import { handleGetInventoryList, handleGetInventoryDetail, handleAddInventory, handleUpdateInventory, handleDeleteInventory, handleSearchInventory, handleGetExpiringItems } from './handlers/inventoryHandler.js';
 import { handleGetDishList, handleGetDishDetail, handleAddDish, handleUpdateDish, handleDeleteDish, handleSearchDish, handleRecommendByIngredients, handleGetIngredientList, handleAddIngredient, handleUpdateIngredient, handleDeleteIngredient } from './handlers/dishHandler.js';
-import { handleGetAllAppointments, handleGetDateAppointments, handleGetAppointmentList, handleGetAppointmentDetail, handleCreateAppointment, handleUpdateAppointment, handleCancelAppointment, handleConfirmAppointment, handleCompleteAppointment, handleGetAppointmentDishes, handleAddAppointmentDish, handleRemoveAppointmentDish, handleGetAppointmentListByDate } from './handlers/appointmentHandler.js';
+import { handleGetAllAppointments, handleGetDateAppointments, handleGetAppointmentList, handleGetAppointmentDetail, handleCreateAppointment, handleUpdateAppointment, handleCancelAppointment, handleConfirmAppointment, handleCompleteAppointment, handleGetAppointmentDishes, handleAddAppointmentDish, handleRemoveAppointmentDish, handleGetAppointmentListByDate, handleReactivateAppointment } from './handlers/appointmentHandler.js';
 import { handleUploadFile, handleGetFileInfo, handleDownloadFile, handleDeleteFile, handleListFiles, handleBatchDeleteFiles } from './handlers/fileHandler.js';
 import { handleGetUserReviews, handleGetDishReviews, handleGetAppointmentReviews, handleAddReview, handleUpdateReview, handleDeleteReview } from './handlers/reviewHandler.js';
 
@@ -87,6 +87,7 @@ const routes = {
   '/api/appointment/dishes': { GET: handleGetAppointmentDishes },
   '/api/appointment/dish/add': { POST: handleAddAppointmentDish },
   '/api/appointment/dish/remove': { DELETE: handleRemoveAppointmentDish },
+  '/api/appointment/reactivate': { PUT: handleReactivateAppointment },
 
   // 管理员相关
   '/api/admin/appointment/list': { GET: handleGetAllAppointments },

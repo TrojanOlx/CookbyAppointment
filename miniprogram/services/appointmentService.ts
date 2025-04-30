@@ -62,6 +62,11 @@ export class AppointmentService {
     return put<{ success: boolean }>('/api/appointment/complete', { id });
   }
 
+  // 重新预约（恢复已取消的预约）
+  static async reactivateAppointment(id: string): Promise<{ success: boolean }> {
+    return put<{ success: boolean }>('/api/appointment/reactivate', { id });
+  }
+
   // 获取预约菜品关联
   static async getAppointmentDishes(appointmentId: string): Promise<AppointmentDish[]> {
     return get<AppointmentDish[]>('/api/appointment/dishes', { appointmentId });

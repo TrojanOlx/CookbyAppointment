@@ -55,8 +55,20 @@
                   <text class="action-text">取消预约</text>
                 </view>
               </block>
-              <block wx:elif="{{item.status !== '已取消' && item.status !== '已完成'}}">
-                <!-- 其他非取消非完成状态 -->
+              <block wx:elif="{{item.status === '已完成'}}">
+                <!-- 已完成状态显示评价按钮 -->
+                <view class="action-btn review" bindtap="goToReview" data-id="{{item.id}}">
+                  <text class="action-text">去评价</text>
+                </view>
+              </block>
+              <block wx:elif="{{item.status === '已取消'}}">
+                <!-- 已取消状态显示重新预约按钮 -->
+                <view class="action-btn reactivate" bindtap="reactivateAppointment" data-id="{{item.id}}">
+                  <text class="action-text">重新预约</text>
+                </view>
+              </block>
+              <block wx:elif="{{item.status !== '已取消'}}">
+                <!-- 其他非取消状态 -->
                 <view class="action-btn edit" bindtap="editAppointment" data-id="{{item.id}}">
                   <text class="action-text">修改</text>
                 </view>
@@ -72,13 +84,6 @@
               <text class="dish-name">{{dish.name}}</text>
             </view>
           </scroll-view>
-          
-          <!-- 已完成状态显示评价按钮 -->
-          <view class="review-section" wx:if="{{item.status === '已完成'}}">
-            <view class="review-btn" bindtap="goToReview" data-id="{{item.id}}">
-              <text class="review-text">去评价</text>
-            </view>
-          </view>
         </view>
       </block>
 

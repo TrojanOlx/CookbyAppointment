@@ -685,6 +685,64 @@ export async function handleCompleteAppointment(request, env) {
   }
 }
 
+// 重新预约（恢复已取消的预约）
+export async function handleReactivateAppointment(request, env) {
+  try {
+    // 获取认证信息
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+
+    if (!token) {
+      return createErrorResponse('未提供token', 401);
+    }
+
+    // 验证token和获取用户信息
+    const { loginInfo, user } = await validateTokenAndGetUser(env.DB, token);
+    if (!loginInfo || !user) {
+      return createErrorResponse('无效的token或用户不存在', 401);
+    }
+
+    // 获取请求数据
+    const data = await request.json();
+    const { id } = data;
+
+    if (!id) {
+      return createErrorResponse('缺少id参数');
+    }
+
+    // 查询预约
+    const existingAppointment = await getAppointmentById(env.DB, id);
+
+    if (!existingAppointment) {
+      return createErrorResponse('预约不存在', 404);
+    }
+
+    // 普通用户只能重新激活自己的预约
+    if (user.isAdmin !== 1 && existingAppointment.userId !== user.id) {
+      return createErrorResponse('权限不足', 403);
+    }
+
+    // 只能重新激活已取消状态的预约
+    if (existingAppointment.status !== '已取消') {
+      return createErrorResponse(`只能重新激活已取消状态的预约`, 400);
+    }
+
+    // 更新预约状态为待确认
+    const updatedAppointment = {
+      ...existingAppointment,
+      status: '待确认',
+      remarks: existingAppointment.remarks + ' (重新预约)',
+      updateTime: Date.now()
+    };
+
+    await updateAppointment(env.DB, updatedAppointment);
+
+    return createJsonResponse({ success: true });
+  } catch (error) {
+    return createErrorResponse(`服务器错误: ${error.message}`, 500);
+  }
+}
+
 // 获取预约菜品关联
 export async function handleGetAppointmentDishes(request, env) {
   try {
