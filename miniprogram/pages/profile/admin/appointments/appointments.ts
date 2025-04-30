@@ -27,6 +27,7 @@ interface UserAppointment {
   meals: {
     type: string;
     dishes: string[];
+    status?: string; // 添加状态字段
   }[];
 }
 
@@ -330,10 +331,11 @@ Page({
           }
         }
         
-        // 添加餐次信息
+        // 添加餐次信息，包括状态
         userAppointment.meals.push({
           type: appointment.mealType,
-          dishes: dishNames
+          dishes: dishNames,
+          status: appointment.status || '待确认' // 添加预约状态
         });
       }
       

@@ -39,7 +39,10 @@
           </view>
           <view class="meals-list">
             <view class="meal-item" wx:for="{{user.meals}}" wx:key="type" wx:for-item="meal">
-              <view class="meal-type">{{meal.type}}</view>
+              <view class="meal-type-wrapper">
+                <view class="meal-type">{{meal.type}}</view>
+                <view class="meal-status status-{{meal.status === '待确认' ? 'pending' : meal.status === '已确认' ? 'confirmed' : meal.status === '已完成' ? 'completed' : 'cancelled'}}">{{meal.status || '待确认'}}</view>
+              </view>
               <view class="dish-list">
                 <text class="dish-name" wx:for="{{meal.dishes}}" wx:key="*this" wx:for-item="dish">{{dish}}</text>
               </view>

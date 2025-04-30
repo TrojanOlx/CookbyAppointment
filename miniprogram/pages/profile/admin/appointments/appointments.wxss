@@ -226,11 +226,20 @@
   border-bottom: none;
 }
 
+.meal-type-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+
 .meal-type {
   font-size: 28rpx;
-  font-weight: bold;
-  color: #555;
-  margin-bottom: 10rpx;
+  font-weight: 600;
+  color: #333;
+  background-color: #f0f0f0;
+  padding: 6rpx 16rpx;
+  border-radius: 6rpx;
 }
 
 .dish-list {
@@ -247,6 +256,38 @@
   border-radius: 30rpx;
   margin-right: 16rpx;
   margin-bottom: 10rpx;
+}
+
+/* 添加预约状态样式 */
+.meal-status {
+  font-size: 24rpx;
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  margin-left: 16rpx;
+}
+
+.status-pending {
+  color: #ff9800;
+  background-color: rgba(255, 152, 0, 0.1);
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.status-confirmed {
+  color: #2196f3;
+  background-color: rgba(33, 150, 243, 0.1);
+  border: 1px solid rgba(33, 150, 243, 0.3);
+}
+
+.status-completed {
+  color: #4caf50;
+  background-color: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.status-cancelled {
+  color: #f44336;
+  background-color: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
 }
 
 /* 空状态样式 */
