@@ -275,6 +275,12 @@ npx wrangler deploy --config wrangler.toml
 - 触发器：`wx.oulongxing.com` custom domain。
 - 当前版本 ID：`3d042123-b64c-45ee-a6cb-c478fd8579ec`。
 
+项目本地 Skill：
+
+- Skill 文件：`.devin/skills/cookby-cloudflare-deploy/SKILL.md`。
+- 下次可以直接要求“调用 `cookby-cloudflare-deploy` 部署 Cloudflare Worker”。
+- 这个 Skill 会按顺序检查登录、执行 dry-run、再部署 `cloudflareWorkes`。
+
 当前还缺少 D1 初始化/迁移脚本，新环境部署时需要按 `miniprogram/models/models.md` 补齐建表 SQL。
 
 ## GitNexus 代码索引
