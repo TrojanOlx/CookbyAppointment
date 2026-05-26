@@ -1,6 +1,7 @@
 {
   "pages": [
     "pages/index/index",
+    "pages/privacy/privacy",
     "pages/menu/menu",
     "pages/menu/add/add",
     "pages/menu/detail/detail",
@@ -15,7 +16,8 @@
     "pages/profile/admin/reviews/reviews",
     "pages/profile/admin/statistics/statistics",
     "pages/profile/admin/files/files",
-    "pages/review/review"
+    "pages/review/review",
+    "pages/profile/reviews/reviews"
   ],
   "window": {
     "navigationBarTextStyle": "white",

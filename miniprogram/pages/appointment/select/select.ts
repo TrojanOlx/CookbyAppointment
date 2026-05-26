@@ -2,12 +2,7 @@ import { Dish, DishType } from '../../../models/dish';
 import { Appointment, MealType } from '../../../models/appointment';
 import { AppointmentService } from '../../../services/appointmentService';
 import { DishService } from '../../../services/dishService';
-import { formatDate, showError, showSuccess, showToast, showLoading, hideLoading } from '../../../utils/util';
-
-// 生成唯一ID
-function generateId(): string {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-}
+import { showError, showSuccess, showToast, showLoading, hideLoading } from '../../../utils/util';
 
 // 每页加载的菜品数量
 const PAGE_SIZE = 10;
@@ -216,7 +211,7 @@ Page({
       if (searchKeyword) {
         // 如果有搜索关键词，使用搜索API
         console.log('使用搜索API，关键词:', searchKeyword);
-        dishesResult = await DishService.searchDish(searchKeyword, page, PAGE_SIZE);
+        dishesResult = await DishService.searchDishes(searchKeyword, page, PAGE_SIZE);
       } else {
         // 否则使用普通列表查询，可传入类型过滤
         console.log('使用普通查询API，类型:', selectedType || '全部');

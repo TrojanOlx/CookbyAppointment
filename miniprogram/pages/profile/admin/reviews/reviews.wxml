@@ -1,2 +1,74 @@
 <!--pages/profile/admin/reviews/reviews.wxml-->
-<text>pages/profile/admin/reviews/reviews.wxml</text>
+<view class="container">
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <text class="filter-label">评分筛选：</text>
+    <view
+      wx:for="{{[1,2,3,4,5]}}"
+      wx:key="*this"
+      class="filter-chip {{filterRating === item ? 'chip-active' : ''}}"
+      bindtap="selectFilter"
+      data-rating="{{item}}"
+    >★{{item}}及以下</view>
+    <view class="total-count">共{{total}}条</view>
+  </view>
+
+  <!-- 评价列表 -->
+  <block wx:if="{{reviews.length > 0}}">
+    <view class="review-card" wx:for="{{reviews}}" wx:key="id">
+      <!-- 头部信息 -->
+      <view class="card-header" bindtap="toggleExpand" data-id="{{item.id}}">
+        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.dishImage || '/images/default-dish.png'}}" mode="aspectFill"></image>
+        <view class="card-meta">
+          <text class="dish-name">{{item.dishName}}</text>
+          <view class="user-row">
+            <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.userAvatar || '/images/default-dish.png'}}" mode="aspectFill"></image>
+            <text class="user-name">{{item.userName}}</text>
+          </view>
+          <view class="bottom-row">
+            <view class="stars-row">
+              <text wx:for="{{item.stars}}" wx:key="*this" wx:for-item="filled" class="star {{filled ? 'star-filled' : 'star-empty'}}">★</text>
+            </view>
+            <text class="meta-date">{{item.appointmentDate}} {{item.mealType}}</text>
+          </view>
+        </view>
+        <view class="right-col">
+          <text class="create-time">{{item.createTimeStr}}</text>
+          <view class="delete-btn" catchtap="deleteReview" data-id="{{item.id}}">删除</view>
+        </view>
+      </view>
+
+      <!-- 展开内容 -->
+      <view class="card-body" wx:if="{{expandedId === item.id}}">
+        <view class="content-text" wx:if="{{item.content}}">{{item.content}}</view>
+        <view class="content-text empty-content" wx:else>无文字评价</view>
+        <view class="images-row" wx:if="{{item.images.length > 0}}">
+          <image
+            referrerPolicy="no-referrer"
+            class="review-img"
+            wx:for="{{item.images}}"
+            wx:key="*this"
+            wx:for-item="img"
+            src="{{img}}"
+            mode="aspectFill"
+            catchtap="previewImage"
+            data-url="{{img}}"
+            data-images="{{item.images}}"
+          ></image>
+        </view>
+      </view>
+    </view>
+
+    <view class="list-footer">
+      <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
+      <view class="no-more" wx:elif="{{!hasMore}}">—— 已是全部评价 ——</view>
+    </view>
+  </block>
+
+  <view class="empty-state" wx:elif="{{!loading}}">
+    <view class="empty-icon">💬</view>
+    <view class="empty-text">暂无评价数据</view>
+  </view>
+
+  <view class="loading-full" wx:if="{{loading && reviews.length === 0}}">加载中...</view>
+</view>

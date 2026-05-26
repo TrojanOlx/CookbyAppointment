@@ -4,19 +4,19 @@ Component({
     list: [{
       pagePath: "/pages/index/index",
       text: "首页",
-      icon: "🏠"
+      icon: "/images/icons/icon-home.svg"
     }, {
       pagePath: "/pages/menu/menu",
       text: "菜单",
-      icon: "🍽️"
+      icon: "/images/icons/icon-menu.svg"
     }, {
       pagePath: "/pages/appointment/appointment",
       text: "预约",
-      icon: "📅"
+      icon: "/images/icons/icon-appointment.svg"
     }, {
       pagePath: "/pages/profile/profile",
       text: "我的",
-      icon: "👤"
+      icon: "/images/icons/icon-profile.svg"
     }]
   },
   

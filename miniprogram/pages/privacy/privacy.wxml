@@ -1,0 +1,12 @@
+<view class="privacy-container">
+  <view class="privacy-header">
+    <text class="privacy-title">隐私政策</text>
+  </view>
+  <scroll-view class="privacy-content" scroll-y>
+    <rich-text nodes="{{privacyContent}}"></rich-text>
+  </scroll-view>
+  <view class="privacy-footer">
+    <button class="btn-reject" bindtap="rejectPrivacy">拒绝</button>
+    <button class="btn-accept" bindtap="acceptPrivacy">同意并继续</button>
+  </view>
+</view>

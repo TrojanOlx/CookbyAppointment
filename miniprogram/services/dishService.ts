@@ -65,7 +65,7 @@ export class DishService {
 
   // 获取食材列表
   static async getIngredientList(dishId?: string): Promise<Ingredient[]> {
-    return get<Ingredient[]>('/api/dish/ingredient/list', { dishId });
+    return get<Ingredient[]>('/api/dish/ingredients', { dishId });
   }
 
   // 添加食材

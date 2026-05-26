@@ -6,7 +6,8 @@ import { handleGetInventoryList, handleGetInventoryDetail, handleAddInventory, h
 import { handleGetDishList, handleGetDishDetail, handleAddDish, handleUpdateDish, handleDeleteDish, handleSearchDish, handleRecommendByIngredients, handleGetIngredientList, handleAddIngredient, handleUpdateIngredient, handleDeleteIngredient } from './handlers/dishHandler.js';
 import { handleGetAllAppointments, handleGetDateAppointments, handleGetAppointmentList, handleGetAppointmentDetail, handleCreateAppointment, handleUpdateAppointment, handleCancelAppointment, handleConfirmAppointment, handleCompleteAppointment, handleGetAppointmentDishes, handleAddAppointmentDish, handleRemoveAppointmentDish, handleGetAppointmentListByDate, handleReactivateAppointment } from './handlers/appointmentHandler.js';
 import { handleUploadFile, handleGetFileInfo, handleDownloadFile, handleDeleteFile, handleListFiles, handleBatchDeleteFiles } from './handlers/fileHandler.js';
-import { handleGetUserReviews, handleGetDishReviews, handleGetAppointmentReviews, handleAddReview, handleUpdateReview, handleDeleteReview } from './handlers/reviewHandler.js';
+import { handleGetUserReviews, handleGetDishReviews, handleGetAppointmentReviews, handleAddReview, handleUpdateReview, handleDeleteReview, handleGetAdminReviews } from './handlers/reviewHandler.js';
+import { handleGetStatistics } from './handlers/statisticsHandler.js';
 
 // 获取access_token
 export async function getAccessToken(env) {
@@ -107,7 +108,11 @@ const routes = {
   '/api/review/appointment': { GET: handleGetAppointmentReviews },
   '/api/review/add': { POST: handleAddReview },
   '/api/review/update': { PUT: handleUpdateReview },
-  '/api/review/delete': { DELETE: handleDeleteReview }
+  '/api/review/delete': { DELETE: handleDeleteReview },
+
+  // 管理员评价 & 统计API
+  '/api/admin/review/list': { GET: handleGetAdminReviews },
+  '/api/admin/statistics': { GET: handleGetStatistics }
 };
 
 // 跨域头

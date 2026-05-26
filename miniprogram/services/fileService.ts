@@ -1,13 +1,11 @@
 // 文件服务
-import { get, post, del } from './http';
+import { get, post, del, BASE_URL } from './http';
 import { FileInfo, FileListResponse, FileUploadResponse, FileOperationResponse, BatchDeleteResponse } from '../models/file';
 
 // 文件服务类
 export class FileService {
   // 上传文件
   static async uploadFile(filePath: string, folder: string = 'default', fileName?: string): Promise<FileUploadResponse> {
-    // 从http.ts中获取基础URL
-    const BASE_URL = 'https://wx.oulongxing.com';
     
     return new Promise((resolve) => {
       // 获取token

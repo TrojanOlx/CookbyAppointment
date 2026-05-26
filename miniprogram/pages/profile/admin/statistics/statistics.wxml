@@ -1,2 +1,92 @@
 <!--pages/profile/admin/statistics/statistics.wxml-->
-<text>pages/profile/admin/statistics/statistics.wxml</text>
+<scroll-view class="container" scroll-y enhanced="true" show-scrollbar="false">
+
+  <!-- 时间范围切换 -->
+  <view class="range-tabs">
+    <view
+      wx:for="{{[7, 30]}}"
+      wx:key="*this"
+      class="range-tab {{rangeTab === item ? 'tab-active' : ''}}"
+      bindtap="switchRange"
+      data-days="{{item}}"
+    >近{{item}}天</view>
+  </view>
+
+  <!-- 汇总数据卡片 -->
+  <view class="summary-grid">
+    <view class="summary-item">
+      <text class="summary-num">{{summary.total}}</text>
+      <text class="summary-label">总预约</text>
+    </view>
+    <view class="summary-item green">
+      <text class="summary-num">{{summary.completed}}</text>
+      <text class="summary-label">已完成</text>
+    </view>
+    <view class="summary-item orange">
+      <text class="summary-num">{{summary.pending}}</text>
+      <text class="summary-label">待确认</text>
+    </view>
+    <view class="summary-item red">
+      <text class="summary-num">{{summary.cancelled}}</text>
+      <text class="summary-label">已取消</text>
+    </view>
+  </view>
+
+  <!-- 每日趋势柱状图 -->
+  <view class="section-card">
+    <view class="section-title">📈 每日预约趋势</view>
+    <view class="chart-wrap" wx:if="{{dailyValues.length > 0}}">
+      <canvas type="2d" id="barCanvas" class="bar-canvas"></canvas>
+    </view>
+    <view class="chart-empty" wx:else>暂无数据</view>
+  </view>
+
+  <!-- 餐次分布 -->
+  <view class="section-card" wx:if="{{mealPieItems.length > 0}}">
+    <view class="section-title">🍽️ 餐次分布</view>
+    <view class="meal-list">
+      <view class="meal-row" wx:for="{{mealPieItems}}" wx:key="label">
+        <view class="meal-dot" style="background:{{item.color}}"></view>
+        <text class="meal-label">{{item.label}}</text>
+        <view class="progress-track">
+          <view class="progress-fill" style="width:{{item.pct}}%;background:{{item.color}}"></view>
+        </view>
+        <text class="meal-count">{{item.count}}次 ({{item.pct}}%)</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 最受欢迎菜品 Top5 -->
+  <view class="section-card" wx:if="{{topDishes.length > 0}}">
+    <view class="section-title">🏆 最受欢迎菜品 Top5</view>
+    <view class="rank-list">
+      <view class="rank-row" wx:for="{{topDishes}}" wx:key="dishId">
+        <view class="rank-badge rank-{{index < 3 ? index + 1 : 'other'}}">{{index + 1}}</view>
+        <image referrerPolicy="no-referrer" class="rank-img" src="{{item.image || '/images/default-dish.png'}}" mode="aspectFill" wx:if="{{item.image}}"></image>
+        <text class="rank-name">{{item.name}}</text>
+        <view class="rank-bar-wrap">
+          <view class="rank-bar" style="width:{{item.pct}}%"></view>
+        </view>
+        <text class="rank-count">{{item.count}}次</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 用户预约排行 Top5 -->
+  <view class="section-card" wx:if="{{userRanking.length > 0}}">
+    <view class="section-title">👤 用户预约排行 Top5</view>
+    <view class="rank-list">
+      <view class="rank-row" wx:for="{{userRanking}}" wx:key="userId">
+        <view class="rank-badge rank-{{index < 3 ? index + 1 : 'other'}}">{{index + 1}}</view>
+        <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.avatarUrl || '/images/default-dish.png'}}" mode="aspectFill"></image>
+        <text class="rank-name">{{item.nickName}}</text>
+        <view class="rank-bar-wrap">
+          <view class="rank-bar user-bar" style="width:{{item.pct}}%"></view>
+        </view>
+        <text class="rank-count">{{item.count}}次</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer-pad"></view>
+</scroll-view>

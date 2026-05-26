@@ -82,21 +82,6 @@ export class AppointmentService {
     return del<{ success: boolean }>('/api/appointment/dish/remove', { id });
   }
 
-  // 获取评价列表
-  static async getReviewList(
-    page: number = 1, 
-    pageSize: number = 10, 
-    dishId?: string,
-    userId?: string
-  ): Promise<{ total: number, list: Review[] }> {
-    return get<{ total: number, list: Review[] }>('/api/review/list', { 
-      page, 
-      pageSize, 
-      dishId,
-      userId
-    });
-  }
-
   // 获取预约的所有评价
   static async getAppointmentReviews(appointmentId: string): Promise<Review[]> {
     const result = await get<{ list: Review[] }>('/api/review/appointment', { appointmentId });
@@ -116,5 +101,13 @@ export class AppointmentService {
   // 删除评价
   static async deleteReview(id: string): Promise<{ success: boolean }> {
     return del<{ success: boolean }>('/api/review/delete', { id });
+  }
+
+  // 获取当前用户所有评价（含菜品和预约信息）
+  static async getUserReviews(
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<{ total: number, list: any[] }> {
+    return get<{ total: number, list: any[] }>('/api/review/user', { page, pageSize });
   }
 } 

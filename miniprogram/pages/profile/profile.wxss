@@ -21,24 +21,24 @@
 
 .login-btn {
   width: 45%;
-  height: 44px;
-  line-height: 44px;
+  height: 88rpx;
+  line-height: 88rpx;
   background-color: #07c160;
   color: white;
-  border-radius: 5px;
-  margin: 10px 5px;
-  font-size: 16px;
+  border-radius: 44rpx;
+  margin: 20rpx 10rpx;
+  font-size: 30rpx;
 }
 
 .login-options-btn {
   width: 45%;
-  height: 44px;
-  line-height: 44px;
+  height: 88rpx;
+  line-height: 88rpx;
   background-color: #1989fa;
   color: white;
-  border-radius: 5px;
-  margin: 10px 5px;
-  font-size: 16px;
+  border-radius: 44rpx;
+  margin: 20rpx 10rpx;
+  font-size: 30rpx;
 }
 
 .get-info-btn {
@@ -51,13 +51,13 @@
 
 .userinfo-btn {
   width: 80%;
-  height: 44px;
-  line-height: 44px;
+  height: 88rpx;
+  line-height: 88rpx;
   background-color: #1989fa;
   color: white;
-  border-radius: 5px;
-  margin: 10px auto;
-  font-size: 16px;
+  border-radius: 44rpx;
+  margin: 20rpx auto;
+  font-size: 30rpx;
 }
 
 .user-avatar-info {
@@ -133,8 +133,10 @@
 }
 
 .menu-arrow {
-  color: #cccccc;
-  font-size: 30rpx;
+  color: #d0d0d0;
+  font-size: 28rpx;
+  font-weight: 300;
+  letter-spacing: -2rpx;
 }
 
 /* 设置区域 */

@@ -66,12 +66,12 @@
         <text class="menu-text">查看预约</text>
         <text class="menu-arrow">></text>
       </view>
-      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/reviews">
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/reviews/reviews">
         <text class="menu-icon">📊</text>
         <text class="menu-text">查看评价</text>
         <text class="menu-arrow">></text>
       </view>
-      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/statistics">
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/statistics/statistics">
         <text class="menu-icon">📈</text>
         <text class="menu-text">预约统计</text>
         <text class="menu-arrow">></text>

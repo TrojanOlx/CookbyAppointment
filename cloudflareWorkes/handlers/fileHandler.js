@@ -23,11 +23,6 @@ export async function handleUploadFile(request, env) {
       return createErrorResponse('无效的token或用户不存在', 401);
     }
     
-    // 只有管理员可以上传文件
-    if (user.isAdmin !== 1) {
-      return createErrorResponse('权限不足', 403);
-    }
-
     // 验证请求方法
     if (request.method !== 'POST') {
       return createErrorResponse('请使用 POST 方法上传文件', 405);

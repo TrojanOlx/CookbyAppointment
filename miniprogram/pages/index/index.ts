@@ -1,25 +1,73 @@
 // index.ts
+import { AppointmentService } from '../../services/appointmentService';
+import { InventoryService } from '../../services/inventoryService';
+import { getCurrentDate, dateDiff } from '../../utils/util';
+
 // 获取应用实例
 const app = getApp<IAppOption>();
 
 Page({
   data: {
-    // 页面数据
-    safeAreaBottom: 0
+    safeAreaBottom: 0,
+    isLoggedIn: false,
+    todayAppointments: [] as any[],
+    expiringItems: [] as any[],
+    loadingAppointments: false,
+    loadingInventory: false,
+    today: ''
   },
 
   onLoad() {
-    // 页面加载
-    console.log('欢迎页面加载完成');
     this.setSafeArea();
+    const today = getCurrentDate();
+    this.setData({ today });
   },
 
   onShow() {
-    // 更新TabBar选中状态
     if (typeof this.getTabBar === 'function') {
-      this.getTabBar().setData({
-        selected: 0
+      this.getTabBar().setData({ selected: 0 });
+    }
+    const token = wx.getStorageSync('token');
+    const isLoggedIn = !!token;
+    this.setData({ isLoggedIn });
+    if (isLoggedIn) {
+      this.loadTodayAppointments();
+      this.loadExpiringItems();
+    }
+  },
+
+  async loadTodayAppointments() {
+    this.setData({ loadingAppointments: true });
+    try {
+      const today = getCurrentDate();
+      const res = await AppointmentService.getAppointmentListByDate(today);
+      const list = (res.list || []).map((item: any) => ({
+        ...item,
+        dishCount: Array.isArray(item.dishes) ? item.dishes.length : 0
+      }));
+      this.setData({ todayAppointments: list });
+    } catch (e) {
+      this.setData({ todayAppointments: [] });
+    } finally {
+      this.setData({ loadingAppointments: false });
+    }
+  },
+
+  async loadExpiringItems() {
+    this.setData({ loadingInventory: true });
+    try {
+      const today = getCurrentDate();
+      const res = await InventoryService.getExpiringItems(3, 1, 5);
+      const list = (res.list || []).map((item: any) => {
+        const diff = dateDiff(today, item.expiryDate);
+        const isExpired = new Date(item.expiryDate) < new Date(today);
+        return { ...item, daysLeft: isExpired ? 0 : diff, isExpired };
       });
+      this.setData({ expiringItems: list });
+    } catch (e) {
+      this.setData({ expiringItems: [] });
+    } finally {
+      this.setData({ loadingInventory: false });
     }
   },
 
@@ -47,6 +95,10 @@ Page({
     this.setData({
       safeAreaBottom
     });
+  },
+
+  navigateToAppointmentDetail() {
+    wx.switchTab({ url: '/pages/appointment/appointment' });
   },
 
   // 跳转到菜单页面

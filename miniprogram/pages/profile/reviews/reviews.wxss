@@ -1,1 +1,156 @@
 /* pages/profile/reviews/reviews.wxss */
+.container {
+  min-height: 100vh;
+  background: #f6f6f6;
+  padding: 20rpx 24rpx;
+  box-sizing: border-box;
+}
+
+.review-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 10rpx rgba(0,0,0,0.06);
+}
+
+.card-header {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+
+.dish-thumb {
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 12rpx;
+  flex-shrink: 0;
+  background: #f0f0f0;
+}
+
+.card-info {
+  flex: 1;
+  padding: 0 20rpx;
+}
+
+.dish-name {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #222;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.meta-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 10rpx;
+}
+
+.meta-date {
+  font-size: 24rpx;
+  color: #888;
+  margin-right: 12rpx;
+}
+
+.meta-meal {
+  font-size: 22rpx;
+  background: #E8F5E9;
+  color: #388E3C;
+  padding: 2rpx 12rpx;
+  border-radius: 20rpx;
+}
+
+.stars-row {
+  display: flex;
+  flex-direction: row;
+}
+
+.star {
+  font-size: 28rpx;
+  margin-right: 4rpx;
+}
+
+.star-filled { color: #FFB300; }
+.star-empty  { color: #E0E0E0; }
+
+.create-time {
+  font-size: 22rpx;
+  color: #bbb;
+  flex-shrink: 0;
+}
+
+/* 展开内容 */
+.card-body {
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #f5f5f5;
+}
+
+.content-text {
+  font-size: 28rpx;
+  color: #444;
+  line-height: 1.6;
+  margin-bottom: 16rpx;
+}
+
+.empty-content { color: #bbb; }
+
+.images-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.review-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 10rpx;
+  background: #f0f0f0;
+}
+
+/* 列表尾部 */
+.list-footer {
+  text-align: center;
+  padding: 20rpx 0 40rpx;
+}
+
+.loading-tip, .no-more {
+  font-size: 24rpx;
+  color: #bbb;
+}
+
+/* 空状态 */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 160rpx;
+}
+
+.empty-icon {
+  font-size: 80rpx;
+  margin-bottom: 24rpx;
+}
+
+.empty-text {
+  font-size: 32rpx;
+  color: #888;
+  font-weight: 500;
+  margin-bottom: 12rpx;
+}
+
+.empty-hint {
+  font-size: 26rpx;
+  color: #bbb;
+}
+
+.loading-full {
+  text-align: center;
+  padding-top: 120rpx;
+  font-size: 28rpx;
+  color: #bbb;
+}

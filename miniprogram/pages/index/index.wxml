@@ -5,32 +5,70 @@
 <view class="container">
   <!-- 固定的导航部分 -->
   <view class="header fixed-header">
-    <!-- <image class="logo" src="/images/logo.png" mode="aspectFit"></image> -->
     <view class="app-name">家庭菜单预约</view>
     <view class="app-desc">让美食规划更简单</view>
   </view>
   
   <!-- 可滚动的内容部分 -->
   <scroll-view class="features-scroll" scroll-y enable-flex="true" enhanced="true" show-scrollbar="false">
-    <view class="features">
-      <view class="feature-item" bindtap="navigateToMenu">
-        <view class="feature-icon menu-icon">🍳</view>
-        <view class="feature-name">菜单</view>
-        <view class="feature-desc">管理您喜爱的菜品</view>
+
+    <!-- 快捷导航 -->
+    <view class="nav-grid">
+      <view class="nav-item" bindtap="navigateToMenu">
+        <view class="nav-icon menu-icon">🍳</view>
+        <view class="nav-label">菜单</view>
       </view>
-      
-      <view class="feature-item" bindtap="navigateToAppointment">
-        <view class="feature-icon calendar-icon">📅</view>
-        <view class="feature-name">预约</view>
-        <view class="feature-desc">规划每日餐饮</view>
+      <view class="nav-item" bindtap="navigateToAppointment">
+        <view class="nav-icon calendar-icon">📅</view>
+        <view class="nav-label">预约</view>
       </view>
-      
-      <view class="feature-item" bindtap="navigateToInventory" data-url="/pages/inventory/inventory">
-        <view class="feature-icon fridge-icon">🧊</view>
-        <view class="feature-name">库存</view>
-        <view class="feature-desc">管理冰箱食材</view>
+      <view class="nav-item" bindtap="navigateToInventory">
+        <view class="nav-icon fridge-icon">🧊</view>
+        <view class="nav-label">库存</view>
       </view>
     </view>
+
+    <!-- 今日预约摘要（登录后显示） -->
+    <block wx:if="{{isLoggedIn}}">
+      <view class="section-card" bindtap="navigateToAppointmentDetail">
+        <view class="section-header">
+          <text class="section-title">📋 今日预约</text>
+          <text class="section-date">{{today}}</text>
+        </view>
+        <view class="section-body" wx:if="{{!loadingAppointments}}">
+          <block wx:if="{{todayAppointments.length > 0}}">
+            <view class="appt-row" wx:for="{{todayAppointments}}" wx:key="id">
+              <view class="appt-meal-badge meal-{{item.mealType === '早餐' ? 'breakfast' : item.mealType === '午餐' ? 'lunch' : 'dinner'}}">{{item.mealType}}</view>
+              <text class="appt-dish-count">{{item.dishCount}}道菜</text>
+              <text class="appt-status status-{{item.status === '待确认' ? 'pending' : item.status === '已确认' ? 'confirmed' : item.status === '已完成' ? 'completed' : 'cancelled'}}">{{item.status}}</text>
+            </view>
+          </block>
+          <view class="empty-hint" wx:else>
+            <text class="empty-hint-text">今日暂无预约安排</text>
+          </view>
+        </view>
+        <view class="loading-hint" wx:else>
+          <text>加载中...</text>
+        </view>
+      </view>
+
+      <!-- 库存告警 -->
+      <view class="section-card warn-card" wx:if="{{expiringItems.length > 0}}" bindtap="navigateToInventory">
+        <view class="section-header">
+          <text class="section-title">⚠️ 库存提醒</text>
+          <text class="section-more">查看全部 ›</text>
+        </view>
+        <view class="section-body">
+          <view class="expiry-row" wx:for="{{expiringItems}}" wx:key="id">
+            <text class="expiry-name">{{item.name}}</text>
+            <text class="expiry-amount">{{item.amount}}</text>
+            <text class="expiry-tag {{item.isExpired ? 'tag-expired' : 'tag-expiring'}}">
+              {{item.isExpired ? '已过期' : item.daysLeft + '天后过期'}}
+            </text>
+          </view>
+        </view>
+      </view>
+    </block>
     
     <view class="footer" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
       <view class="version">版本 1.0.0</view>

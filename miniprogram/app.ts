@@ -1,10 +1,9 @@
 // app.ts
-import { initTestData } from './utils/storage';
-import { hasUserAcceptedPrivacy, requestPrivacyAuthorization } from './utils/privacy';
+import { hasUserAcceptedPrivacy } from './utils/privacy';
 import { isLoggedIn } from './utils/auth';
 import { eventBus } from './utils/eventBus';
 
-// 需要登录才能访问的页面路径
+// 需要登录才能访问的页面路径（必须与 app.json 中注册的页面路径一致）
 const needLoginPages = [
   "pages/menu/menu",
   "pages/menu/add/add",
@@ -13,16 +12,11 @@ const needLoginPages = [
   "pages/appointment/select/select",
   "pages/inventory/inventory",
   "pages/inventory/add/add",
-  "pages/appointment/listtest", 
-  "pages/profile/appointments/appointments",
-  "pages/profile/reviews/reviews",
-  "pages/profile/admin/appointments",
-  "pages/profile/admin/reviews",
-  "pages/profile/admin/statistics",
   "pages/profile/settings/settings",
   "pages/profile/admin/appointments/appointments",
   "pages/profile/admin/reviews/reviews",
-  "pages/profile/admin/statistics/statistics"
+  "pages/profile/admin/statistics/statistics",
+  "pages/review/review"
 ];
 
 // 定义通用返回结果类型
@@ -45,9 +39,6 @@ App({
         console.log('系统信息:', res);
       }
     });
-    
-    // 初始化测试数据
-    initTestData();
     
     // 处理隐私授权
     if (!hasUserAcceptedPrivacy()) {
@@ -84,7 +75,7 @@ App({
             setTimeout(() => {
               wx.switchTab({
                 url: '/pages/profile/profile',
-                success: (res) => {
+                success: (_res) => {
                   resolve({ errMsg: 'navigateTo:redirected' });
                 },
                 fail: () => {
@@ -118,7 +109,7 @@ App({
             setTimeout(() => {
               wx.switchTab({
                 url: '/pages/profile/profile',
-                success: (res) => {
+                success: (_res) => {
                   resolve({ errMsg: 'redirectTo:redirected' });
                 },
                 fail: () => {
@@ -151,7 +142,7 @@ App({
             setTimeout(() => {
               originalSwitchTab({
                 url: '/pages/profile/profile',
-                success: (res) => {
+                success: (_res) => {
                   resolve({ errMsg: 'switchTab:redirected' });
                 },
                 fail: () => {
@@ -185,7 +176,7 @@ App({
             setTimeout(() => {
               wx.switchTab({
                 url: '/pages/profile/profile',
-                success: (res) => {
+                success: (_res) => {
                   resolve({ errMsg: 'reLaunch:redirected' });
                 },
                 fail: () => {

@@ -37,9 +37,12 @@
   color: #999;
 }
 
-.iconfont.icon-add {
-  font-size: 48rpx;
-  margin-bottom: 10rpx;
+.upload-plus {
+  font-size: 64rpx;
+  line-height: 1;
+  color: #bbb;
+  margin-bottom: 8rpx;
+  font-weight: 200;
 }
 
 .placeholder-text {

@@ -1,2 +1,56 @@
 <!--pages/profile/reviews/reviews.wxml-->
-<text>pages/profile/reviews/reviews.wxml</text>
+<view class="container">
+  <block wx:if="{{reviews.length > 0}}">
+    <view class="review-card" wx:for="{{reviews}}" wx:key="id" bindtap="toggleExpand" data-id="{{item.id}}">
+      <!-- 菜品信息行 -->
+      <view class="card-header">
+        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.dishImage}}" mode="aspectFill"></image>
+        <view class="card-info">
+          <text class="dish-name">{{item.dishName}}</text>
+          <view class="meta-row">
+            <text class="meta-date">{{item.appointmentDate}}</text>
+            <text class="meta-meal">{{item.mealType}}</text>
+          </view>
+          <view class="stars-row">
+            <text wx:for="{{item.stars}}" wx:key="*this" wx:for-item="filled" class="star {{filled ? 'star-filled' : 'star-empty'}}">★</text>
+          </view>
+        </view>
+        <text class="create-time">{{item.createTimeStr}}</text>
+      </view>
+
+      <!-- 展开内容 -->
+      <view class="card-body" wx:if="{{expandedId === item.id}}">
+        <view class="content-text" wx:if="{{item.content}}">{{item.content}}</view>
+        <view class="content-text empty-content" wx:else>暂无文字评价</view>
+        <view class="images-row" wx:if="{{item.images.length > 0}}">
+          <image
+            referrerPolicy="no-referrer"
+            class="review-img"
+            wx:for="{{item.images}}"
+            wx:key="*this"
+            wx:for-item="img"
+            src="{{img}}"
+            mode="aspectFill"
+            bindtap="previewImage"
+            data-url="{{img}}"
+            data-images="{{item.images}}"
+            catchtap="previewImage"
+          ></image>
+        </view>
+      </view>
+    </view>
+
+    <view class="list-footer">
+      <view class="loading-tip" wx:if="{{loading}}">加载中...</view>
+      <view class="no-more" wx:elif="{{!hasMore}}">—— 已是全部评价 ——</view>
+    </view>
+  </block>
+
+  <view class="empty-state" wx:elif="{{!loading}}">
+    <view class="empty-icon">⭐</view>
+    <view class="empty-text">暂无评价</view>
+    <view class="empty-hint">用餐完成后，为菜品写下你的感想吧</view>
+  </view>
+
+  <view class="loading-full" wx:if="{{loading && reviews.length === 0}}">加载中...</view>
+</view>

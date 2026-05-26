@@ -432,6 +432,10 @@ async function updateUser(db, user) {
 async function getLoginInfoByToken(db, token) {
   const stmt = db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token);
   const result = await stmt.first();
+  if (!result) return null;
+  if (result.expireTime && Date.now() > result.expireTime) {
+    return null;
+  }
   return result;
 }
 

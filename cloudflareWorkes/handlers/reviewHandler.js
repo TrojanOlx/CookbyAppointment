@@ -322,6 +322,72 @@ export async function handleDeleteReview(request, env) {
   }
 }
 
+// 管理员获取所有评价列表（含用户信息和菜品信息）
+export async function handleGetAdminReviews(request, env) {
+  try {
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) return createErrorResponse('未提供token', 401);
+
+    const { loginInfo, user } = await validateTokenAndGetUser(env.DB, token);
+    if (!loginInfo || !user) return createErrorResponse('无效的token或用户不存在', 401);
+    if (user.isAdmin !== 1) return createErrorResponse('无管理员权限', 403);
+
+    const query = new URL(request.url).searchParams;
+    const page = parseInt(query.get('page')) || 1;
+    const pageSize = parseInt(query.get('pageSize')) || 20;
+    const dishId = query.get('dishId') || null;
+    const minRating = query.get('minRating') ? parseInt(query.get('minRating')) : null;
+    const maxRating = query.get('maxRating') ? parseInt(query.get('maxRating')) : null;
+    const offset = (page - 1) * pageSize;
+
+    let whereClause = 'WHERE 1=1';
+    const bindings = [];
+    if (dishId) { whereClause += ' AND r.dishId = ?'; bindings.push(dishId); }
+    if (minRating !== null) { whereClause += ' AND r.rating >= ?'; bindings.push(minRating); }
+    if (maxRating !== null) { whereClause += ' AND r.rating <= ?'; bindings.push(maxRating); }
+
+    const countStmt = env.DB.prepare(`SELECT COUNT(*) as count FROM reviews r ${whereClause}`);
+    const countResult = await countStmt.bind(...bindings).first();
+    const total = countResult.count;
+
+    const listStmt = env.DB.prepare(
+      `SELECT r.* FROM reviews r ${whereClause} ORDER BY r.createTime DESC LIMIT ? OFFSET ?`
+    );
+    const listResult = await listStmt.bind(...bindings, pageSize, offset).all();
+
+    const list = [];
+    for (const review of listResult.results) {
+      let images = [];
+      try { images = JSON.parse(review.images || '[]'); } catch { images = []; }
+      images = images.map(img => img.startsWith('http') ? img : `${env.R2_PUBLIC_URL}/${img}`);
+
+      const dish = await getDishById(env.DB, review.dishId);
+      const userInfo = await getUserById(env.DB, review.userId);
+      const appointment = await getAppointmentById(env.DB, review.appointmentId);
+
+      const dishImages = dish && dish.images ? dish.images.map(img =>
+        img.startsWith('http') ? img : `${env.R2_PUBLIC_URL}/${img}`
+      ) : [];
+
+      list.push({
+        ...review,
+        images,
+        dishName: dish ? dish.name : '未知菜品',
+        dishImage: dishImages[0] || '',
+        userName: userInfo ? userInfo.nickName : '匿名用户',
+        userAvatar: userInfo ? userInfo.avatarUrl : '',
+        appointmentDate: appointment ? appointment.date : '',
+        mealType: appointment ? appointment.mealType : ''
+      });
+    }
+
+    return createJsonResponse({ total, list });
+  } catch (error) {
+    return createErrorResponse(`服务器错误: ${error.message}`, 500);
+  }
+}
+
 // 辅助函数 - 验证token并获取用户信息
 async function validateTokenAndGetUser(db, token) {
   // 验证token

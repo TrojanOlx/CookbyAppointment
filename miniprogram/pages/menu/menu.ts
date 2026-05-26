@@ -25,14 +25,11 @@ Page({
    * 生命周期函数--监听页面加载
    */
   onLoad() {
-    // 初始化菜品类型
+    // 初始化菜品类型（数据加载由 onShow 统一处理，避免重复请求）
     this.setData({
       dishTypes: Object.values(DishType)
     });
-    
-    this.loadDishes(true);
     this.setSafeArea();
-    this.checkAdminStatus();
   },
 
   /**
@@ -136,8 +133,9 @@ Page({
       
       console.log("获取数据成功，数量:", result.list.length, "总数:", result.total);
       
-      // 计算是否还有更多数据
-      const hasMore = result.list.length >= this.data.pageSize;
+      // 计算是否还有更多数据（使用 total 对比已加载数量，避免边界误判）
+      const loadedCount = refresh ? result.list.length : this.data.dishes.length + result.list.length;
+      const hasMore = loadedCount < result.total;
       
       this.setData({
         dishes: refresh ? result.list : [...this.data.dishes, ...result.list],
