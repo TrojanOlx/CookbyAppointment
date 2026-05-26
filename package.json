@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "description": "这是一个家庭菜单预约小程序，用于记录每天早中晚餐的菜单，并且记录每一餐所需的食材和做法。用户可以创建、修改、删除和查询菜品，进行日历预约，并管理冰箱库存。",
   "scripts": {
-    "build": "echo 构建完成"
+    "build": "echo 构建完成",
+    "worker:login": "npx --yes wrangler login",
+    "worker:whoami": "npx --yes wrangler whoami",
+    "worker:dry-run": "npx --yes wrangler deploy --dry-run --config cloudflareWorkes/wrangler.toml",
+    "worker:deploy": "npx --yes wrangler deploy --config cloudflareWorkes/wrangler.toml"
   },
   "keywords": [],
   "author": "",

@@ -1,0 +1,28 @@
+# Cloudflare Workers deployment config for the CookbyAppointment API.
+# Before deploying, confirm the local worker.js matches the code currently
+# running in Cloudflare's dashboard quick editor.
+
+name = "black-frost-08dc"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+workers_dev = false
+
+# Keep variables/secrets that already exist in the Cloudflare dashboard
+# such as WX_APPID and WX_SECRET.
+keep_vars = true
+
+routes = [
+  { pattern = "wx.oulongxing.com", custom_domain = true }
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cookby_appointment"
+database_id = "07358a9d-1108-41be-9b00-01fbc2b5e922"
+
+[[r2_buckets]]
+binding = "FILE_BUCKET"
+bucket_name = "cookby-appointment"
+
+[vars]
+R2_PUBLIC_URL = "https://images.wx.oulongxing.com"
