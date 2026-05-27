@@ -8,6 +8,7 @@ import { handleGetAllAppointments, handleGetDateAppointments, handleGetAppointme
 import { handleUploadFile, handleGetFileInfo, handleDownloadFile, handleDeleteFile, handleListFiles, handleBatchDeleteFiles } from './handlers/fileHandler.js';
 import { handleGetUserReviews, handleGetDishReviews, handleGetAppointmentReviews, handleAddReview, handleUpdateReview, handleDeleteReview, handleGetAdminReviews } from './handlers/reviewHandler.js';
 import { handleGetStatistics } from './handlers/statisticsHandler.js';
+import { sendDailyReminders } from './handlers/notificationHandler.js';
 
 // 获取access_token
 export async function getAccessToken(env) {
@@ -180,5 +181,10 @@ export default {
       console.error('Unhandled error:', error);
       return addCorsHeaders(createErrorResponse('Internal Server Error', 500));
     }
+  },
+
+  // Cron Trigger 定时任务：每天北京时间 08:00 发送当日预约提醒
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendDailyReminders(env));
   }
 };

@@ -2,6 +2,7 @@ import { AppointmentStatus, MealType } from '../../models/appointment';
 import { Dish } from '../../models/dish';
 import { AppointmentService } from '../../services/appointmentService';
 import { getCurrentDate, showConfirm, showSuccess, showLoading, hideLoading, showToast } from '../../utils/util';
+import { requestSubscribeForUser } from '../../services/notificationService';
 // 引入wx-calendar和农历插件
 const { WxCalendar } = require('@lspriv/wx-calendar/lib');
 const { LunarPlugin } = require('@lspriv/wc-plugin-lunar');
@@ -418,6 +419,9 @@ Page({
   async deleteAppointment(e: any) {
     const id = e.currentTarget.dataset.id;
 
+    // 在 tap 事件中请求订阅，积累推送配额
+    await requestSubscribeForUser();
+
     const confirmed = await showConfirm('确认取消', '确定要取消这个预约吗？');
     if (confirmed) {
       try {
@@ -493,6 +497,9 @@ Page({
   // 重新预约（恢复已取消的预约）
   async reactivateAppointment(e: any) {
     const id = e.currentTarget.dataset.id;
+
+    // 在 tap 事件中请求订阅，将在重新激活后等待确认通知
+    await requestSubscribeForUser();
 
     const confirmed = await showConfirm('确认重新预约', '确定要恢复这个已取消的预约吗？');
     if (confirmed) {

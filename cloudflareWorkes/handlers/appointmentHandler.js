@@ -1,4 +1,5 @@
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
+import { notifyAdminsNewAppointment, notifyAdminsUserCancelled, notifyUserConfirmed, notifyUserCancelled, notifyUserCompleted } from './notificationHandler.js';
 
 // R2 文件服务辅助函数
 function processImageUrls(images, env) {
@@ -404,6 +405,13 @@ export async function handleCreateAppointment(request, env) {
       }
     }
 
+    // 通知所有管理员有新预约（不影响主流程）
+    try {
+      await notifyAdminsNewAppointment(env, createdAppointment, dishes);
+    } catch (notifyErr) {
+      console.error('新预约通知发送失败:', notifyErr.message);
+    }
+
     // 返回完整的预约信息
     return createJsonResponse({
       ...createdAppointment,
@@ -590,6 +598,17 @@ export async function handleCancelAppointment(request, env) {
 
     await updateAppointment(env.DB, updatedAppointment);
 
+    // 通知用户预约已取消，或通知管理员用户自行取消（不影响主流程）
+    try {
+      if (user.isAdmin === 1) {
+        await notifyUserCancelled(env, existingAppointment, reason || '管理员取消');
+      } else {
+        await notifyAdminsUserCancelled(env, existingAppointment);
+      }
+    } catch (notifyErr) {
+      console.error('取消预约通知发送失败:', notifyErr.message);
+    }
+
     return createJsonResponse({ success: true });
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
@@ -647,6 +666,13 @@ export async function handleConfirmAppointment(request, env) {
 
     await updateAppointment(env.DB, updatedAppointment);
 
+    // 通知用户预约已确认（不影响主流程）
+    try {
+      await notifyUserConfirmed(env, existingAppointment);
+    } catch (notifyErr) {
+      console.error('预约确认通知发送失败:', notifyErr.message);
+    }
+
     return createJsonResponse({ success: true });
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
@@ -703,6 +729,13 @@ export async function handleCompleteAppointment(request, env) {
     };
 
     await updateAppointment(env.DB, updatedAppointment);
+
+    // 通知用户预约已完成（不影响主流程）
+    try {
+      await notifyUserCompleted(env, existingAppointment);
+    } catch (notifyErr) {
+      console.error('预约完成通知发送失败:', notifyErr.message);
+    }
 
     return createJsonResponse({ success: true });
   } catch (error) {

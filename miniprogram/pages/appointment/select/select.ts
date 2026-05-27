@@ -3,6 +3,7 @@ import { Appointment, MealType } from '../../../models/appointment';
 import { AppointmentService } from '../../../services/appointmentService';
 import { DishService } from '../../../services/dishService';
 import { showError, showSuccess, showToast, showLoading, hideLoading } from '../../../utils/util';
+import { requestSubscribeForUser } from '../../../services/notificationService';
 
 // 每页加载的菜品数量
 const PAGE_SIZE = 10;
@@ -495,6 +496,9 @@ Page({
           return;
         }
         
+        // 请求订阅通知（用户拒绝不阻断预约流程）
+        await requestSubscribeForUser();
+
         // 创建新预约
         const appointment: Partial<Appointment> = {
           date,

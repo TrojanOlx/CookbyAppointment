@@ -26,3 +26,7 @@ bucket_name = "cookby-appointment"
 
 [vars]
 R2_PUBLIC_URL = "https://images.wx.oulongxing.com"
+
+# Cron Trigger：UTC 00:00 = 北京时间 08:00，每天自动发送当日预约提醒
+[triggers]
+crons = ["0 0 * * *"]

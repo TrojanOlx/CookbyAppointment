@@ -3,6 +3,7 @@ import { AdminAppointmentService } from '../../../../services/adminAppointmentSe
 import { AppointmentService } from '../../../../services/appointmentService';
 import { Appointment } from '../../../../models/appointment';
 import { formatDate, getCurrentDate, showLoading, hideLoading, showToast } from '../../../../utils/util';
+import { requestSubscribeForAdmin } from '../../../../services/notificationService';
 import { MealType } from '../../../../utils/model';
 
 // 引入wx-calendar和农历插件
@@ -554,6 +555,9 @@ Page({
         showToast('未找到预约ID');
         return;
       }
+
+      // 管理员订阅「新预约」通知，确保后续有新预约时能收到推送
+      await requestSubscribeForAdmin();
       
       showLoading('确认预约中');
       
@@ -586,6 +590,9 @@ Page({
         return;
       }
       
+      // 管理员订阅「新预约」通知，确保后续有新预约时能收到推送
+      await requestSubscribeForAdmin();
+
       // 弹窗确认是否取消预约
       wx.showModal({
         title: '确认取消',
@@ -626,6 +633,9 @@ Page({
         showToast('未找到预约ID');
         return;
       }
+
+      // 管理员订阅「新预约」通知，确保后续有新预约时能收到推送
+      await requestSubscribeForAdmin();
       
       showLoading('更新状态中');
       
