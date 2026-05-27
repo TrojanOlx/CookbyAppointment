@@ -33,23 +33,97 @@ const getGlobalApp = (): WechatMiniprogram.App.Instance<{
 const clearLoginInfo = () => {
   wx.removeStorageSync('token');
   wx.removeStorageSync('userInfo');
-  // 可能还有其他需要清除的登录信息，根据实际情况添加
+  wx.removeStorageSync('openid');
 };
 
-// 统一请求函数
-export const request = <T = any>(options: RequestOptions): Promise<T> => {
+// ---------- 静默刷新 token ----------
+// 刷新锁：避免多个并发请求同时触发刷新
+let _isRefreshing = false;
+let _refreshQueue: Array<(token: string | null) => void> = [];
+
+/**
+ * 静默刷新 token：调用 wx.login() 获取新 code 后重新登录，返回新 token。
+ * 多个并发请求同时遇到 401 时，只执行一次刷新，其余排队等待结果。
+ */
+const silentRefreshToken = (): Promise<string> => {
+  if (_isRefreshing) {
+    return new Promise((resolve, reject) => {
+      _refreshQueue.push((token) => {
+        token ? resolve(token) : reject(new Error('token 刷新失败'));
+      });
+    });
+  }
+  _isRefreshing = true;
+  const flush = (token: string | null) => {
+    _isRefreshing = false;
+    _refreshQueue.forEach(cb => cb(token));
+    _refreshQueue = [];
+  };
   return new Promise((resolve, reject) => {
-    // 获取本地存储的token
+    wx.login({
+      success: (loginRes) => {
+        if (!loginRes.code) {
+          flush(null);
+          reject(new Error('wx.login 未返回 code'));
+          return;
+        }
+        wx.request({
+          url: `${BASE_URL}/api/user/login`,
+          method: 'POST',
+          data: { code: loginRes.code },
+          header: { 'Content-Type': 'application/json' },
+          success: (res: any) => {
+            if (res.statusCode === 200 && res.data && res.data.token) {
+              const newToken: string = res.data.token;
+              wx.setStorageSync('token', newToken);
+              if (res.data.openid) wx.setStorageSync('openid', res.data.openid);
+              flush(newToken);
+              resolve(newToken);
+            } else {
+              flush(null);
+              reject(new Error('自动登录失败'));
+            }
+          },
+          fail: (err) => { flush(null); reject(err); }
+        });
+      },
+      fail: (err) => { flush(null); reject(err); }
+    });
+  });
+};
+
+// 弹窗提示并跳转登录（仅在静默刷新也失败后才调用）
+const handleUnauthorized = (statusCode: number) => {
+  clearLoginInfo();
+  const errMsg = statusCode === 401 ? '登录已过期，请重新登录' : '权限不足';
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1];
+  const currentPath = `/${currentPage.route}`;
+  if (!currentPath.includes('/pages/profile/profile')) {
+    wx.setStorageSync('redirectUrl', currentPath);
+  }
+  wx.showModal({
+    title: '提示',
+    content: errMsg,
+    showCancel: false,
+    success: () => {
+      getGlobalApp().globalData.eventBus.emit('initLoginPage');
+      if (!currentPath.includes('/pages/profile/profile')) {
+        wx.switchTab({ url: '/pages/profile/profile' });
+      }
+    }
+  });
+};
+
+// 内部请求实现；allowRetry=true 时遇到 401 会先静默刷新 token 再重试一次
+const doRequest = <T = any>(options: RequestOptions, allowRetry: boolean): Promise<T> => {
+  return new Promise((resolve, reject) => {
     const token = wx.getStorageSync('token') || '';
-    
-    // 合并默认header
     const header = {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
       ...options.header
     };
-    
-    // 处理GET请求参数，过滤掉undefined的值
     let data = options.data;
     if ((options.method === 'GET' || options.method === 'DELETE') && data) {
       data = Object.entries(data).reduce((acc, [key, value]) => {
@@ -59,86 +133,52 @@ export const request = <T = any>(options: RequestOptions): Promise<T> => {
         return acc;
       }, {} as Record<string, any>);
     }
-    
-    // 打印请求日志
     console.log(`发起请求: ${options.method || 'GET'} ${options.url}`, data);
-    
-    // 发起请求
     wx.request({
       url: `${BASE_URL}${options.url}`,
       method: options.method || 'GET',
       data,
       header,
       success: (res: any) => {
-        // 打印响应日志
         console.log(`请求响应: ${options.url}`, res.statusCode, res.data);
-        
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(res.data as T);
+        } else if (res.statusCode === 401 && allowRetry) {
+          // 先静默刷新 token，成功后用新 token 重试原请求（仅重试一次）
+          silentRefreshToken()
+            .then(() => {
+              doRequest<T>(options, false).then(resolve).catch(reject);
+            })
+            .catch(() => {
+              handleUnauthorized(401);
+              reject(new Error('登录已过期，请重新登录'));
+            });
         } else if (res.statusCode === 401 || res.statusCode === 403) {
-          // token失效或权限不足，清除本地token和用户信息
-          clearLoginInfo();
-          
-          // 构建错误信息
+          // 重试后仍失败，或 403 权限不足（不重试）
+          handleUnauthorized(res.statusCode);
           const errMsg = res.statusCode === 401 ? '登录已过期，请重新登录' : '权限不足';
-          
-          // 保存当前页面路径
-          const pages = getCurrentPages();
-          const currentPage = pages[pages.length - 1];
-          const currentPath = `/${currentPage.route}`;
-          
-          // 如果当前不在登录页面，则保存当前页面路径用于重新登录后跳回
-          if (!currentPath.includes('/pages/profile/profile')) {
-            wx.setStorageSync('redirectUrl', currentPath);
-          }
-          
-          // 提示用户
-          wx.showModal({
-            title: '提示',
-            content: errMsg,
-            showCancel: false,
-            success: () => {
-              // 如果当前不在登录页面，则跳转到登录页面
-              if (!currentPath.includes('/pages/profile/profile')) {
-                // 发送事件通知登录页面需要初始化
-                getGlobalApp().globalData.eventBus.emit('initLoginPage');
-                wx.switchTab({
-                  url: '/pages/profile/profile'
-                });
-              }
-            }
-          });
-          
           reject(new Error(errMsg));
         } else {
-          // 其他错误类型
-          const errMsg = res.data && res.data.message 
-            ? res.data.message 
+          const errMsg = res.data && res.data.message
+            ? res.data.message
             : `请求失败(${res.statusCode})`;
-            
-          wx.showToast({
-            title: errMsg,
-            icon: 'none',
-            duration: 2000
-          });
-          
+          wx.showToast({ title: errMsg, icon: 'none', duration: 2000 });
           reject(new Error(errMsg));
         }
       },
       fail: (err) => {
         console.error(`请求失败: ${options.url}`, err);
         const errMsg = err.errMsg || '网络错误，请检查网络连接';
-        
-        wx.showToast({
-          title: errMsg,
-          icon: 'none',
-          duration: 2000
-        });
-        
+        wx.showToast({ title: errMsg, icon: 'none', duration: 2000 });
         reject(new Error(errMsg));
       }
     });
   });
+};
+
+// 统一请求函数（公开 API，默认允许静默刷新重试）
+export const request = <T = any>(options: RequestOptions): Promise<T> => {
+  return doRequest<T>(options, true);
 };
 
 // 封装GET请求

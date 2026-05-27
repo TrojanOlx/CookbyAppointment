@@ -9,7 +9,6 @@
     "pages/appointment/select/select",
     "pages/inventory/inventory",
     "pages/inventory/add/add",
-    "pages/appointment/listtest",
     "pages/profile/profile",
     "pages/profile/settings/settings",
     "pages/profile/admin/appointments/appointments",

@@ -4,6 +4,9 @@ import { createJsonResponse, createErrorResponse } from '../wxApi.js';
 async function validateTokenAndGetUser(db, token) {
   const loginInfo = await db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token).first();
   if (!loginInfo) return { loginInfo: null, user: null };
+  if (loginInfo.expireTime && Date.now() > loginInfo.expireTime) {
+    return { loginInfo: null, user: null };
+  }
   const user = await db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid).first();
   return { loginInfo, user };
 }

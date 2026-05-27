@@ -297,6 +297,11 @@ async function validateTokenAndGetUser(db, token) {
   if (!loginInfo) {
     return { loginInfo: null, user: null };
   }
+
+  // 检查 token 是否过期
+  if (loginInfo.expireTime && Date.now() > loginInfo.expireTime) {
+    return { loginInfo: null, user: null };
+  }
   
   // 获取用户信息
   const userStmt = db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid);

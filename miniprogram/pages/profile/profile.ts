@@ -86,7 +86,7 @@ Page<IPageData, IPageMethods & {
       };
     }>();
     
-    app.globalData.eventBus.on('initLoginPage', () => {
+    const initLoginPageHandler = () => {
       console.log('收到登录页面初始化事件');
       // 清除登录状态
       this.setData({
@@ -98,9 +98,19 @@ Page<IPageData, IPageMethods & {
       });
       // 清除本地存储的登录信息
       this.doLogout();
-    });
+    };
+    (this as any)._initLoginPageHandler = initLoginPageHandler;
+    app.globalData.eventBus.on('initLoginPage', initLoginPageHandler);
   },
   
+  onUnload() {
+    const handler = (this as any)._initLoginPageHandler;
+    if (handler) {
+      const app = getApp<{ globalData: { eventBus: { off: (event: string, cb: (...args: any[]) => void) => void } } }>();
+      app.globalData.eventBus.off('initLoginPage', handler);
+    }
+  },
+
   onShow() {
     // 更新TabBar选中状态
     if (typeof this.getTabBar === 'function') {
@@ -139,10 +149,8 @@ Page<IPageData, IPageMethods & {
     } catch (error) {
       console.error('获取用户信息失败:', error);
       hideLoading();
-      showToast('获取用户信息失败');
-      
-      // 如果出现403或401错误，可能是token失效，清除token
-      wx.removeStorageSync('token');
+      // http.ts 已对 401/403 显示弹窗并清除 token，此处不重复清除
+      // 避免与 doLogin() 竞态——如果刚保存了新 token，不能在这里删掉它
       this.setData({
         userInfo: null,
         hasUserInfo: false,
@@ -193,18 +201,29 @@ Page<IPageData, IPageMethods & {
     try {
       this.setData({ isLoggingIn: true });
       
-      // 获取登录code
+      // 获取登录code（冷启动 / 版本升级后首次调用可能失败，最多重试一次）
       const loginCode = await new Promise<string>((resolve, reject) => {
-        wx.login({
-          success: (res) => {
-            if (res.code) {
-              resolve(res.code);
-            } else {
-              reject(new Error('登录失败: ' + res.errMsg));
+        const tryLogin = (retry: boolean) => {
+          wx.login({
+            success: (res) => {
+              if (res.code) {
+                resolve(res.code);
+              } else if (retry) {
+                setTimeout(() => tryLogin(false), 800);
+              } else {
+                reject(new Error('wx.login 失败: ' + res.errMsg));
+              }
+            },
+            fail: (err) => {
+              if (retry) {
+                setTimeout(() => tryLogin(false), 800);
+              } else {
+                reject(err);
+              }
             }
-          },
-          fail: reject
-        });
+          });
+        };
+        tryLogin(true);
       });
       
       // 调用UserService进行登录
@@ -505,10 +524,7 @@ Page<IPageData, IPageMethods & {
     } catch (error) {
       console.error('检查管理员状态失败:', error);
       
-      // 失败时使用本地方式判断（备用）
-      const adminOpenids = ['o-1-C6_A-LcLC4PFDA-sbcNFNUqE']; // 添加管理员的openid
-      const isAdmin = this.data.openid && adminOpenids.includes(this.data.openid);
-      this.setData({ isAdmin: Boolean(isAdmin) });
+      this.setData({ isAdmin: false });
     }
   },
   
@@ -632,7 +648,7 @@ Page<IPageData, IPageMethods & {
         hideLoading();
         showToast('昵称已更新');
       })
-      .catch(err => {
+      .catch(() => {
         hideLoading();
         showToast('昵称更新失败');
         this.setData({ editingNickName: false });
@@ -662,15 +678,9 @@ Page<IPageData, IPageMethods & {
   },
 
   onInputChange(e: any) {
+    // 仅更新本地状态，不保存到服务端（blur/confirm 时统一保存，避免双重调用）
     const nickName = e.detail.value;
-    if (!nickName) {
-      this.setData({ editingNickName: false });
-      return;
-    }
-    (this as any).saveNickName(nickName);
-    this.setData({
-      'userInfo.nickName': nickName
-    });
+    this.setData({ 'userInfo.nickName': nickName });
   },
 
   // 清除缓存
