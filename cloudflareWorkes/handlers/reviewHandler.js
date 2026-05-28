@@ -1,4 +1,5 @@
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
+import { validateTokenAndGetUser, buildMap, buildInClause } from './_shared.js';
 
 // 获取用户的所有评价
 export async function handleGetUserReviews(request, env) {
@@ -25,23 +26,25 @@ export async function handleGetUserReviews(request, env) {
     // 查询用户的评价列表
     const { total, reviews } = await getUserReviews(env.DB, user.id, page, pageSize);
     
-    // 为每个评价添加菜品和预约信息
-    const reviewsWithDetails = [];
-    for (const review of reviews) {
-      // 获取菜品信息
-      const dish = await getDishById(env.DB, review.dishId);
-      
-      // 获取预约信息
-      const appointment = await getAppointmentById(env.DB, review.appointmentId);
-      
-      reviewsWithDetails.push({
+    // 批量查询菜品和预约信息
+    const dishIds = [...new Set(reviews.map(r => r.dishId).filter(Boolean))];
+    const appointmentIds = [...new Set(reviews.map(r => r.appointmentId).filter(Boolean))];
+    const [dishMap, appointmentMap] = await Promise.all([
+      batchGetById(env.DB, 'dishes', dishIds),
+      batchGetById(env.DB, 'appointments', appointmentIds)
+    ]);
+
+    const reviewsWithDetails = reviews.map(review => {
+      const dish = dishMap.get(review.dishId);
+      const appointment = appointmentMap.get(review.appointmentId);
+      return {
         ...review,
         dish: dish || { name: '未知菜品' },
         appointmentDate: appointment ? appointment.date : '',
         mealType: appointment ? appointment.mealType : ''
-      });
-    }
-    
+      };
+    });
+
     return createJsonResponse({ total, list: reviewsWithDetails });
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
@@ -64,19 +67,19 @@ export async function handleGetDishReviews(request, env) {
     // 查询菜品的评价列表
     const { total, reviews } = await getDishReviews(env.DB, dishId, page, pageSize);
     
-    // 添加用户信息
-    const reviewsWithUser = [];
-    for (const review of reviews) {
-      // 获取用户信息
-      const userInfo = await getUserById(env.DB, review.userId);
-      
-      reviewsWithUser.push({
+    // 批量查询用户信息
+    const userIds = [...new Set(reviews.map(r => r.userId).filter(Boolean))];
+    const userMap = await batchGetById(env.DB, 'users', userIds);
+
+    const reviewsWithUser = reviews.map(review => {
+      const userInfo = userMap.get(review.userId);
+      return {
         ...review,
         userName: userInfo ? userInfo.nickName : '匿名用户',
         userAvatar: userInfo ? userInfo.avatarUrl : ''
-      });
-    }
-    
+      };
+    });
+
     return createJsonResponse({ total, list: reviewsWithUser });
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
@@ -356,21 +359,31 @@ export async function handleGetAdminReviews(request, env) {
     );
     const listResult = await listStmt.bind(...bindings, pageSize, offset).all();
 
-    const list = [];
-    for (const review of listResult.results) {
+    // 批量查询关联数据
+    const reviewRows = listResult.results;
+    const bDishIds = [...new Set(reviewRows.map(r => r.dishId).filter(Boolean))];
+    const bUserIds = [...new Set(reviewRows.map(r => r.userId).filter(Boolean))];
+    const bApptIds = [...new Set(reviewRows.map(r => r.appointmentId).filter(Boolean))];
+    const [dishMap, userMap, apptMap] = await Promise.all([
+      batchGetById(env.DB, 'dishes', bDishIds),
+      batchGetById(env.DB, 'users', bUserIds),
+      batchGetById(env.DB, 'appointments', bApptIds)
+    ]);
+
+    const list = reviewRows.map(review => {
       let images = [];
       try { images = JSON.parse(review.images || '[]'); } catch { images = []; }
       images = images.map(img => img.startsWith('http') ? img : `${env.R2_PUBLIC_URL}/${img}`);
 
-      const dish = await getDishById(env.DB, review.dishId);
-      const userInfo = await getUserById(env.DB, review.userId);
-      const appointment = await getAppointmentById(env.DB, review.appointmentId);
+      const dish = dishMap.get(review.dishId);
+      const userInfo = userMap.get(review.userId);
+      const appointment = apptMap.get(review.appointmentId);
+      const dishImages = dish && dish.images
+        ? (Array.isArray(dish.images) ? dish.images : [])
+            .map(img => img.startsWith('http') ? img : `${env.R2_PUBLIC_URL}/${img}`)
+        : [];
 
-      const dishImages = dish && dish.images ? dish.images.map(img =>
-        img.startsWith('http') ? img : `${env.R2_PUBLIC_URL}/${img}`
-      ) : [];
-
-      list.push({
+      return {
         ...review,
         images,
         dishName: dish ? dish.name : '未知菜品',
@@ -379,35 +392,13 @@ export async function handleGetAdminReviews(request, env) {
         userAvatar: userInfo ? userInfo.avatarUrl : '',
         appointmentDate: appointment ? appointment.date : '',
         mealType: appointment ? appointment.mealType : ''
-      });
-    }
+      };
+    });
 
     return createJsonResponse({ total, list });
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
   }
-}
-
-// 辅助函数 - 验证token并获取用户信息
-async function validateTokenAndGetUser(db, token) {
-  // 验证token
-  const loginInfoStmt = db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token);
-  const loginInfo = await loginInfoStmt.first();
-
-  if (!loginInfo) {
-    return { loginInfo: null, user: null };
-  }
-
-  // 检查 token 是否过期
-  if (loginInfo.expireTime && Date.now() > loginInfo.expireTime) {
-    return { loginInfo: null, user: null };
-  }
-
-  // 获取用户信息
-  const userStmt = db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid);
-  const user = await userStmt.first();
-
-  return { loginInfo, user };
 }
 
 // 辅助函数 - 生成UUID
@@ -592,4 +583,21 @@ async function getAppointmentDishByDishId(db, appointmentId, dishId) {
   `).bind(appointmentId, dishId).all();
   
   return query.results[0];
-} 
+}
+
+/**
+ * 通用批量按 id 查询指定表，返回 id -> row 的 Map。
+ * @param {Object} db  D1 数据库对象
+ * @param {string} table  表名（需为受信任的字符串字面量）
+ * @param {string[]} ids  id 数组
+ */
+async function batchGetById(db, table, ids) {
+  if (!ids || ids.length === 0) return new Map();
+  const { clause, bindings } = buildInClause(ids);
+  const result = await db.prepare(`SELECT * FROM ${table} WHERE ${clause}`).bind(...bindings).all();
+  const map = new Map();
+  for (const row of result.results) {
+    map.set(row.id, row);
+  }
+  return map;
+}

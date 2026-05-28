@@ -13,6 +13,7 @@ interface IPageData {
   openid: string | null;
   isLoggingIn: boolean;
   editingNickName?: boolean;
+  version: string;
 }
 
 // 页面方法接口
@@ -48,10 +49,20 @@ Page<IPageData, IPageMethods & {
     canIUseGetUserProfile: false,
     openid: null,
     isLoggingIn: false,
-    editingNickName: false
+    editingNickName: false,
+    version: ''
   },
 
   onLoad() {
+    // 读取小程序版本号（体验版/正式版有值，开发版为空）
+    try {
+      const accountInfo = wx.getAccountInfoSync();
+      const ver = accountInfo.miniProgram.version;
+      this.setData({ version: ver || '开发版' });
+    } catch (e) {
+      this.setData({ version: '开发版' });
+    }
+
     // 检查是否可以使用getUserProfile接口
     if (typeof wx.getUserProfile === 'function') {
       this.setData({

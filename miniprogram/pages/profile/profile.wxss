@@ -164,4 +164,12 @@
   background: transparent;
   border: none;
   margin-right: 30rpx;
-} 
+}
+
+.profile-version {
+  text-align: center;
+  font-size: 24rpx;
+  color: #bbb;
+  margin-top: 40rpx;
+  padding-bottom: 20rpx;
+}

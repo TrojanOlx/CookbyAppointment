@@ -1,20 +1,6 @@
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
 import { notifyAdminsNewAppointment, notifyAdminsUserCancelled, notifyUserConfirmed, notifyUserCancelled, notifyUserCompleted } from './notificationHandler.js';
-
-// R2 文件服务辅助函数
-function processImageUrls(images, env) {
-  if (!images || !Array.isArray(images)) return [];
-  
-  return images.map(image => {
-    // 如果已经是完整URL，则不处理
-    if (image.startsWith('http://') || image.startsWith('https://')) {
-      return image;
-    }
-    
-    // 否则拼接完整URL
-    return `${env.R2_PUBLIC_URL}/${image}`;
-  });
-}
+import { validateTokenAndGetUser, processImageUrls, buildMap, buildInClause } from './_shared.js';
 
 // 管理员获取所有预约列表
 export async function handleGetAllAppointments(request, env) {
@@ -117,38 +103,39 @@ export async function handleGetDateAppointments(request, env) {
       date
     );
 
-    // 为每个预约添加用户信息和菜品详情
-    const appointmentsWithDetails = [];
-    for (const appointment of appointments) {
-      // 获取用户信息
-      const userInfo = await getUserById(env.DB, appointment.userId);
+    // 批量查询用户信息
+    const userIds = [...new Set(appointments.map(a => a.userId).filter(Boolean))];
+    const userMap = await batchGetUsersById(env.DB, userIds);
 
-      // 获取预约关联的菜品
-      const appointmentDishes = await getAppointmentDishes(env.DB, appointment.id);
-      const dishIds = appointmentDishes.map(ad => ad.dishId);
+    // 批量查询预约菜品关联
+    const appointmentIds = appointments.map(a => a.id);
+    const allAppointmentDishes = await batchGetAppointmentDishes(env.DB, appointmentIds);
 
-      // 获取菜品详情
-      const dishes = [];
-      for (const dishId of dishIds) {
-        const dish = await getDishById(env.DB, dishId);
-        if (dish) {
-          // 处理菜品图片URL
-          if (dish.images && Array.isArray(dish.images)) {
-            dish.images = processImageUrls(dish.images, env);
-          }
-          dishes.push(dish);
-        }
+    // 批量查询菜品详情
+    const allDishIds = [...new Set(allAppointmentDishes.map(ad => ad.dishId))];
+    const dishMap = await batchGetDishesById(env.DB, allDishIds, env);
+
+    // 构建 appointmentId -> dishes 的映射
+    const appointmentDishesMap = new Map();
+    for (const ad of allAppointmentDishes) {
+      if (!appointmentDishesMap.has(ad.appointmentId)) {
+        appointmentDishesMap.set(ad.appointmentId, []);
       }
+      const dish = dishMap.get(ad.dishId);
+      if (dish) appointmentDishesMap.get(ad.appointmentId).push(dish);
+    }
 
-      // 构建完整的预约信息
-      appointmentsWithDetails.push({
+    // 为每个预约合并数据
+    const appointmentsWithDetails = appointments.map(appointment => {
+      const userInfo = userMap.get(appointment.userId);
+      return {
         ...appointment,
         userName: userInfo ? userInfo.nickName : '未知用户',
         userPhone: userInfo ? userInfo.phone : '',
         userAvatar: userInfo ? userInfo.avatarUrl : '',
-        dishes
-      });
-    }
+        dishes: appointmentDishesMap.get(appointment.id) || []
+      };
+    });
 
     return createJsonResponse({ total, list: appointmentsWithDetails });
   } catch (error) {
@@ -239,33 +226,30 @@ export async function handleGetAppointmentListByDate(request, env) {
       date
     );
     
-    // 为每个预约添加菜品详情
-    const appointmentsWithDetails = [];
-    for (const appointment of appointments) {
-      // 获取预约关联的菜品
-      const appointmentDishes = await getAppointmentDishes(env.DB, appointment.id);
-      const dishIds = appointmentDishes.map(ad => ad.dishId);
-      
-      // 获取菜品详情
-      const dishes = [];
-      for (const dishId of dishIds) {
-        const dish = await getDishById(env.DB, dishId);
-        if (dish) {
-          // 处理菜品图片URL
-          if (dish.images && Array.isArray(dish.images)) {
-            dish.images = processImageUrls(dish.images, env);
-          }
-          dishes.push(dish);
-        }
+    // 批量查询预约菜品关联
+    const appointmentIds = appointments.map(a => a.id);
+    const allAppointmentDishes = await batchGetAppointmentDishes(env.DB, appointmentIds);
+
+    // 批量查询菜品详情
+    const allDishIds = [...new Set(allAppointmentDishes.map(ad => ad.dishId))];
+    const dishMap = await batchGetDishesById(env.DB, allDishIds, env);
+
+    // 构建 appointmentId -> dishes 的映射
+    const appointmentDishesMap = new Map();
+    for (const ad of allAppointmentDishes) {
+      if (!appointmentDishesMap.has(ad.appointmentId)) {
+        appointmentDishesMap.set(ad.appointmentId, []);
       }
-      
-      // 构建完整的预约信息
-      appointmentsWithDetails.push({
-        ...appointment,
-        dishes
-      });
+      const dish = dishMap.get(ad.dishId);
+      if (dish) appointmentDishesMap.get(ad.appointmentId).push(dish);
     }
-    
+
+    // 为每个预约合并菜品数据
+    const appointmentsWithDetails = appointments.map(appointment => ({
+      ...appointment,
+      dishes: appointmentDishesMap.get(appointment.id) || []
+    }));
+
     return createJsonResponse({ total, list: appointmentsWithDetails });
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
@@ -387,23 +371,19 @@ export async function handleCreateAppointment(request, env) {
     // 保存预约到数据库
     const createdAppointment = await createAppointment(env.DB, newAppointment);
 
-    // 保存预约与菜品的关联
-    for (const dishId of data.dishes) {
-      await createAppointmentDish(env.DB, {
-        appointmentId: createdAppointment.id,
-        dishId,
-        createTime: Date.now()
-      });
+    // 批量写入预约与菜品的关联（事务性，原子成功或全部回滚）
+    const dishLinkStmts = data.dishes.map(dishId =>
+      env.DB.prepare(
+        'INSERT INTO appointment_dishes (id, appointmentId, dishId, createTime) VALUES (?, ?, ?, ?)'
+      ).bind(crypto.randomUUID(), createdAppointment.id, dishId, Date.now())
+    );
+    if (dishLinkStmts.length > 0) {
+      await env.DB.batch(dishLinkStmts);
     }
 
-    // 获取预约关联的菜品详情
-    const dishes = [];
-    for (const dishId of data.dishes) {
-      const dish = await getDishById(env.DB, dishId);
-      if (dish) {
-        dishes.push(dish);
-      }
-    }
+    // 批量获取预约关联的菜品详情
+    const dishMap = await batchGetDishesById(env.DB, data.dishes, env);
+    const dishes = data.dishes.map(id => dishMap.get(id)).filter(Boolean);
 
     // 通知所有管理员有新预约（不影响主流程）
     try {
@@ -485,56 +465,38 @@ export async function handleUpdateAppointment(request, env) {
 
     // 如果提供了菜品信息，则更新预约菜品关联
     if (Array.isArray(data.dishes) && data.dishes.length > 0) {
-      // 获取现有关联
+      // 获取现有关联并批量删除
       const existingAppointmentDishes = await getAppointmentDishes(env.DB, updatedAppointment.id);
-
-      // 删除所有现有关联
-      for (const appointmentDish of existingAppointmentDishes) {
-        await deleteAppointmentDish(env.DB, appointmentDish.id);
+      const deleteStmts = existingAppointmentDishes.map(ad =>
+        env.DB.prepare('DELETE FROM appointment_dishes WHERE id = ?').bind(ad.id)
+      );
+      if (deleteStmts.length > 0) {
+        await env.DB.batch(deleteStmts);
       }
 
-      // 添加新的关联
-      for (const dishId of data.dishes) {
-        await createAppointmentDish(env.DB, {
-          appointmentId: updatedAppointment.id,
-          dishId,
-          createTime: Date.now()
-        });
+      // 批量写入新的关联
+      const insertStmts = data.dishes.map(dishId =>
+        env.DB.prepare(
+          'INSERT INTO appointment_dishes (id, appointmentId, dishId, createTime) VALUES (?, ?, ?, ?)'
+        ).bind(crypto.randomUUID(), updatedAppointment.id, dishId, Date.now())
+      );
+      if (insertStmts.length > 0) {
+        await env.DB.batch(insertStmts);
       }
 
-      // 获取菜品详情
-      const dishes = [];
-      for (const dishId of data.dishes) {
-        const dish = await getDishById(env.DB, dishId);
-        if (dish) {
-          dishes.push(dish);
-        }
-      }
+      // 批量获取菜品详情
+      const dishMap = await batchGetDishesById(env.DB, data.dishes, env);
+      const dishes = data.dishes.map(id => dishMap.get(id)).filter(Boolean);
 
-      // 返回完整的预约信息
-      return createJsonResponse({
-        ...updatedAppointment,
-        dishes
-      });
+      return createJsonResponse({ ...updatedAppointment, dishes });
     } else {
-      // 获取现有菜品关联
+      // 批量获取现有菜品详情
       const appointmentDishes = await getAppointmentDishes(env.DB, updatedAppointment.id);
       const dishIds = appointmentDishes.map(ad => ad.dishId);
+      const dishMap = await batchGetDishesById(env.DB, dishIds, env);
+      const dishes = dishIds.map(id => dishMap.get(id)).filter(Boolean);
 
-      // 获取菜品详情
-      const dishes = [];
-      for (const dishId of dishIds) {
-        const dish = await getDishById(env.DB, dishId);
-        if (dish) {
-          dishes.push(dish);
-        }
-      }
-
-      // 返回完整的预约信息
-      return createJsonResponse({
-        ...updatedAppointment,
-        dishes
-      });
+      return createJsonResponse({ ...updatedAppointment, dishes });
     }
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
@@ -977,26 +939,6 @@ export async function handleRemoveAppointmentDish(request, env) {
 }
 
 // 数据库操作函数
-async function validateTokenAndGetUser(db, token) {
-  // 验证token
-  const loginInfoStmt = db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token);
-  const loginInfo = await loginInfoStmt.first();
-
-  if (!loginInfo) {
-    return { loginInfo: null, user: null };
-  }
-
-  // 检查 token 是否过期
-  if (loginInfo.expireTime && Date.now() > loginInfo.expireTime) {
-    return { loginInfo: null, user: null };
-  }
-
-  // 获取用户信息
-  const userStmt = db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid);
-  const user = await userStmt.first();
-
-  return { loginInfo, user };
-}
 
 async function getAppointmentList(db, userId, page, pageSize, status = null, startDate = null, endDate = null) {
   // 计算偏移量
@@ -1168,6 +1110,46 @@ function parseJsonField(field, defaultValue) {
 async function getUserById(db, userId) {
   const stmt = db.prepare('SELECT * FROM users WHERE id = ?').bind(userId);
   return await stmt.first();
+}
+
+// ─── 批量查询辅助函数 ────────────────────────────────────────────────────────
+
+/**
+ * 批量按 id 查询用户，返回 userId -> user 的 Map。
+ */
+async function batchGetUsersById(db, userIds) {
+  if (!userIds || userIds.length === 0) return new Map();
+  const { clause, bindings } = buildInClause(userIds);
+  const result = await db.prepare(`SELECT * FROM users WHERE ${clause}`).bind(...bindings).all();
+  return buildMap(result.results);
+}
+
+/**
+ * 批量按 appointmentId 查询 appointment_dishes，返回所有关联行数组。
+ */
+async function batchGetAppointmentDishes(db, appointmentIds) {
+  if (!appointmentIds || appointmentIds.length === 0) return [];
+  const placeholders = appointmentIds.map(() => '?').join(', ');
+  const result = await db
+    .prepare(`SELECT * FROM appointment_dishes WHERE appointmentId IN (${placeholders})`)
+    .bind(...appointmentIds)
+    .all();
+  return result.results;
+}
+
+/**
+ * 批量按 id 查询菜品，返回 dishId -> dish 的 Map（含图片 URL 处理）。
+ */
+async function batchGetDishesById(db, dishIds, env) {
+  if (!dishIds || dishIds.length === 0) return new Map();
+  const { clause, bindings } = buildInClause(dishIds);
+  const result = await db.prepare(`SELECT * FROM dishes WHERE ${clause}`).bind(...bindings).all();
+  const dishes = result.results.map(dish => ({
+    ...dish,
+    images: env ? processImageUrls(parseJsonField(dish.images, []), env) : parseJsonField(dish.images, []),
+    steps: parseJsonField(dish.steps, [])
+  }));
+  return buildMap(dishes);
 }
 
 // 在文件末尾添加日期验证函数

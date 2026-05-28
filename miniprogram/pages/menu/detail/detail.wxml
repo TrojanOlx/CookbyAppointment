@@ -95,6 +95,12 @@
         <view class="ingredient-row" wx:for="{{dish.ingredients}}" wx:key="id">
           <text class="ingredient-name">{{item.name}}</text>
           <text class="ingredient-amount">{{item.amount}}</text>
+          <view wx:if="{{item.inventoryStatus}}" class="inv-badge inv-{{item.inventoryStatus}}">
+            <text wx:if="{{item.inventoryStatus === 'sufficient'}}">充足</text>
+            <text wx:elif="{{item.inventoryStatus === 'expiring'}}">快过期</text>
+            <text wx:elif="{{item.inventoryStatus === 'expired'}}">已过期</text>
+            <text wx:elif="{{item.inventoryStatus === 'missing'}}">缺货</text>
+          </view>
         </view>
       </view>
     </block>

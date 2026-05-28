@@ -120,5 +120,10 @@ Page({
     wx.navigateTo({
       url: '/pages/inventory/inventory'
     });
+  },
+
+  // 跳转到我的页面（未登录引导）
+  navigateToProfile() {
+    wx.switchTab({ url: '/pages/profile/profile' });
   }
 });

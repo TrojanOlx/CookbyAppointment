@@ -1,19 +1,5 @@
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
-
-// R2 文件服务辅助函数
-function processImageUrls(images, env) {
-  if (!images || !Array.isArray(images)) return [];
-  
-  return images.map(image => {
-    // 如果已经是完整URL，则不处理
-    if (image.startsWith('http://') || image.startsWith('https://')) {
-      return image;
-    }
-    
-    // 否则拼接完整URL
-    return `${env.R2_PUBLIC_URL}/${image}`;
-  });
-}
+import { validateTokenAndGetUser, processImageUrls } from './_shared.js';
 
 // 获取菜品列表
 export async function handleGetDishList(request, env) {
@@ -81,11 +67,18 @@ export async function handleGetDishDetail(request, env) {
     
     // 获取菜品的食材列表
     const ingredients = await getIngredientsByDishId(env.DB, id);
-    
+
+    // 库存联动：为每个食材附加库存状态
+    const ingredientsWithStatus = await annotateIngredientsWithInventory(
+      env.DB,
+      user.id,
+      ingredients || []
+    );
+
     // 构建完整的菜品信息
     const fullDish = {
       ...dish,
-      ingredients: ingredients || []
+      ingredients: ingredientsWithStatus
     };
     
     return createJsonResponse(fullDish);
@@ -606,26 +599,6 @@ export async function handleDeleteIngredient(request, env) {
 }
 
 // 数据库操作函数
-async function validateTokenAndGetUser(db, token) {
-  // 验证token
-  const loginInfoStmt = db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token);
-  const loginInfo = await loginInfoStmt.first();
-  
-  if (!loginInfo) {
-    return { loginInfo: null, user: null };
-  }
-
-  // 检查 token 是否过期
-  if (loginInfo.expireTime && Date.now() > loginInfo.expireTime) {
-    return { loginInfo: null, user: null };
-  }
-  
-  // 获取用户信息
-  const userStmt = db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid);
-  const user = await userStmt.first();
-  
-  return { loginInfo, user };
-}
 
 // 更新getDishList函数以处理图片URL
 async function getDishList(db, page, pageSize, type = null, env) {
@@ -905,4 +878,81 @@ function parseJsonField(field, defaultValue) {
   } catch (e) {
     return defaultValue;
   }
-} 
+}
+
+// ─── 库存联动辅助函数 ────────────────────────────────────────────────────────
+
+/**
+ * 为食材列表附加库存状态字段 inventoryStatus：
+ *   "sufficient"  — 库存充足（expiryDate > 今天+3天 或 无过期日期）
+ *   "expiring"    — 即将过期（0 < 距过期天数 <= 3）
+ *   "expired"     — 已过期（expiryDate < 今天）
+ *   "missing"     — 库存中无此食材
+ *
+ * 匹配策略：按食材名称模糊匹配用户库存（LOWER LIKE）。
+ *
+ * @param {Object}   db          D1 数据库对象
+ * @param {string}   userId      当前用户 id
+ * @param {Array}    ingredients 食材列表（含 name 字段）
+ * @returns {Array}  带 inventoryStatus 字段的食材列表
+ */
+async function annotateIngredientsWithInventory(db, userId, ingredients) {
+  if (!ingredients || ingredients.length === 0) return [];
+
+  // 获取该用户所有库存项（仅取需要的字段）
+  const inventoryResult = await db
+    .prepare('SELECT name, expiryDate, status FROM inventory_items WHERE userId = ?')
+    .bind(userId)
+    .all();
+
+  const inventoryItems = inventoryResult.results || [];
+
+  // 建立 name（小写）-> inventoryItem 的 Map（同名取最优：充足 > 即将过期 > 已过期）
+  const inventoryMap = new Map();
+  const todayMs = Date.now();
+  const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+
+  for (const item of inventoryItems) {
+    const key = item.name.toLowerCase();
+    const prev = inventoryMap.get(key);
+    const status = getInventoryStatus(item.expiryDate, todayMs, threeDaysMs);
+    // 优先级：sufficient > expiring > expired（保留最优状态）
+    const priority = { sufficient: 3, expiring: 2, expired: 1 };
+    if (!prev || priority[status] > priority[prev.status]) {
+      inventoryMap.set(key, { ...item, status });
+    }
+  }
+
+  // 为每个食材附加状态
+  return ingredients.map(ingredient => {
+    const key = ingredient.name.toLowerCase();
+    // 支持部分匹配：遍历 inventoryMap 找包含关系
+    let matched = inventoryMap.get(key);
+    if (!matched) {
+      for (const [invName, invItem] of inventoryMap) {
+        if (invName.includes(key) || key.includes(invName)) {
+          matched = invItem;
+          break;
+        }
+      }
+    }
+    return {
+      ...ingredient,
+      inventoryStatus: matched ? matched.status : 'missing'
+    };
+  });
+}
+
+/**
+ * 根据过期日期计算库存状态。
+ * @param {string|null} expiryDate  YYYY-MM-DD 格式日期，可为空
+ * @param {number} todayMs          今天的时间戳（毫秒）
+ * @param {number} threeDaysMs      3 天的毫秒数
+ */
+function getInventoryStatus(expiryDate, todayMs, threeDaysMs) {
+  if (!expiryDate) return 'sufficient';
+  const expiry = new Date(expiryDate).getTime();
+  if (expiry < todayMs) return 'expired';
+  if (expiry - todayMs <= threeDaysMs) return 'expiring';
+  return 'sufficient';
+}

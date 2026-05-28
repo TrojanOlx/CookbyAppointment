@@ -103,4 +103,7 @@
       <text class="menu-arrow">></text>
     </view>
   </view>
+
+  <!-- 版本号 -->
+  <view class="profile-version">版本 {{version}}</view>
 </view> 

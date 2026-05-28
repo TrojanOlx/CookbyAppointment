@@ -1,15 +1,5 @@
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
-
-// 验证 token 并获取用户信息
-async function validateTokenAndGetUser(db, token) {
-  const loginInfo = await db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token).first();
-  if (!loginInfo) return { loginInfo: null, user: null };
-  if (loginInfo.expireTime && Date.now() > loginInfo.expireTime) {
-    return { loginInfo: null, user: null };
-  }
-  const user = await db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid).first();
-  return { loginInfo, user };
-}
+import { validateTokenAndGetUser, buildInClause } from './_shared.js';
 
 // 管理员获取预约统计数据
 export async function handleGetStatistics(request, env) {
@@ -77,9 +67,16 @@ export async function handleGetStatistics(request, env) {
       LIMIT 5
     `).bind(startDate, endDate).all();
 
-    const topDishes = [];
-    for (const row of topDishesResult.results) {
-      const dish = await db.prepare('SELECT name, images FROM dishes WHERE id = ? LIMIT 1').bind(row.dishId).first();
+    // 批量获取菜品信息
+    const topDishIds = topDishesResult.results.map(r => r.dishId);
+    let dishInfoMap = new Map();
+    if (topDishIds.length > 0) {
+      const { clause, bindings } = buildInClause(topDishIds);
+      const dishRows = await db.prepare(`SELECT id, name, images FROM dishes WHERE ${clause}`).bind(...bindings).all();
+      for (const d of dishRows.results) dishInfoMap.set(d.id, d);
+    }
+    const topDishes = topDishesResult.results.map(row => {
+      const dish = dishInfoMap.get(row.dishId);
       let dishImage = '';
       if (dish && dish.images) {
         try {
@@ -89,13 +86,8 @@ export async function handleGetStatistics(request, env) {
           }
         } catch {}
       }
-      topDishes.push({
-        dishId: row.dishId,
-        name: dish ? dish.name : '未知菜品',
-        image: dishImage,
-        count: row.count
-      });
-    }
+      return { dishId: row.dishId, name: dish ? dish.name : '未知菜品', image: dishImage, count: row.count };
+    });
 
     // 5. 用户预约排行 Top 5
     const userRankResult = await db.prepare(`
@@ -107,16 +99,18 @@ export async function handleGetStatistics(request, env) {
       LIMIT 5
     `).bind(startDate, endDate).all();
 
-    const userRanking = [];
-    for (const row of userRankResult.results) {
-      const u = await db.prepare('SELECT nickName, avatarUrl FROM users WHERE id = ? LIMIT 1').bind(row.userId).first();
-      userRanking.push({
-        userId: row.userId,
-        nickName: u ? u.nickName : '未知用户',
-        avatarUrl: u ? u.avatarUrl : '',
-        count: row.count
-      });
+    // 批量获取用户信息
+    const rankUserIds = userRankResult.results.map(r => r.userId);
+    let rankUserMap = new Map();
+    if (rankUserIds.length > 0) {
+      const { clause: uc, bindings: ub } = buildInClause(rankUserIds);
+      const userRows = await db.prepare(`SELECT id, nickName, avatarUrl FROM users WHERE ${uc}`).bind(...ub).all();
+      for (const u of userRows.results) rankUserMap.set(u.id, u);
     }
+    const userRanking = userRankResult.results.map(row => {
+      const u = rankUserMap.get(row.userId);
+      return { userId: row.userId, nickName: u ? u.nickName : '未知用户', avatarUrl: u ? u.avatarUrl : '', count: row.count };
+    });
 
     return createJsonResponse({
       startDate,

@@ -30,25 +30,46 @@
 
     <!-- 今日预约摘要（登录后显示） -->
     <block wx:if="{{isLoggedIn}}">
-      <view class="section-card" bindtap="navigateToAppointmentDetail">
+
+      <!-- 有预约：可点击整张卡片跳转 -->
+      <view class="section-card" bindtap="navigateToAppointmentDetail" wx:if="{{todayAppointments.length > 0 || loadingAppointments}}">
         <view class="section-header">
           <text class="section-title">📋 今日预约</text>
           <text class="section-date">{{today}}</text>
         </view>
         <view class="section-body" wx:if="{{!loadingAppointments}}">
-          <block wx:if="{{todayAppointments.length > 0}}">
-            <view class="appt-row" wx:for="{{todayAppointments}}" wx:key="id">
-              <view class="appt-meal-badge meal-{{item.mealType === '早餐' ? 'breakfast' : item.mealType === '午餐' ? 'lunch' : 'dinner'}}">{{item.mealType}}</view>
-              <text class="appt-dish-count">{{item.dishCount}}道菜</text>
-              <text class="appt-status status-{{item.status === '待确认' ? 'pending' : item.status === '已确认' ? 'confirmed' : item.status === '已完成' ? 'completed' : 'cancelled'}}">{{item.status}}</text>
-            </view>
-          </block>
-          <view class="empty-hint" wx:else>
-            <text class="empty-hint-text">今日暂无预约安排</text>
+          <view class="appt-row" wx:for="{{todayAppointments}}" wx:key="id">
+            <view class="appt-meal-badge meal-{{item.mealType === '早餐' ? 'breakfast' : item.mealType === '午餐' ? 'lunch' : 'dinner'}}">{{item.mealType}}</view>
+            <text class="appt-dish-count">{{item.dishCount}}道菜</text>
+            <text class="appt-status status-{{item.status === '待确认' ? 'pending' : item.status === '已确认' ? 'confirmed' : item.status === '已完成' ? 'completed' : 'cancelled'}}">{{item.status}}</text>
           </view>
         </view>
         <view class="loading-hint" wx:else>
           <text>加载中...</text>
+        </view>
+      </view>
+
+      <!-- 无预约：展示图文 empty-state -->
+      <view class="empty-day-card" wx:elif="{{!loadingAppointments && todayAppointments.length === 0}}">
+        <view class="section-header">
+          <text class="section-title">📋 今日预约</text>
+          <text class="section-date">{{today}}</text>
+        </view>
+        <view class="empty-day-body">
+          <!-- 碗 + 餐具插图（纯 CSS） -->
+          <view class="illus-wrap">
+            <view class="illus-steam s1"></view>
+            <view class="illus-steam s2"></view>
+            <view class="illus-steam s3"></view>
+            <view class="illus-plate">
+              <view class="illus-bowl-inner"></view>
+            </view>
+            <view class="illus-fork"></view>
+            <view class="illus-spoon"></view>
+          </view>
+          <text class="empty-day-title">今日还没有用餐安排</text>
+          <text class="empty-day-sub">规划一顿家庭美食，让每一餐都充满期待</text>
+          <view class="empty-day-btn" catchtap="navigateToAppointment">立即预约</view>
         </view>
       </view>
 
@@ -69,9 +90,61 @@
         </view>
       </view>
     </block>
-    
-    <view class="footer" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
-      <view class="version">版本 1.0.0</view>
-    </view>
+
+    <!-- 未登录：欢迎引导卡 + 功能亮点 -->
+    <block wx:else>
+      <!-- 欢迎主卡 -->
+      <view class="welcome-hero">
+        <view class="welcome-illus-wrap">
+          <view class="wh-steam ws1"></view>
+          <view class="wh-steam ws2"></view>
+          <view class="wh-steam ws3"></view>
+          <view class="wh-plate">
+            <view class="wh-bowl-inner"></view>
+          </view>
+          <view class="wh-fork"></view>
+          <view class="wh-spoon"></view>
+        </view>
+        <text class="welcome-title">开始规划家庭美食</text>
+        <text class="welcome-sub">预约餐食 · 管理菜单 · 追踪库存</text>
+        <view class="welcome-login-btn" bindtap="navigateToProfile">微信一键登录</view>
+      </view>
+
+      <!-- 功能亮点 -->
+      <view class="feature-cards">
+        <view class="feat-card" bindtap="navigateToMenu">
+          <view class="feat-icon-wrap green-bg">
+            <text class="feat-emoji">🍲</text>
+          </view>
+          <view class="feat-text-wrap">
+            <text class="feat-name">家庭菜单</text>
+            <text class="feat-desc">记录家人喜爱的菜品与食谱</text>
+          </view>
+          <text class="feat-arrow">›</text>
+        </view>
+        <view class="feat-card" bindtap="navigateToAppointment">
+          <view class="feat-icon-wrap blue-bg">
+            <text class="feat-emoji">📅</text>
+          </view>
+          <view class="feat-text-wrap">
+            <text class="feat-name">用餐预约</text>
+            <text class="feat-desc">提前安排早中晚餐计划</text>
+          </view>
+          <text class="feat-arrow">›</text>
+        </view>
+        <view class="feat-card" bindtap="navigateToInventory">
+          <view class="feat-icon-wrap purple-bg">
+            <text class="feat-emoji">🧊</text>
+          </view>
+          <view class="feat-text-wrap">
+            <text class="feat-name">食材库存</text>
+            <text class="feat-desc">管理冰箱食材，避免浪费</text>
+          </view>
+          <text class="feat-arrow">›</text>
+        </view>
+      </view>
+    </block>
+
+    <view style="height: calc(120rpx + env(safe-area-inset-bottom))"></view>
   </scroll-view>
 </view>

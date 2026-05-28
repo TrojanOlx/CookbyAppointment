@@ -1,4 +1,5 @@
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
+import { validateTokenAndGetUser } from './_shared.js';
 
 // 获取库存列表
 export async function handleGetInventoryList(request, env) {
@@ -289,26 +290,6 @@ export async function handleGetExpiringItems(request, env) {
 }
 
 // 数据库操作函数
-async function validateTokenAndGetUser(db, token) {
-  // 验证token
-  const loginInfoStmt = db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token);
-  const loginInfo = await loginInfoStmt.first();
-  
-  if (!loginInfo) {
-    return { loginInfo: null, user: null };
-  }
-
-  // 检查 token 是否过期
-  if (loginInfo.expireTime && Date.now() > loginInfo.expireTime) {
-    return { loginInfo: null, user: null };
-  }
-  
-  // 获取用户信息
-  const userStmt = db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid);
-  const user = await userStmt.first();
-  
-  return { loginInfo, user };
-}
 
 async function getInventoryList(db, userId, page, pageSize, category = null) {
   // 计算偏移量

@@ -1,5 +1,6 @@
 // R2 文件处理服务
 import { createJsonResponse, createErrorResponse } from '../wxApi.js';
+import { validateTokenAndGetUser } from './_shared.js';
 
 /**
  * 上传文件到 R2 存储
@@ -395,31 +396,4 @@ export async function handleBatchDeleteFiles(request, env) {
     console.error('批量删除文件错误:', error);
     return createErrorResponse(`批量删除文件失败: ${error.message}`, 500);
   }
-}
-
-/**
- * 验证token并获取用户信息
- * @param {Object} db 数据库对象
- * @param {string} token 认证token
- * @returns {Promise<Object>} 包含登录信息和用户信息的Promise对象
- */
-async function validateTokenAndGetUser(db, token) {
-  // 验证token
-  const loginInfoStmt = db.prepare('SELECT * FROM login_info WHERE token = ?').bind(token);
-  const loginInfo = await loginInfoStmt.first();
-  
-  if (!loginInfo) {
-    return { loginInfo: null, user: null };
-  }
-
-  // 检查 token 是否过期
-  if (loginInfo.expireTime && Date.now() > loginInfo.expireTime) {
-    return { loginInfo: null, user: null };
-  }
-  
-  // 获取用户信息
-  const userStmt = db.prepare('SELECT * FROM users WHERE openid = ?').bind(loginInfo.openid);
-  const user = await userStmt.first();
-  
-  return { loginInfo, user };
 }
