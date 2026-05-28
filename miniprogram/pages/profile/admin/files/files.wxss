@@ -1,27 +1,49 @@
 /* 文件管理页面样式 */
 .container {
-  padding: 20rpx;
+  min-height: 100vh;
+  padding: 24rpx;
+  background: var(--background-color);
+  box-sizing: border-box;
 }
 
 .page-header {
-  margin-bottom: 30rpx;
+  margin-bottom: 24rpx;
 }
 
 .page-title {
-  font-size: 36rpx;
-  font-weight: bold;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: var(--text-color);
 }
 
 .section-title {
-  font-size: 28rpx;
-  font-weight: bold;
+  font-size: 30rpx;
+  font-weight: 600;
   margin: 20rpx 0;
-  color: #333;
+  color: var(--text-color);
+  padding-left: 20rpx;
+  position: relative;
+}
+
+.section-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6rpx;
+  height: 30rpx;
+  background: var(--primary-color);
+  border-radius: 3rpx;
 }
 
 /* 文件夹选择器 */
 .folder-selector {
-  margin-bottom: 30rpx;
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: var(--shadow-sm);
 }
 
 .folder-list {
@@ -31,60 +53,72 @@
 
 .folder-item {
   display: inline-block;
-  padding: 10rpx 30rpx;
-  margin-right: 20rpx;
-  background-color: #f5f5f5;
-  border-radius: 30rpx;
+  padding: 10rpx 28rpx;
+  margin-right: 16rpx;
+  background: var(--input-bg);
+  border-radius: var(--radius-full);
   font-size: 24rpx;
+  color: var(--text-secondary);
 }
 
 .folder-item.active {
-  background-color: #1aad19;
-  color: white;
+  background: var(--primary-color);
+  color: #fff;
+  font-weight: 600;
 }
 
 /* 操作按钮 */
 .action-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 20rpx;
-  margin-bottom: 30rpx;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  box-shadow: var(--shadow-sm);
 }
 
 .action-btn {
   margin: 0 !important;
+  border-radius: var(--radius-full) !important;
+  font-size: 24rpx !important;
 }
 
 /* 文件列表 */
 .file-list {
-  margin-top: 20rpx;
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  padding: 24rpx;
+  box-shadow: var(--shadow-sm);
 }
 
 .loading, .empty-list {
-  padding: 40rpx 0;
+  padding: 60rpx 0;
   text-align: center;
-  color: #999;
+  color: var(--text-light);
   font-size: 28rpx;
 }
 
 .files-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300rpx, 1fr));
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
 .file-item {
   position: relative;
   padding: 20rpx;
-  background-color: #fff;
-  border-radius: 10rpx;
-  box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.1);
-  transition: all 0.3s;
+  background: var(--card-bg);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, background 0.2s;
+  border: 2rpx solid transparent;
 }
 
 .file-item.selected {
-  background-color: #e6f7ff;
-  border: 2rpx solid #1890ff;
+  background: var(--primary-light);
+  border-color: var(--primary-color);
 }
 
 .file-icon {
@@ -94,8 +128,8 @@
   justify-content: center;
   align-items: center;
   margin-bottom: 10rpx;
-  background-color: #f5f5f5;
-  border-radius: 8rpx;
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
@@ -109,7 +143,7 @@
   justify-content: center;
   align-items: center;
   font-size: 48rpx;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .file-info {
@@ -118,8 +152,8 @@
 
 .file-name {
   font-size: 24rpx;
-  font-weight: bold;
-  color: #333;
+  font-weight: 600;
+  color: var(--text-color);
   margin-bottom: 6rpx;
 }
 
@@ -127,7 +161,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 20rpx;
-  color: #999;
+  color: var(--text-light);
 }
 
 .ellipsis {
@@ -149,11 +183,12 @@
   text-align: center;
   font-size: 28rpx;
   margin-left: 10rpx;
-  border-radius: 25rpx;
+  border-radius: 50%;
+  background: var(--input-bg);
 }
 
 .action-icon.delete {
-  color: #ff4d4f;
+  color: var(--danger-color);
 }
 
 /* 文件信息弹窗 */
@@ -163,20 +198,23 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.45);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  padding: 40rpx;
+  box-sizing: border-box;
 }
 
 .modal-content {
-  width: 80%;
+  width: 100%;
   max-width: 600rpx;
-  background-color: #fff;
-  border-radius: 10rpx;
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
   padding: 30rpx;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.2);
+  box-shadow: var(--shadow-lg);
+  box-sizing: border-box;
 }
 
 .modal-header {
@@ -184,17 +222,18 @@
   justify-content: space-between;
   align-items: center;
   padding-bottom: 20rpx;
-  border-bottom: 1rpx solid #eee;
+  border-bottom: 1rpx solid var(--border-color);
 }
 
 .modal-title {
   font-size: 32rpx;
-  font-weight: bold;
+  font-weight: 700;
+  color: var(--text-color);
 }
 
 .modal-close {
   font-size: 48rpx;
-  color: #999;
+  color: var(--text-light);
   line-height: 1;
 }
 
@@ -208,18 +247,18 @@
 
 .info-label {
   font-size: 24rpx;
-  color: #666;
+  color: var(--text-secondary);
   margin-right: 10rpx;
-  font-weight: bold;
+  font-weight: 600;
 }
 
 .info-value {
   font-size: 26rpx;
-  color: #333;
+  color: var(--text-color);
   word-break: break-all;
 }
 
 .info-url {
-  color: #1890ff;
+  color: var(--primary-color);
   text-decoration: underline;
 } 

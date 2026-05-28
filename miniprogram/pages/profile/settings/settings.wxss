@@ -1,60 +1,63 @@
-/* pages/profile/settings/settings.wxss */
-/* 设置页面样式 */
 .settings-container {
-  padding: 20rpx;
-  background-color: #f6f6f6;
+  padding: 24rpx;
+  background: var(--background-color);
   min-height: 100vh;
+  box-sizing: border-box;
 }
 
 .settings-title {
-  font-size: 36rpx;
-  font-weight: bold;
-  margin: 20rpx 0 30rpx;
-  padding-left: 20rpx;
-  color: #333;
+  font-size: 34rpx;
+  font-weight: 700;
+  margin: 8rpx 0 24rpx 4rpx;
+  color: var(--text-color);
 }
 
+/* ── 设置分组 ── */
 .settings-section {
-  background-color: #fff;
-  border-radius: 12rpx;
-  margin-bottom: 30rpx;
-  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.1);
+  background: var(--card-bg);
+  border-radius: var(--radius-md);
+  margin-bottom: 20rpx;
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
 .settings-header {
-  padding: 20rpx 30rpx;
-  font-size: 28rpx;
-  color: #888;
-  border-bottom: 1rpx solid #f0f0f0;
+  padding: 18rpx 32rpx;
+  font-size: 24rpx;
+  color: var(--text-light);
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  border-bottom: 1rpx solid var(--border-color);
+  background: var(--input-bg);
 }
 
+/* ── 设置项 ── */
 .settings-item {
   display: flex;
   align-items: center;
-  padding: 30rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  padding: 32rpx;
+  border-bottom: 1rpx solid var(--border-color);
+  transition: background 0.15s;
 }
-
-.settings-item:last-child {
-  border-bottom: none;
-}
+.settings-item:last-child { border-bottom: none; }
+.settings-item:active { background: var(--input-bg); }
 
 .settings-label {
   flex: 1;
   font-size: 30rpx;
-  color: #333;
+  color: var(--text-color);
+  font-weight: 500;
 }
 
 .settings-value {
-  font-size: 28rpx;
-  color: #888;
-  margin-right: 10rpx;
+  font-size: 26rpx;
+  color: var(--text-light);
+  margin-right: 12rpx;
 }
 
 .settings-arrow {
-  color: #cccccc;
-  font-size: 30rpx;
+  color: var(--border-color);
+  font-size: 28rpx;
 }
 
 .settings-action {
@@ -65,10 +68,13 @@
 
 .phone-btn {
   margin: 0;
-  padding: 10rpx 20rpx;
-  font-size: 28rpx;
-  line-height: 1.5;
-  background-color: #07c160;
+  padding: 10rpx 28rpx;
+  font-size: 26rpx;
+  line-height: 1.6;
+  background: var(--primary-color);
   color: #fff;
-  border-radius: 30rpx;
+  border-radius: var(--radius-full);
+  font-weight: 500;
+  transition: opacity 0.15s;
 }
+.phone-btn:active { opacity: 0.82; }

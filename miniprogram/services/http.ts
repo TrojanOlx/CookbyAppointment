@@ -4,7 +4,7 @@
 // 开发环境：使用微信开发者工具 → 详情 → 本地设置 → 不校验合法域名
 const envVersion = wx.getAccountInfoSync().miniProgram.envVersion;
 export const BASE_URL = envVersion === 'develop'
-  ? 'http://127.0.0.1:8787'          // 本地 wrangler dev 地址
+  ? 'https://wx.oulongxing.com'      // 开发环境直连线上 API（无需本地 wrangler dev）
   : 'https://wx.oulongxing.com';     // 线上生产地址（trial/release）
 
 // 请求方法类型
