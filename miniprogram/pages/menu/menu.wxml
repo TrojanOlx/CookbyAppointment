@@ -7,13 +7,18 @@
     </view>
 
     <!-- 可滚动的其他选项 -->
-    <scroll-view class="scroll-types" scroll-x="true" enhanced="true" show-scrollbar="false" enable-flex="true" scroll-with-animation="true" scroll-anchoring="true">
-      <view class="type-selector-content">
-        <view class="type-item {{selectedType === item ? 'active' : ''}}" wx:for="{{dishTypes}}" wx:key="*this" bindtap="selectType" data-type="{{item}}">
-          <text>{{item}}</text>
+    <view class="scroll-types-wrap">
+      <scroll-view class="scroll-types" scroll-x="true" enhanced="true" show-scrollbar="false" enable-flex="true" scroll-with-animation="true" scroll-anchoring="true">
+        <view class="type-selector-content">
+          <view class="type-item {{selectedType === item ? 'active' : ''}}" wx:for="{{dishTypes}}" wx:key="*this" bindtap="selectType" data-type="{{item}}">
+            <text>{{item}}</text>
+          </view>
         </view>
+      </scroll-view>
+      <view class="scroll-hint">
+        <view class="scroll-hint-arrow"></view>
       </view>
-    </scroll-view>
+    </view>
   </view>
 
   <!-- 菜品列表 - 改为可滚动视图并支持下拉刷新 -->
@@ -62,5 +67,7 @@
   </scroll-view>
 
   <!-- 添加按钮 -->
-  <view class="add-btn" bindtap="goToAdd" wx:if="{{isAdmin}}" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">+</view>
+  <view class="add-btn" bindtap="goToAdd" wx:if="{{isAdmin}}" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">
+    <view class="add-icon"></view>
+  </view>
 </view>

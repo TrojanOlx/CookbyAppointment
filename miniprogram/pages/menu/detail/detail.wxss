@@ -1,7 +1,10 @@
 .container {
+  display: block;
+  width: 100%;
   background: var(--background-color);
   min-height: 100vh;
   box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* ── 轮播图 ── */
@@ -21,8 +24,10 @@
 .image-edit-section {
   background: var(--card-bg);
   padding: 28rpx 32rpx;
-  margin-bottom: 16rpx;
+  margin: 20rpx 24rpx;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
 }
 .image-grid {
   display: flex;
@@ -70,9 +75,11 @@
 /* ── 基本信息 ── */
 .info-section {
   background: var(--card-bg);
-  padding: 28rpx 32rpx;
-  margin-bottom: 16rpx;
-  box-shadow: var(--shadow-sm);
+  padding: 32rpx;
+  margin: 20rpx 24rpx;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  box-sizing: border-box;
 }
 
 .dish-name {
@@ -101,9 +108,11 @@
 /* ── 详情 Section ── */
 .detail-section {
   background: var(--card-bg);
-  padding: 28rpx 32rpx;
-  margin-bottom: 16rpx;
+  padding: 32rpx;
+  margin: 0 24rpx 20rpx;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
+  box-sizing: border-box;
 }
 
 .section-title {
@@ -213,7 +222,7 @@
   transform: translateZ(0);
 }
 
-.bottom-safe-area { height: 160rpx; }
+.bottom-safe-area { height: calc(190rpx + env(safe-area-inset-bottom)); }
 
 .safe-area-bottom {
   height: env(safe-area-inset-bottom);
