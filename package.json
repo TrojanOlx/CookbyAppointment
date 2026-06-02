@@ -7,12 +7,15 @@
     "worker:login": "npx --yes wrangler login",
     "worker:whoami": "npx --yes wrangler whoami",
     "worker:dry-run": "npx --yes wrangler deploy --dry-run --config cloudflareWorkes/wrangler.toml",
-    "worker:deploy": "npx --yes wrangler deploy --config cloudflareWorkes/wrangler.toml"
+    "worker:deploy": "npx --yes wrangler deploy --config cloudflareWorkes/wrangler.toml",
+    "miniprogram:upload": "node scripts/upload-miniprogram.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@babel/preset-typescript": "^7.24.7",
+    "miniprogram-ci": "^2.0.7",
     "miniprogram-api-typings": "^2.8.3-1"
   },
   "main": ".eslintrc.js",
