@@ -465,10 +465,10 @@ Page({
       return;
     }
     
-    showLoading('保存中...');
-    
     try {
       if (editMode) {
+        showLoading('保存中...');
+
         // 更新预约
         await AppointmentService.updateAppointment({
           id: appointmentId,
@@ -483,6 +483,11 @@ Page({
           wx.navigateBack();
         }, 1500);
       } else {
+        // 必须尽量贴近 tap 事件调用，否则正式版可能无法弹出订阅授权。
+        await requestSubscribeForUser();
+
+        showLoading('保存中...');
+
         // 检查是否已存在同一天同一餐次的预约
         const appointmentsResult = await AppointmentService.getAppointmentList(1, 20, undefined, date);
         const existingAppointments = appointmentsResult.list;
@@ -495,9 +500,6 @@ Page({
           showError('该餐次已存在预约，请编辑或删除已有预约');
           return;
         }
-        
-        // 请求订阅通知（用户拒绝不阻断预约流程）
-        await requestSubscribeForUser();
 
         // 创建新预约
         const appointment: Partial<Appointment> = {

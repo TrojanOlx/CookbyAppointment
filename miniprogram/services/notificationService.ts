@@ -11,17 +11,62 @@
 // 各模板 ID 配置（申请后替换）
 // 模板 ID：bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0（预约订单提醒，字段：time12 + thing9）
 // 所有通知类型复用同一模板，通过 thing9 内容区分通知含义
-const TMPL_IDS = {
-  NEW_APPT:  'bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0',
-  CONFIRMED: 'bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0',
-  CANCELLED: 'bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0',
-  COMPLETED: 'bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0',
-  REMINDER:  'bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0',
+export const APPOINTMENT_TEMPLATE_ID = 'bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0';
+
+export const SUBSCRIBE_TEMPLATE_IDS = {
+  NEW_APPT: APPOINTMENT_TEMPLATE_ID,
+  CONFIRMED: APPOINTMENT_TEMPLATE_ID,
+  CANCELLED: APPOINTMENT_TEMPLATE_ID,
+  COMPLETED: APPOINTMENT_TEMPLATE_ID,
+  REMINDER: APPOINTMENT_TEMPLATE_ID,
 };
 
 // 判断模板 ID 是否已正式配置（非占位符）
 function isConfigured(id: string): boolean {
   return Boolean(id) && !id.startsWith('REPLACE_WITH');
+}
+
+function uniqueConfiguredTemplateIds(ids: string[]): string[] {
+  return [...new Set(ids.filter(isConfigured))];
+}
+
+function logSubscribeResult(scene: string, tmplIds: string[], res: Record<string, string>) {
+  const result = tmplIds.map(tmplId => ({
+    tmplId,
+    status: res[tmplId] || 'unknown'
+  }));
+  console.log(`${scene}订阅结果:`, result);
+}
+
+function requestSubscribe(scene: string, tmplIds: string[]): Promise<void> {
+  return new Promise((resolve) => {
+    const uniqueTmplIds = uniqueConfiguredTemplateIds(tmplIds);
+
+    if (uniqueTmplIds.length === 0) {
+      console.warn(`${scene}订阅消息模板 ID 均未配置，跳过订阅请求`);
+      resolve();
+      return;
+    }
+
+    if (typeof wx.requestSubscribeMessage !== 'function') {
+      console.warn('当前基础库不支持 requestSubscribeMessage，跳过订阅请求');
+      resolve();
+      return;
+    }
+
+    wx.requestSubscribeMessage({
+      tmplIds: uniqueTmplIds,
+      success: (res: any) => {
+        logSubscribeResult(scene, uniqueTmplIds, res);
+        resolve();
+      },
+      fail: (err: any) => {
+        // 订阅失败不阻断预约流程
+        console.warn(`${scene}订阅请求失败（不影响业务流程）:`, err);
+        resolve();
+      },
+    });
+  });
 }
 
 /**
@@ -31,34 +76,12 @@ function isConfigured(id: string): boolean {
  * ⚠️ 必须在用户点击事件（tap handler）中调用，否则微信不会弹出授权弹窗
  */
 export function requestSubscribeForUser(): Promise<void> {
-  return new Promise((resolve) => {
-    // 去重：当多个通知类型复用同一模板 ID 时，微信不允许数组中有重复项
-    const tmplIds = [...new Set([
-      TMPL_IDS.CONFIRMED,
-      TMPL_IDS.CANCELLED,
-      TMPL_IDS.COMPLETED,
-      TMPL_IDS.REMINDER,
-    ].filter(isConfigured))];
-
-    if (tmplIds.length === 0) {
-      console.warn('用户侧订阅消息模板 ID 均未配置，跳过订阅请求');
-      resolve();
-      return;
-    }
-
-    wx.requestSubscribeMessage({
-      tmplIds,
-      success: (res: any) => {
-        console.log('用户订阅结果:', res);
-        resolve();
-      },
-      fail: (err: any) => {
-        // 订阅失败不阻断预约提交
-        console.warn('用户订阅请求失败（不影响预约流程）:', err);
-        resolve();
-      },
-    });
-  });
+  return requestSubscribe('用户侧', [
+    SUBSCRIBE_TEMPLATE_IDS.CONFIRMED,
+    SUBSCRIBE_TEMPLATE_IDS.CANCELLED,
+    SUBSCRIBE_TEMPLATE_IDS.COMPLETED,
+    SUBSCRIBE_TEMPLATE_IDS.REMINDER,
+  ]);
 }
 
 /**
@@ -68,25 +91,5 @@ export function requestSubscribeForUser(): Promise<void> {
  * ⚠️ 必须在用户点击事件（tap handler）中调用
  */
 export function requestSubscribeForAdmin(): Promise<void> {
-  return new Promise((resolve) => {
-    const tmplId = TMPL_IDS.NEW_APPT;
-
-    if (!isConfigured(tmplId)) {
-      console.warn('管理员通知模板 ID 未配置，跳过订阅请求');
-      resolve();
-      return;
-    }
-
-    wx.requestSubscribeMessage({
-      tmplIds: [tmplId],
-      success: (res: any) => {
-        console.log('管理员订阅结果:', res);
-        resolve();
-      },
-      fail: (err: any) => {
-        console.warn('管理员订阅请求失败（不影响操作流程）:', err);
-        resolve();
-      },
-    });
-  });
+  return requestSubscribe('管理员', [SUBSCRIBE_TEMPLATE_IDS.NEW_APPT]);
 }

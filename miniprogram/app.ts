@@ -32,6 +32,8 @@ App({
   },
   
   onLaunch() {
+    this.checkForAppUpdate();
+
     // 获取系统信息
     wx.getSystemInfo({
       success: res => {
@@ -50,6 +52,38 @@ App({
     
     // 注册全局页面跳转拦截
     this.registerPageInterceptor();
+  },
+
+  // 检查正式版小程序更新
+  checkForAppUpdate() {
+    if (!wx.canIUse || !wx.canIUse('getUpdateManager')) {
+      return;
+    }
+
+    const updateManager = wx.getUpdateManager();
+
+    updateManager.onUpdateReady(() => {
+      wx.showModal({
+        title: '发现新版本',
+        content: '新版本已准备好，是否重启更新？',
+        confirmText: '重启更新',
+        cancelText: '稍后',
+        success: (res) => {
+          if (res.confirm) {
+            updateManager.applyUpdate();
+          }
+        }
+      });
+    });
+
+    updateManager.onUpdateFailed(() => {
+      wx.showModal({
+        title: '更新失败',
+        content: '新版本下载失败，请删除并重新打开小程序，或稍后再试。',
+        showCancel: false,
+        confirmText: '知道了'
+      });
+    });
   },
   
   // 注册页面跳转拦截器
