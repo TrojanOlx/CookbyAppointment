@@ -23,7 +23,7 @@
     <view class="section-header">
       <text class="section-title">{{selectedDateDisplay}}预约</text>
       <view class="add-btn-mini" bindtap="addAppointment">
-        <text class="add-icon">+</text>
+        <text class="add-icon"></text>
         <text class="add-text">添加预约</text>
       </view>
     </view>

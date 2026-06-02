@@ -39,7 +39,7 @@
             </view>
           </block>
           <view class="upload-btn" bindtap="chooseImage" wx:if="{{dish.images.length < 9}}">
-            <view class="plus">+</view>
+            <view class="plus"></view>
             <view>上传图片</view>
           </view>
         </view>
@@ -57,7 +57,10 @@
             <view class="delete-ingredient" bindtap="deleteIngredient" data-index="{{index}}">×</view>
           </view>
         </block>
-        <view class="add-ingredient" bindtap="addIngredient">+ 添加食材</view>
+        <view class="add-ingredient" bindtap="addIngredient">
+          <view class="inline-add-icon"></view>
+          <text>添加食材</text>
+        </view>
       </view>
     </view>
 
@@ -72,7 +75,10 @@
             <view class="delete-step" bindtap="deleteStep" data-index="{{index}}">×</view>
           </view>
         </block>
-        <view class="add-step" bindtap="addStep">+ 添加步骤</view>
+        <view class="add-step" bindtap="addStep">
+          <view class="inline-add-icon"></view>
+          <text>添加步骤</text>
+        </view>
       </view>
     </view>
 

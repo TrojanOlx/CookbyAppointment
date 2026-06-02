@@ -243,11 +243,31 @@
   align-items: center;
   justify-content: center;
   background: var(--input-bg);
+  transition: border-color 0.2s ease;
 }
+.upload-btn:active { border-color: var(--primary-color); }
 
 .upload-icon {
-  font-size: 60rpx;
-  color: var(--primary-color);
+  position: relative;
+  width: 52rpx;
+  height: 52rpx;
+}
+
+.upload-icon::before,
+.upload-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52rpx;
+  height: 5rpx;
+  background: var(--primary-color);
+  border-radius: var(--radius-full);
+  transform: translate(-50%, -50%);
+}
+
+.upload-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .submit-btn {

@@ -42,7 +42,7 @@
           value="{{searchKeyword}}" 
           bindinput="onSearchInput" 
         />
-        <view class="search-icon">🔍</view>
+        <view class="search-icon"></view>
       </view>
       <view class="filter-tags">
         <!-- 固定的"全部"选项 -->

@@ -210,6 +210,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10rpx;
   color: var(--primary-color);
   font-size: 28rpx;
   font-weight: 500;
@@ -274,6 +275,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10rpx;
   color: var(--primary-color);
   font-size: 28rpx;
   font-weight: 500;
@@ -283,6 +285,29 @@
   transition: opacity 0.15s;
 }
 .add-step:active { opacity: 0.7; }
+
+.inline-add-icon {
+  position: relative;
+  width: 28rpx;
+  height: 28rpx;
+}
+
+.inline-add-icon::before,
+.inline-add-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 28rpx;
+  height: 4rpx;
+  background: var(--primary-color);
+  border-radius: var(--radius-full);
+  transform: translate(-50%, -50%);
+}
+
+.inline-add-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
+}
 
 /* ── 底部固定区域 ── */
 .bottom-fixed-area {

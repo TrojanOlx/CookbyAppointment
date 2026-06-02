@@ -10,7 +10,7 @@
         confirm-type="search"
         catchtap="stopEvent"
       />
-      <view class="search-icon">🔍</view>
+      <view class="search-icon"></view>
     </view>
   </view>
 
@@ -86,7 +86,7 @@
               <view class="inventory-item" bindtap="editItem" data-id="{{item.id}}">
                 <!-- 左侧图片区域 -->
                 <view class="item-image">
-                  <image referrerPolicy="no-referrer" src="{{item.image || '/images/default-food.png'}}" mode="aspectFill"></image>
+                  <image referrerPolicy="no-referrer" src="{{item.image || '/images/default-dish.png'}}" mode="aspectFill"></image>
                 </view>
                 
                 <!-- 中间食材信息区域 -->
@@ -128,10 +128,13 @@
       </block>
       <view class="empty-tip" wx:elif="{{!loading}}">
         <view class="empty-text">暂无库存，请添加</view>
+        <view class="seed-btn" wx:if="{{!searchKeyword && totalCount === 0}}" bindtap="seedTestInventory">添加示例库存</view>
       </view>
     </scroll-view>
   </view>
 
   <!-- 添加按钮 -->
-  <view class="add-btn" bindtap="addItem" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">+</view>
+  <view class="add-btn" bindtap="addItem" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">
+    <view class="add-icon"></view>
+  </view>
 </view> 

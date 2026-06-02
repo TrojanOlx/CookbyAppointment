@@ -46,7 +46,7 @@
         <view class="image-delete" bindtap="deleteImage" data-index="{{index}}">×</view>
       </view>
       <view class="image-add" bindtap="chooseImage" wx:if="{{tempDish.images.length < 9}}">
-        <view class="add-icon">+</view>
+        <view class="add-icon"></view>
         <view class="add-text">添加图片</view>
       </view>
     </view>
@@ -113,7 +113,10 @@
           <input class="ingredient-amount-input" data-index="{{idx}}" bindinput="ingredientAmountInput" value="{{item.amount}}" placeholder="用量" />
           <view class="ingredient-delete" data-index="{{idx}}" bindtap="deleteIngredient">×</view>
         </view>
-        <view class="add-button" bindtap="addIngredient">添加食材</view>
+        <view class="add-button" bindtap="addIngredient">
+          <view class="inline-add-icon"></view>
+          <text>添加食材</text>
+        </view>
       </view>
     </block>
   </view>
@@ -139,7 +142,10 @@
           <textarea class="step-content-input" data-index="{{idx}}" bindinput="stepInput" value="{{item}}" placeholder="请输入步骤内容" auto-height="true" />
           <view class="step-delete" data-index="{{idx}}" bindtap="deleteStep">×</view>
         </view>
-        <view class="add-button" bindtap="addStep">添加步骤</view>
+        <view class="add-button" bindtap="addStep">
+          <view class="inline-add-icon"></view>
+          <text>添加步骤</text>
+        </view>
       </view>
     </block>
   </view>

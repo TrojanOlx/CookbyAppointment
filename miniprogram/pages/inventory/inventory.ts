@@ -1,6 +1,6 @@
-import { InventoryItem } from '../../models/inventory';
+import { InventoryCategory, InventoryItem } from '../../models/inventory';
 import { InventoryService } from '../../services/inventoryService';
-import { showConfirm, showSuccess, showToast, getCurrentDate, isDateExpired, dateDiff } from '../../utils/util';
+import { showConfirm, showSuccess, showToast, showLoading, hideLoading, getCurrentDate, formatDate, isDateExpired, dateDiff } from '../../utils/util';
 
 // 每页加载的数量
 const PAGE_SIZE = 10;
@@ -285,6 +285,41 @@ Page({
     wx.navigateTo({
       url: './add/add'
     });
+  },
+
+  async seedTestInventory() {
+    if (this.data.totalCount > 0) {
+      showToast('已有库存数据');
+      return;
+    }
+
+    const dateByOffset = (offset: number) => {
+      const date = new Date();
+      date.setDate(date.getDate() + offset);
+      return formatDate(date);
+    };
+
+    const sampleItems: Partial<InventoryItem>[] = [
+      { name: '鸡蛋', amount: '10个', category: InventoryCategory.Dairy, putInDate: dateByOffset(-2), expiryDate: dateByOffset(10), image: '/images/default-dish.png' },
+      { name: '西红柿', amount: '5个', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-1), expiryDate: dateByOffset(6), image: '/images/default-dish.png' },
+      { name: '豆腐', amount: '2块', category: InventoryCategory.Other, putInDate: dateByOffset(-1), expiryDate: dateByOffset(2), image: '/images/default-dish.png' },
+      { name: '排骨', amount: '500g', category: InventoryCategory.Meat, putInDate: dateByOffset(-3), expiryDate: dateByOffset(1), image: '/images/default-dish.png' },
+      { name: '油麦菜', amount: '1把', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-2), expiryDate: dateByOffset(0), image: '/images/default-dish.png' },
+      { name: '葱', amount: '5根', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-6), expiryDate: dateByOffset(-1), image: '/images/default-dish.png' },
+      { name: '牛肉', amount: '300g', category: InventoryCategory.Meat, putInDate: dateByOffset(-1), expiryDate: dateByOffset(3), image: '/images/default-dish.png' },
+      { name: '大米', amount: '5kg', category: InventoryCategory.Grain, putInDate: dateByOffset(-60), expiryDate: dateByOffset(300), image: '/images/default-dish.png' }
+    ];
+
+    showLoading('添加示例中');
+    try {
+      await Promise.all(sampleItems.map(item => InventoryService.addInventory(item)));
+      hideLoading();
+      showSuccess('示例库存已添加');
+      this.loadInventory(true);
+    } catch (error) {
+      hideLoading();
+      showToast('添加示例失败，请重试');
+    }
   },
 
   // 编辑食材

@@ -10,7 +10,7 @@
           <view class="image-preview" bindtap="chooseImage">
             <image referrerPolicy="no-referrer" wx:if="{{item.image}}" src="{{item.image}}" mode="aspectFill" class="preview-image"></image>
             <view wx:else class="upload-placeholder">
-              <text class="upload-plus">+</text>
+              <text class="upload-plus"></text>
               <text class="placeholder-text">添加图片</text>
             </view>
           </view>

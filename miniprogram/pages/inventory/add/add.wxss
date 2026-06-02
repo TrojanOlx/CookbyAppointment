@@ -36,10 +36,26 @@
 }
 
 .upload-plus {
-  font-size: 64rpx;
-  line-height: 1;
-  color: var(--primary-color);
-  font-weight: 200;
+  position: relative;
+  width: 52rpx;
+  height: 52rpx;
+}
+
+.upload-plus::before,
+.upload-plus::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 52rpx;
+  height: 5rpx;
+  background: var(--primary-color);
+  border-radius: var(--radius-full);
+  transform: translate(-50%, -50%);
+}
+
+.upload-plus::after {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .placeholder-text {

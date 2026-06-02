@@ -61,7 +61,7 @@
               <view class="delete-btn" catchtap="deleteImage" data-index="{{index}}">×</view>
             </view>
             <view class="upload-btn" bindtap="chooseImage" wx:if="{{images.length < 3}}">
-              <text class="upload-icon">+</text>
+              <text class="upload-icon"></text>
             </view>
           </view>
         </view>

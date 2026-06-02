@@ -105,8 +105,23 @@
   right: 28rpx;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-light);
-  font-size: 30rpx;
+  width: 28rpx;
+  height: 28rpx;
+  border: 4rpx solid var(--text-light);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.search-icon::after {
+  content: '';
+  position: absolute;
+  right: -10rpx;
+  bottom: -8rpx;
+  width: 14rpx;
+  height: 4rpx;
+  background: var(--text-light);
+  border-radius: var(--radius-full);
+  transform: rotate(45deg);
 }
 
 .filter-tags {

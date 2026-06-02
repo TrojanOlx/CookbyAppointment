@@ -14,9 +14,9 @@
   left: 0;
   right: 0;
   z-index: 100;
-  background: #fff;
-  padding: 16rpx 24rpx 0;
-  border-bottom: 1rpx solid var(--border-color);
+  background: var(--card-bg);
+  padding: 16rpx 24rpx 12rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0,0,0,0.04);
 }
 
 .search-box {
@@ -40,15 +40,35 @@
   right: 28rpx;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-light);
-  font-size: 32rpx;
+  width: 28rpx;
+  height: 28rpx;
+  border: 4rpx solid var(--text-light);
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.search-icon::after {
+  content: '';
+  position: absolute;
+  right: -10rpx;
+  bottom: -8rpx;
+  width: 14rpx;
+  height: 4rpx;
+  background: var(--text-light);
+  border-radius: var(--radius-full);
+  transform: rotate(45deg);
 }
 
 /* ── 筛选 Tab ── */
 .filter-bar {
+  position: fixed;
+  top: 100rpx;
+  left: 0;
+  right: 0;
+  z-index: 99;
   display: flex;
   flex-direction: row;
-  background: #fff;
+  background: var(--card-bg);
   height: 80rpx;
   border-bottom: 1rpx solid var(--border-color);
   margin-top: 0;
@@ -99,8 +119,8 @@
 .inventory-list {
   flex: 1;
   padding: 16rpx 24rpx;
-  padding-top: calc(72rpx + 80rpx + 32rpx + 16rpx);
-  padding-bottom: 180rpx;
+  padding-top: 204rpx;
+  padding-bottom: 220rpx;
   width: 100%;
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
@@ -109,11 +129,11 @@
 
 /* ── 滑动删除 ── */
 .inventory-item-container {
-  margin-bottom: 16rpx;
+  margin-bottom: 18rpx;
   width: 100%;
-  height: 176rpx;
+  height: 188rpx;
   background: var(--card-bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   display: flex;
   position: relative;
   box-shadow: var(--shadow-sm);
@@ -121,18 +141,18 @@
 }
 
 .movable-area {
-  height: 176rpx;
+  height: 188rpx;
   width: calc(100% - 140rpx);
   background: var(--card-bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   z-index: 3;
 }
 
 .movable-view {
   width: 750rpx;
-  height: 176rpx;
+  height: 188rpx;
   background: var(--card-bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .movable-delete-btn {
@@ -148,8 +168,8 @@
   font-weight: 600;
   color: #fff;
   background: var(--danger-color);
-  border-top-right-radius: var(--radius-md);
-  border-bottom-right-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
 }
 
 /* ── 列表项 ── */
@@ -161,15 +181,15 @@
   padding: 20rpx 24rpx;
   box-sizing: border-box;
   background: var(--card-bg);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .item-image {
-  width: 112rpx;
-  height: 112rpx;
-  min-width: 112rpx;
+  width: 116rpx;
+  height: 116rpx;
+  min-width: 116rpx;
   margin-right: 20rpx;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   overflow: hidden;
   background: var(--input-bg);
 }
@@ -191,17 +211,28 @@
 }
 
 .item-amount {
-  font-size: 26rpx;
-  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  max-width: 220rpx;
+  min-height: 44rpx;
+  padding: 0 18rpx;
+  box-sizing: border-box;
+  border-radius: var(--radius-full);
+  background: rgba(76,175,80,0.1);
+  font-size: 24rpx;
+  color: var(--primary-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 右侧日期 */
 .item-dates-container {
-  min-width: 192rpx;
+  min-width: 208rpx;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6rpx;
+  gap: 8rpx;
 }
 
 .date-row {
@@ -211,24 +242,38 @@
 }
 
 .date-label {
-  font-size: 20rpx;
+  font-size: 21rpx;
   color: var(--text-light);
   white-space: nowrap;
 }
 
 .date-value {
-  font-size: 22rpx;
+  font-size: 23rpx;
   color: var(--text-secondary);
   white-space: nowrap;
 }
 
 .days-left {
+  min-height: 40rpx;
+  padding: 0 14rpx;
+  border-radius: var(--radius-full);
+  background: rgba(76,175,80,0.1);
   font-size: 22rpx;
   color: var(--primary-color);
   font-weight: 600;
+  display: flex;
+  align-items: center;
 }
-.expired { color: var(--danger-color) !important; font-weight: 600; }
-.expiring-soon { color: var(--warning-color) !important; font-weight: 600; }
+.expired {
+  color: var(--danger-color) !important;
+  font-weight: 600;
+}
+.expiring-soon {
+  color: var(--warning-color) !important;
+  font-weight: 600;
+}
+.days-left.expired { background: rgba(244,67,54,0.1); }
+.days-left.expiring-soon { background: rgba(255,152,0,0.12); }
 
 /* ── 空状态 ── */
 .empty-tip {
@@ -236,10 +281,31 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  margin: 0 8rpx;
   padding: 120rpx 40rpx;
-  gap: 16rpx;
+  gap: 24rpx;
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
 .empty-text { font-size: 30rpx; color: var(--text-light); }
+
+.seed-btn {
+  min-width: 220rpx;
+  height: 76rpx;
+  padding: 0 32rpx;
+  border-radius: var(--radius-full);
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: opacity 0.15s ease;
+}
+.seed-btn:active { opacity: 0.82; }
 
 /* ── 加载 ── */
 .loading-container {
@@ -277,26 +343,45 @@
 /* ── FAB ── */
 .add-btn {
   position: fixed;
-  right: 40rpx;
+  right: 32rpx;
   bottom: 140rpx;
-  width: 104rpx;
-  height: 104rpx;
+  width: 112rpx;
+  height: 112rpx;
   background: var(--primary-color);
-  color: #fff;
-  font-size: 56rpx;
-  font-weight: 300;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-fab);
   z-index: 200;
-  transition: transform 0.15s, box-shadow 0.15s;
-  line-height: 1;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
 }
 .add-btn:active {
   transform: scale(0.93);
   box-shadow: 0 4rpx 12rpx rgba(76,175,80,0.22);
+}
+
+.add-icon {
+  position: relative;
+  width: 44rpx;
+  height: 44rpx;
+}
+
+.add-icon::before,
+.add-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44rpx;
+  height: 5rpx;
+  background: #fff;
+  border-radius: var(--radius-full);
+  transform: translate(-50%, -50%);
+}
+
+.add-icon::after {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .delete-btn-container { display: none; }
