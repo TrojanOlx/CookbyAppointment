@@ -4,3 +4,4 @@ node_modules/.cache/
 cloudflareWorkes/.wrangler/
 *.private.key
 private.*.key
+.DS_Store
