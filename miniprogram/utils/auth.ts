@@ -141,7 +141,7 @@ export const getPhoneNumber = async (code: string): Promise<PhoneNumberResult> =
  * @returns boolean 是否已登录
  */
 export const isLoggedIn = (): boolean => {
-  return !!wx.getStorageSync(OPEN_ID_KEY);
+  return !!(wx.getStorageSync('token') || wx.getStorageSync(USER_TOKEN_KEY));
 };
 
 /**
@@ -319,4 +319,4 @@ export const login = async (): Promise<LoginResult> => {
     console.error('登录失败:', error);
     throw error;
   }
-}; 
+};

@@ -1,6 +1,7 @@
 // pages/profile/settings/settings.ts
 import { showToast } from '../../../utils/util';
-import { getUserProfile, getPhoneNumber as authGetPhoneNumber } from '../../../utils/auth';
+import { getUserProfile } from '../../../utils/auth';
+import { UserService } from '../../../services/userService';
 
 // 页面数据接口
 interface IPageData {
@@ -16,6 +17,8 @@ interface IPageMethods {
   switchChange: (e: WechatMiniprogram.SwitchChange) => void;
   clearCache: () => void;
   navigateTo: (e: WechatMiniprogram.TouchEvent) => void;
+  ensureLoggedIn: () => Promise<void>;
+  wxLoginCode: () => Promise<string>;
 }
 
 Page<IPageData, IPageMethods>({
@@ -43,6 +46,36 @@ Page<IPageData, IPageMethods>({
       notifyAppointment,
       notifyReview
     });
+  },
+
+  wxLoginCode() {
+    return new Promise<string>((resolve, reject) => {
+      wx.login({
+        success: (res) => {
+          if (res.code) {
+            resolve(res.code);
+          } else {
+            reject(new Error(res.errMsg || 'wx.login 未返回 code'));
+          }
+        },
+        fail: reject
+      });
+    });
+  },
+
+  async ensureLoggedIn() {
+    if (wx.getStorageSync('token')) {
+      return;
+    }
+
+    const code = await this.wxLoginCode();
+    const loginResult = await UserService.login(code);
+    if (!loginResult.token) {
+      throw new Error('登录返回数据不完整，缺少 token');
+    }
+
+    wx.setStorageSync('token', loginResult.token);
+    wx.setStorageSync('openid', loginResult.openid);
   },
 
   /**
@@ -95,37 +128,40 @@ Page<IPageData, IPageMethods>({
   },
 
   // 获取手机号
-  getPhoneNumber(e: WechatMiniprogram.ButtonGetPhoneNumber) {
+  async getPhoneNumber(e: WechatMiniprogram.ButtonGetPhoneNumber) {
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
       // 用户同意授权，获取code
       const code = e.detail.code;
       console.log('获取手机号成功, code:', code);
+
+      if (!code) {
+        showToast('获取手机号失败');
+        return;
+      }
       
-      // 调用工具函数获取手机号
       wx.showLoading({ title: '绑定中...', mask: true });
-      authGetPhoneNumber(code)
-        .then(result => {
-          console.log('手机号信息:', result);
-          this.setData({ phoneNumber: result.phoneNumber });
-          wx.showToast({
-            title: '手机号绑定成功',
-            icon: 'success'
-          });
-        })
-        .catch(err => {
-          console.error('获取手机号失败:', err);
-          wx.showToast({
-            title: '手机号绑定失败',
-            icon: 'none'
-          });
-        })
-        .then(() => {
-          // 无论成功或失败都执行
-          wx.hideLoading();
+      try {
+        await this.ensureLoggedIn();
+        const result = await UserService.getPhoneNumber(code);
+        console.log('手机号信息:', result);
+        this.setData({ phoneNumber: result.phoneNumber });
+        wx.setStorageSync('phoneNumber', result.phoneNumber);
+        wx.showToast({
+          title: '手机号绑定成功',
+          icon: 'success'
         });
+      } catch (err) {
+        console.error('获取手机号失败:', err);
+        wx.showToast({
+          title: '手机号绑定失败',
+          icon: 'none'
+        });
+      } finally {
+        wx.hideLoading();
+      }
     } else {
       console.error('获取手机号失败:', e.detail.errMsg);
-      showToast('获取手机号失败');
+      showToast(e.detail.errMsg === 'getPhoneNumber:fail user deny' ? '已取消授权' : '获取手机号失败');
     }
   },
   

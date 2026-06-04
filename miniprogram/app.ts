@@ -5,9 +5,7 @@ import { eventBus } from './utils/eventBus';
 
 // 需要登录才能访问的页面路径（必须与 app.json 中注册的页面路径一致）
 const needLoginPages = [
-  "pages/menu/menu",
   "pages/menu/add/add",
-  "pages/menu/detail/detail",
   "pages/appointment/appointment",
   "pages/appointment/select/select",
   "pages/inventory/inventory",

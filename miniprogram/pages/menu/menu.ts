@@ -38,7 +38,11 @@ Page({
   onShow() {
     // 每次显示页面时重新加载数据，以获取最新数据
     this.loadDishes(true);
-    this.checkAdminStatus();
+    if (wx.getStorageSync('token')) {
+      this.checkAdminStatus();
+    } else {
+      this.setData({ isAdmin: false });
+    }
     
     // 更新TabBar选中状态
     if (typeof this.getTabBar === 'function') {
@@ -52,6 +56,11 @@ Page({
    * 检查管理员状态
    */
   async checkAdminStatus() {
+    if (!wx.getStorageSync('token')) {
+      this.setData({ isAdmin: false });
+      return;
+    }
+
     try {
       const result = await UserService.checkAdmin();
       this.setData({ isAdmin: result.isAdmin });
@@ -312,4 +321,4 @@ Page({
       wx.stopPullDownRefresh();
     });
   },
-}); 
+});

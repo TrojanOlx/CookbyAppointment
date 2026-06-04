@@ -179,10 +179,10 @@ export async function handleCheckAdmin(request, env) {
     }
     
     // 获取用户信息
-    const user = await getUserByOpenid(env.DB, loginInfo.openid);
+    let user = await getUserByOpenid(env.DB, loginInfo.openid);
     
     if (!user) {
-      return createErrorResponse('用户不存在', 404);
+      user = await createUser(env.DB, { openid: loginInfo.openid });
     }
     
     return createJsonResponse({ isAdmin: user.isAdmin === 1 });
@@ -279,10 +279,10 @@ export async function handleGetUserPhone(request, env) {
     const phoneInfo = wxResult.phone_info;
     
     // 获取当前用户
-    const user = await getUserByOpenid(env.DB, loginInfo.openid);
+    let user = await getUserByOpenid(env.DB, loginInfo.openid);
     
     if (!user) {
-      return createErrorResponse('用户不存在', 404);
+      user = await createUser(env.DB, { openid: loginInfo.openid });
     }
     
     // 保存用户手机号
@@ -530,4 +530,4 @@ async function getAccessToken(env) {
   }
   
   return result.access_token;
-} 
+}

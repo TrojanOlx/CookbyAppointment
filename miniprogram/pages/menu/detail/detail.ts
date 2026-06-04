@@ -67,7 +67,11 @@ Page({
     }
     
     this.setSafeArea();
-    this.checkAdminStatus();
+    if (wx.getStorageSync('token')) {
+      this.checkAdminStatus();
+    } else {
+      this.setData({ isAdmin: false });
+    }
   },
 
   /**
@@ -78,13 +82,22 @@ Page({
     if (this.data.dishId) {
       this.loadDish();
     }
-    this.checkAdminStatus();
+    if (wx.getStorageSync('token')) {
+      this.checkAdminStatus();
+    } else {
+      this.setData({ isAdmin: false });
+    }
   },
 
   /**
    * 检查管理员状态
    */
   async checkAdminStatus() {
+    if (!wx.getStorageSync('token')) {
+      this.setData({ isAdmin: false });
+      return;
+    }
+
     try {
       const result = await UserService.checkAdmin();
       this.setData({ isAdmin: result.isAdmin });
@@ -506,4 +519,4 @@ Page({
       }
     }
   }
-}) 
+})

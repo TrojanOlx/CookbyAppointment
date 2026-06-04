@@ -4,20 +4,6 @@ import { validateTokenAndGetUser, processImageUrls } from './_shared.js';
 // 获取菜品列表
 export async function handleGetDishList(request, env) {
   try {
-    // 获取认证信息
-    const authHeader = request.headers.get('Authorization') || '';
-    const token = authHeader.replace('Bearer ', '');
-    
-    if (!token) {
-      return createErrorResponse('未提供token', 401);
-    }
-    
-    // 验证token和获取用户信息
-    const { loginInfo, user } = await validateTokenAndGetUser(env.DB, token);
-    if (!loginInfo || !user) {
-      return createErrorResponse('无效的token或用户不存在', 401);
-    }
-    
     // 获取查询参数
     const query = new URL(request.url).searchParams;
     const page = parseInt(query.get('page')) || 1;
@@ -36,20 +22,6 @@ export async function handleGetDishList(request, env) {
 // 获取菜品详情
 export async function handleGetDishDetail(request, env) {
   try {
-    // 获取认证信息
-    const authHeader = request.headers.get('Authorization') || '';
-    const token = authHeader.replace('Bearer ', '');
-    
-    if (!token) {
-      return createErrorResponse('未提供token', 401);
-    }
-    
-    // 验证token和获取用户信息
-    const { loginInfo, user } = await validateTokenAndGetUser(env.DB, token);
-    if (!loginInfo || !user) {
-      return createErrorResponse('无效的token或用户不存在', 401);
-    }
-    
     // 获取查询参数
     const query = new URL(request.url).searchParams;
     const id = query.get('id');
@@ -67,13 +39,12 @@ export async function handleGetDishDetail(request, env) {
     
     // 获取菜品的食材列表
     const ingredients = await getIngredientsByDishId(env.DB, id);
+    const user = await getOptionalRequestUser(request, env);
 
-    // 库存联动：为每个食材附加库存状态
-    const ingredientsWithStatus = await annotateIngredientsWithInventory(
-      env.DB,
-      user.id,
-      ingredients || []
-    );
+    // 登录用户可看到库存联动；未登录用户仍可浏览菜品详情。
+    const ingredientsWithStatus = user
+      ? await annotateIngredientsWithInventory(env.DB, user.id, ingredients || [])
+      : (ingredients || []);
 
     // 构建完整的菜品信息
     const fullDish = {
@@ -84,6 +55,20 @@ export async function handleGetDishDetail(request, env) {
     return createJsonResponse(fullDish);
   } catch (error) {
     return createErrorResponse(`服务器错误: ${error.message}`, 500);
+  }
+}
+
+async function getOptionalRequestUser(request, env) {
+  const authHeader = request.headers.get('Authorization') || '';
+  const token = authHeader.replace('Bearer ', '');
+  if (!token) return null;
+
+  try {
+    const { user } = await validateTokenAndGetUser(env.DB, token);
+    return user || null;
+  } catch (error) {
+    console.warn('忽略菜品公开浏览中的无效登录态:', error.message);
+    return null;
   }
 }
 
