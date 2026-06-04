@@ -283,28 +283,7 @@ Page<IPageData, IPageMethods & {
                 this.checkAndRedirect(redirectUrl);
               }, 2000);
             } else {
-              // 用户点击取消，如果没有手机号则提示绑定手机号
-              if (this.data.userInfo && !this.data.userInfo.phoneNumber) {
-                wx.showModal({
-                  title: '绑定手机号',
-                  content: '是否需要绑定您的手机号码？',
-                  confirmText: '去绑定',
-                  cancelText: '暂不',
-                  success: (phoneModalRes) => {
-                    if (phoneModalRes.confirm) {
-                      wx.navigateTo({
-                        url: '/pages/profile/settings/settings'
-                      });
-                    } else {
-                      // 用户拒绝绑定手机号，检查是否需要重定向
-                      this.checkAndRedirect(redirectUrl);
-                    }
-                  }
-                });
-              } else {
-                // 无需绑定手机号，检查是否需要重定向
-                this.checkAndRedirect(redirectUrl);
-              }
+              this.checkAndRedirect(redirectUrl);
             }
           }
         });
@@ -418,25 +397,6 @@ Page<IPageData, IPageMethods & {
             
             // 显示成功提示
             showToast('资料获取成功');
-            
-            // 获取到用户资料后，提示获取手机号
-            if (!updatedUser.phoneNumber) {
-              setTimeout(() => {
-                wx.showModal({
-                  title: '绑定手机号',
-                  content: '是否需要绑定您的手机号码？',
-                  confirmText: '去绑定',
-                  cancelText: '暂不',
-                  success: (modalRes) => {
-                    if (modalRes.confirm) {
-                      wx.navigateTo({
-                        url: '/pages/profile/settings/settings'
-                      });
-                    }
-                  }
-                });
-              }, 500); // 延迟显示，避免与成功提示重叠
-            }
           })
           .catch(err => {
             console.error('更新用户信息失败:', err);
@@ -740,4 +700,4 @@ Page<IPageData, IPageMethods & {
       }
     });
   }
-}); 
+});

@@ -6,15 +6,6 @@
   <view class="settings-section">
     <view class="settings-header">个人信息</view>
     
-    <!-- 手机号绑定 -->
-    <view class="settings-item">
-      <view class="settings-label">手机号</view>
-      <view class="settings-value" wx:if="{{phoneNumber}}">{{phoneNumber}}</view>
-      <view class="settings-action" wx:else>
-        <button class="phone-btn" open-type="getPhoneNumber" bindgetphonenumber="getPhoneNumber">绑定手机号</button>
-      </view>
-    </view>
-    
     <!-- 更新用户信息 -->
     <view class="settings-item" bindtap="updateUserInfo">
       <view class="settings-label">更新用户资料</view>
