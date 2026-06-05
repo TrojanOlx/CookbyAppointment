@@ -2,6 +2,10 @@
 import { hasUserAcceptedPrivacy } from './utils/privacy';
 import { isLoggedIn } from './utils/auth';
 import { eventBus } from './utils/eventBus';
+import { BASE_URL } from './services/http';
+
+const CURRENT_MINIPROGRAM_VERSION = '2.0.6';
+const VERSION_CHECK_INTERVAL = 5 * 60 * 1000;
 
 // 需要登录才能访问的页面路径（必须与 app.json 中注册的页面路径一致）
 const needLoginPages = [
@@ -26,7 +30,10 @@ App({
   globalData: {
     systemInfo: null as WechatMiniprogram.SystemInfo | null,
     needLoginPages: needLoginPages,
-    eventBus: eventBus
+    eventBus: eventBus,
+    updateManagerInitialized: false,
+    versionCheckAt: 0,
+    promptedVersion: ''
   },
   
   onLaunch() {
@@ -52,11 +59,20 @@ App({
     this.registerPageInterceptor();
   },
 
+  onShow() {
+    this.checkForAppUpdate();
+    this.checkRemoteAppVersion();
+  },
+
   // 检查正式版小程序更新
   checkForAppUpdate() {
     if (!wx.canIUse || !wx.canIUse('getUpdateManager')) {
       return;
     }
+    if (this.globalData.updateManagerInitialized) {
+      return;
+    }
+    this.globalData.updateManagerInitialized = true;
 
     const updateManager = wx.getUpdateManager();
 
@@ -82,6 +98,56 @@ App({
         confirmText: '知道了'
       });
     });
+  },
+
+  // 服务端版本检查：用于旧包热启动时主动提醒用户刷新
+  checkRemoteAppVersion() {
+    const now = Date.now();
+    if (now - this.globalData.versionCheckAt < VERSION_CHECK_INTERVAL) {
+      return;
+    }
+    this.globalData.versionCheckAt = now;
+
+    wx.request({
+      url: `${BASE_URL}/api/app/version`,
+      method: 'GET',
+      success: (res: any) => {
+        const latestVersion = res.data && res.data.version;
+        if (
+          typeof latestVersion !== 'string' ||
+          !this.isVersionNewer(latestVersion, CURRENT_MINIPROGRAM_VERSION) ||
+          this.globalData.promptedVersion === latestVersion
+        ) {
+          return;
+        }
+
+        this.globalData.promptedVersion = latestVersion;
+        wx.showModal({
+          title: '发现新版本',
+          content: res.data.updateMessage || '小程序已有新版本，请重新打开后使用最新功能。',
+          confirmText: '知道了',
+          showCancel: false
+        });
+      },
+      fail: (err) => {
+        console.warn('检查小程序版本失败:', err);
+      }
+    });
+  },
+
+  isVersionNewer(latestVersion: string, currentVersion: string): boolean {
+    const latestParts = latestVersion.split('.').map(part => parseInt(part, 10) || 0);
+    const currentParts = currentVersion.split('.').map(part => parseInt(part, 10) || 0);
+    const length = Math.max(latestParts.length, currentParts.length);
+
+    for (let i = 0; i < length; i += 1) {
+      const latest = latestParts[i] || 0;
+      const current = currentParts[i] || 0;
+      if (latest > current) return true;
+      if (latest < current) return false;
+    }
+
+    return false;
   },
   
   // 注册页面跳转拦截器

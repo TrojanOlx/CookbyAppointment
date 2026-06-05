@@ -43,8 +43,19 @@ export function createErrorResponse(message, status = 400) {
   }, status);
 }
 
+// 获取当前正式版小程序版本，用于旧包主动提示用户刷新
+function handleGetAppVersion(_request, env) {
+  return createJsonResponse({
+    version: env.MINIPROGRAM_VERSION || '2.0.6',
+    updateMessage: env.MINIPROGRAM_UPDATE_MESSAGE || '小程序已有新版本，请重新打开后使用最新功能。'
+  });
+}
+
 // API路由
 const routes = {
+  // 应用配置
+  '/api/app/version': { GET: handleGetAppVersion },
+
   // 用户相关API
   '/api/user/login': { POST: handleLogin },
   '/api/user/profile': { POST: handleGetUserProfile },

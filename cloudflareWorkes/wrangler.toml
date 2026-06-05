@@ -26,6 +26,8 @@ bucket_name = "cookby-appointment"
 
 [vars]
 R2_PUBLIC_URL = "https://images.wx.oulongxing.com"
+MINIPROGRAM_VERSION = "2.0.6"
+MINIPROGRAM_UPDATE_MESSAGE = "小程序已有新版本，请移除最近使用后重新打开。"
 TMPL_APPOINTMENT = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
 TMPL_NEW_APPT = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
 TMPL_CONFIRMED = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
