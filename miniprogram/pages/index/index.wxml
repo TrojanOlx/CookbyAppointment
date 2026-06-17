@@ -5,8 +5,13 @@
     <view class="app-name">家庭菜单预约</view>
   </view>
   
-  <!-- 首屏内容，不滚动 -->
-  <view class="features-scroll">
+  <!-- 首页内容区域：内容较多时可在导航岛上方滚动 -->
+  <scroll-view
+    class="features-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+  >
 
     <!-- 快捷导航 -->
     <view class="nav-grid">
@@ -78,9 +83,9 @@
           <view class="expiry-row" wx:for="{{expiringItems}}" wx:key="id">
             <text class="expiry-name">{{item.name}}</text>
             <text class="expiry-amount">{{item.amount}}</text>
-            <text class="expiry-tag {{item.isExpired ? 'tag-expired' : 'tag-expiring'}}">
+            <view class="expiry-tag {{item.isExpired ? 'tag-expired' : 'tag-expiring'}}">
               {{item.isExpired ? '已过期' : item.daysLeft + '天后过期'}}
-            </text>
+            </view>
           </view>
         </view>
       </view>
@@ -130,5 +135,5 @@
         </view>
       </view>
     </block>
-  </view>
+  </scroll-view>
 </view>

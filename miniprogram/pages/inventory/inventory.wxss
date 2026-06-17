@@ -125,6 +125,7 @@
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
   height: 100%;
+  overflow-x: hidden;
 }
 
 /* ── 滑动删除 ── */
@@ -142,14 +143,14 @@
 
 .movable-area {
   height: 188rpx;
-  width: calc(100% - 140rpx);
+  width: 100%;
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   z-index: 3;
 }
 
 .movable-view {
-  width: 750rpx;
+  width: 100%;
   height: 188rpx;
   background: var(--card-bg);
   border-radius: var(--radius-lg);
@@ -178,10 +179,11 @@
   height: 100%;
   display: flex;
   align-items: center;
-  padding: 20rpx 24rpx;
+  padding: 20rpx 22rpx;
   box-sizing: border-box;
   background: var(--card-bg);
   border-radius: var(--radius-lg);
+  overflow: hidden;
 }
 
 .item-image {
@@ -198,6 +200,7 @@
 .item-info {
   flex: 1;
   min-width: 0;
+  padding-right: 14rpx;
 }
 
 .item-name {
@@ -228,17 +231,23 @@
 
 /* 右侧日期 */
 .item-dates-container {
-  min-width: 208rpx;
+  width: 220rpx;
+  min-width: 220rpx;
+  max-width: 220rpx;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 8rpx;
+  overflow: hidden;
 }
 
 .date-row {
   display: flex;
   align-items: center;
   gap: 4rpx;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .date-label {
@@ -251,6 +260,8 @@
   font-size: 23rpx;
   color: var(--text-secondary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .days-left {
@@ -396,7 +407,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 218rpx;
+  height: 224rpx;
   z-index: 90;
   pointer-events: none;
   background: linear-gradient(
@@ -412,32 +423,39 @@
 
 .search-bar,
 .filter-bar {
-  left: 20rpx;
-  right: 20rpx;
+  left: 24rpx;
+  right: 24rpx;
   width: auto;
   background: #fff9e8;
-  border: 4rpx solid rgba(121,79,39,0.20);
-  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+  border-left: 4rpx solid rgba(121,79,39,0.18);
+  border-right: 4rpx solid rgba(121,79,39,0.18);
+  box-shadow: none;
 }
 
 .search-bar {
-  top: 16rpx;
+  top: 18rpx;
+  padding: 18rpx 22rpx 12rpx;
+  border-top: 4rpx solid rgba(121,79,39,0.18);
+  border-bottom: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 
 .filter-bar {
-  top: 108rpx;
+  top: 112rpx;
   border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  border-bottom: 4rpx solid rgba(121,79,39,0.18);
   border-top: 0;
-  height: 90rpx;
+  height: 82rpx;
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.10), 0 16rpx 30rpx rgba(61,52,40,0.12);
 }
 
 .search-input {
   border: 3rpx solid rgba(159,146,125,0.30);
+  box-shadow: inset 0 3rpx 0 rgba(121,79,39,0.04);
 }
 
 .filter-item {
-  height: 90rpx;
+  height: 82rpx;
   font-weight: 800;
 }
 

@@ -22,9 +22,11 @@
 /* 可滚动内容部分 */
 .features-scroll {
   flex: 1;
+  min-height: 0;
+  height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 0 24rpx;
+  padding: 0 24rpx calc(196rpx + env(safe-area-inset-bottom));
   overflow-x: hidden;
 }
 
@@ -213,16 +215,45 @@
 .expiry-row {
   display: flex;
   align-items: center;
+  gap: 12rpx;
   padding: 12rpx 0;
   border-bottom: 1rpx solid var(--border-color);
+  min-width: 0;
 }
 .expiry-row:last-child { border-bottom: none; }
-.expiry-name { font-size: 28rpx; color: var(--text-color); flex: 1; }
-.expiry-amount { font-size: 24rpx; color: var(--text-light); margin-right: 16rpx; }
+.expiry-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 28rpx;
+  color: var(--text-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.expiry-amount {
+  flex-shrink: 0;
+  max-width: 120rpx;
+  font-size: 24rpx;
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .expiry-tag {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128rpx;
+  height: 56rpx;
+  box-sizing: border-box;
   font-size: 22rpx;
-  padding: 4rpx 14rpx;
+  font-weight: 900;
+  padding: 0 14rpx;
   border-radius: var(--radius-full);
+  line-height: 56rpx;
+  text-align: center;
+  white-space: nowrap;
 }
 .tag-expiring { background: #FFF3E0; color: #E65100; }
 .tag-expired  { background: #FFEBEE; color: #C62828; }
@@ -569,7 +600,10 @@
 .features-scroll {
   flex: 1;
   padding: 0 24rpx;
-  overflow: hidden;
+  min-height: 0;
+  height: 0;
+  padding-bottom: calc(196rpx + env(safe-area-inset-bottom));
+  overflow-x: hidden;
 }
 
 .nav-grid,
