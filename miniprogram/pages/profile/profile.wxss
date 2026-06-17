@@ -1,10 +1,21 @@
 /* 页面容器 */
-.profile-container {
-  padding: 24rpx;
-  padding-bottom: calc(120rpx + env(safe-area-inset-bottom)); /* 为TabBar留出足够空间 */
-  background: var(--background-color);
-  min-height: 100vh;
+.profile-page {
+  position: relative;
+  height: 100vh;
+  overflow: hidden;
   box-sizing: border-box;
+}
+
+.profile-container {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  min-height: 0;
+  padding: 24rpx;
+  padding-bottom: calc(220rpx + env(safe-area-inset-bottom)); /* 为TabBar留出足够空间 */
+  background: transparent;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 /* 用户信息区域 */

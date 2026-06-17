@@ -1,5 +1,12 @@
 <!-- 我的页面 -->
-<view class="profile-container">
+<view class="profile-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view
+    class="profile-container"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+  >
   <!-- 用户信息区 -->
   <view class="user-info">
     <block wx:if="{{!userInfo}}">
@@ -106,4 +113,5 @@
 
   <!-- 版本号 -->
   <view class="profile-version">版本 {{version}}</view>
+  </scroll-view>
 </view>

@@ -62,10 +62,25 @@ page {
     radial-gradient(circle at 18rpx 18rpx, var(--background-pattern-color) 0 9rpx, transparent 10rpx) 0 0/96rpx 96rpx,
     radial-gradient(circle at 54rpx 52rpx, rgba(255,255,255,0.10) 0 6rpx, transparent 7rpx) 0 0/80rpx 80rpx,
     linear-gradient(180deg, #b6dfc0 0%, #94cfb1 100%);
+  background-attachment: fixed, fixed, fixed;
   color: var(--text-color);
   font-size: 14px;
   line-height: 1.5;
   box-sizing: border-box;
+}
+
+.fixed-page-bg {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 18rpx 18rpx, var(--background-pattern-color) 0 9rpx, transparent 10rpx) 0 0/96rpx 96rpx,
+    radial-gradient(circle at 54rpx 52rpx, rgba(255,255,255,0.10) 0 6rpx, transparent 7rpx) 0 0/80rpx 80rpx,
+    linear-gradient(180deg, #b6dfc0 0%, #94cfb1 100%);
 }
 
 /* 公共卡片 */

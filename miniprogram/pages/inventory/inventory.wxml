@@ -1,4 +1,5 @@
 <view class="container" style="padding-bottom: {{safeAreaBottom}};" bindtap="onContainerTap">
+  <view class="fixed-page-bg"></view>
   <view class="inventory-top-dock"></view>
   <!-- 搜索区域 -->
   <view class="search-bar">
