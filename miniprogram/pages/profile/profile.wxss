@@ -190,3 +190,104 @@
   margin-top: 40rpx;
   padding-bottom: 20rpx;
 }
+
+/* Animal Island native redesign */
+.profile-container {
+  background: transparent;
+}
+
+.user-info {
+  min-height: 180rpx;
+  justify-content: flex-start;
+  background:
+    radial-gradient(circle, rgba(247,205,103,0.20) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    var(--card-bg);
+  border: 2rpx solid rgba(159,146,125,0.36);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.user-info::before {
+  content: '';
+  width: 12rpx;
+  height: 128rpx;
+  margin-right: 24rpx;
+  border-radius: var(--radius-full);
+  background: linear-gradient(180deg, var(--primary-color), var(--accent-yellow), var(--accent-coral));
+}
+
+.login-btn {
+  color: var(--text-color);
+  background: var(--card-bg-light);
+  border: 4rpx solid #fff7d6;
+  box-shadow: var(--shadow-fab);
+  font-weight: 900;
+}
+
+.avatar {
+  border: 6rpx solid var(--card-bg-light);
+  box-shadow: 0 0 0 4rpx var(--primary-color), var(--shadow-sm);
+}
+
+.user-name {
+  font-size: 38rpx;
+  font-weight: 900;
+}
+
+.user-tip {
+  margin: -4rpx 8rpx 20rpx;
+  color: var(--text-secondary);
+  font-size: 24rpx;
+  text-align: center;
+}
+
+.menu-section,
+.settings {
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.16);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.menu-title {
+  display: inline-flex;
+  margin: 22rpx 0 6rpx 24rpx;
+  padding: 6rpx 24rpx;
+  color: #fff9e8;
+  background: var(--primary-color);
+  border: 0;
+  border-radius: 14rpx;
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.menu-item {
+  padding: 26rpx 30rpx;
+  border-bottom-color: rgba(159,146,125,0.28);
+}
+
+.menu-icon-img {
+  width: 52rpx;
+  height: 52rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.menu-text {
+  color: var(--text-color);
+  font-weight: 800;
+}
+
+.menu-arrow {
+  color: var(--text-muted);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.login-options-btn,
+.userinfo-btn {
+  background: var(--accent-blue);
+}
+
+.get-info-btn {
+  color: #5068d8;
+}

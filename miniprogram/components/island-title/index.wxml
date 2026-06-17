@@ -1,0 +1,3 @@
+<view class="island-title island-title--{{color}} island-title--{{size}}">
+  <slot></slot>
+</view>

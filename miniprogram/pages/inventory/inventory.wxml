@@ -1,4 +1,5 @@
 <view class="container" style="padding-bottom: {{safeAreaBottom}};" bindtap="onContainerTap">
+  <view class="inventory-top-dock"></view>
   <!-- 搜索区域 -->
   <view class="search-bar">
     <view class="search-box">
@@ -137,4 +138,4 @@
   <view class="add-btn" bindtap="addItem" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">
     <view class="add-icon"></view>
   </view>
-</view> 
+</view>

@@ -514,3 +514,240 @@
   color: var(--border-color);
   margin-left: 8rpx;
 }
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.fixed-header {
+  padding: 16rpx 24rpx 0;
+  background: transparent;
+}
+
+.header {
+  margin-top: 10rpx;
+  margin-bottom: 24rpx;
+  padding: 16rpx 18rpx 22rpx;
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 9rpx 0 rgba(121,79,39,0.12), 0 18rpx 34rpx rgba(61,52,40,0.14);
+}
+
+.header-hero {
+  width: 100%;
+  height: 230rpx;
+  margin-bottom: 12rpx;
+  background: #f4dfb6;
+  border: 3rpx solid rgba(121,79,39,0.16);
+  border-radius: 30rpx;
+  box-shadow: inset 0 -8rpx 0 rgba(121,79,39,0.06);
+}
+
+.app-name {
+  color: var(--text-color);
+  font-size: 44rpx;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.app-desc {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44rpx;
+  padding: 4rpx 24rpx;
+  color: var(--text-color);
+  font-size: 24rpx;
+  font-weight: 800;
+  background: var(--accent-yellow);
+  border-radius: var(--radius-full);
+  box-shadow: 0 5rpx 0 #dba90e;
+}
+
+.features-scroll {
+  flex: 1;
+  padding: 0 24rpx;
+  overflow: hidden;
+}
+
+.nav-grid,
+.section-card,
+.empty-day-card,
+.welcome-hero,
+.feature-cards {
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.13);
+}
+
+.nav-grid {
+  padding: 24rpx 12rpx;
+  margin-bottom: 28rpx;
+}
+
+.nav-item {
+  min-height: 136rpx;
+  justify-content: center;
+}
+
+.nav-icon-img {
+  width: 70rpx;
+  height: 70rpx;
+  margin-bottom: 12rpx;
+}
+
+.nav-label {
+  color: var(--text-color);
+  font-weight: 800;
+}
+
+.section-title-wrap {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.section-title-icon {
+  width: 46rpx;
+  height: 46rpx;
+  margin-right: 10rpx;
+  flex-shrink: 0;
+}
+
+.section-title {
+  display: inline-flex;
+  align-items: center;
+  padding: 4rpx 18rpx;
+  color: #fff9e8;
+  font-weight: 900;
+  background: var(--primary-color);
+  border-radius: 12rpx;
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.section-date,
+.section-more {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.appt-row,
+.expiry-row {
+  border-bottom-color: rgba(159,146,125,0.28);
+}
+
+.warn-card {
+  border-left: 0;
+  border-color: rgba(247,205,103,0.8);
+}
+
+.section-card,
+.empty-day-card {
+  margin-bottom: 34rpx;
+}
+
+.empty-day-image {
+  width: 188rpx;
+  height: 168rpx;
+  margin-bottom: 22rpx;
+}
+
+.empty-day-title,
+.welcome-title,
+.feat-name {
+  color: var(--text-color);
+  font-weight: 900;
+}
+
+.empty-day-sub,
+.feat-desc {
+  color: var(--text-secondary);
+}
+
+.welcome-hero {
+  padding-top: 28rpx;
+}
+
+.welcome-hero-img {
+  width: 100%;
+  height: 220rpx;
+  margin-bottom: 24rpx;
+  background: #c9efe3;
+  border: 3rpx solid rgba(121,79,39,0.16);
+  border-radius: var(--radius-md);
+}
+
+.welcome-sub {
+  color: var(--text-secondary);
+}
+
+.welcome-login-btn,
+.empty-day-btn {
+  color: var(--text-color);
+  background: var(--card-bg-light);
+  border: 4rpx solid #fff7d6;
+  box-shadow: var(--shadow-fab);
+}
+
+.feature-cards {
+  overflow: hidden;
+}
+
+.feat-card {
+  border-bottom-color: rgba(159,146,125,0.28);
+}
+
+.feat-icon-wrap {
+  background: var(--card-bg-light);
+  border: 2rpx solid rgba(159,146,125,0.28);
+  box-shadow: 0 4rpx 0 rgba(121,79,39,0.08);
+}
+
+.feat-icon-img {
+  width: 54rpx;
+  height: 54rpx;
+}
+
+.green-bg,
+.blue-bg,
+.purple-bg {
+  background: var(--card-bg-light);
+}
+
+.meal-breakfast {
+  background: var(--warning-light);
+  color: #8a5b00;
+}
+
+.meal-lunch {
+  background: var(--success-light);
+  color: #4f8b1e;
+}
+
+.meal-dinner {
+  background: rgba(136,157,240,0.18);
+  color: #5068d8;
+}
+
+.status-pending {
+  background: var(--warning-light);
+  color: #8a5b00;
+}
+
+.status-confirmed {
+  background: rgba(136,157,240,0.18);
+  color: #5068d8;
+}
+
+.status-completed {
+  background: var(--success-light);
+  color: #4f8b1e;
+}
+
+.tag-expiring {
+  background: var(--warning-light);
+  color: #8a5b00;
+}

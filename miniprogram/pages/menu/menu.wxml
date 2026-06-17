@@ -20,6 +20,7 @@
       </view>
     </view>
   </view>
+  <view class="type-selector-fade"></view>
 
   <!-- 菜品列表 - 改为可滚动视图并支持下拉刷新 -->
   <scroll-view 
@@ -31,7 +32,7 @@
     refresher-enabled="{{true}}"
     refresher-threshold="45"
     refresher-default-style="black"
-    refresher-background="#f6f6f6"
+    refresher-background="#a8d8b9"
     refresher-triggered="{{refresherTriggered}}"
     bindrefresherrefresh="onRefresherRefresh"
     bindrefresherpulling="onRefresherPulling"

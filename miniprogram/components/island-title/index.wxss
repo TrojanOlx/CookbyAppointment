@@ -1,0 +1,40 @@
+.island-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48rpx;
+  padding: 8rpx 30rpx;
+  color: #fff9e8;
+  font-weight: 900;
+  letter-spacing: 1rpx;
+  background: var(--primary-color);
+  border-radius: 14rpx;
+  box-shadow: 0 6rpx 0 var(--primary-dark);
+}
+
+.island-title--small {
+  min-height: 40rpx;
+  padding: 6rpx 22rpx;
+  font-size: 24rpx;
+}
+
+.island-title--middle {
+  font-size: 30rpx;
+}
+
+.island-title--large {
+  min-height: 62rpx;
+  padding: 10rpx 38rpx;
+  font-size: 40rpx;
+}
+
+.island-title--yellow {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+  box-shadow: 0 6rpx 0 #dba90e;
+}
+
+.island-title--coral {
+  background: var(--accent-coral);
+  box-shadow: 0 6rpx 0 #c94444;
+}

@@ -1,10 +1,11 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '120rpx'}};">
+<scroll-view class="container" scroll-y="true" enhanced="true" show-scrollbar="false">
   <!-- 日历部分 -->
   <view class="calendar-section">
     <calendar 
       id="calendar"
       view="week"
       mode="{{calendarMode}}"
+      style="width:100%;--wc-primary:#19c8b9;--wc-primary-2:rgba(25,200,185,0.18);--wc-bg-light:#fff9e8;--wc-title-color-light:#794f27;--wc-title-sub-color-light:#725d42;--wc-op-bg-light:#e6f9f6;--wc-op-color-light:#0f8f85;--wc-week-color-light:#8a7b66;--wc-date-color-light:#794f27;--wc-mark-color-light:#9f927d;--wc-dot-color-light:#f7cd67;--wc-schedule-color-light:#0f8f85;--wc-schedule-bg-light:#e6f9f6;--wc-today-color-light:#0f8f85;--wc-solar-color-light:#e59266;--wc-checked-color-light:#794f27;--wc-checked-mark-color-light:#794f27;--wc-checked-dot-color-light:#794f27;--wc-checked-today-color-light:#fff9e8;--wc-checked-bg-light:#f7cd67;--wc-checked-today-bg-light:#19c8b9;--wc-control-bg-light:#c4b89e;--wc-panel-height:600rpx;--wc-title-size:42rpx;--wc-date-size:34rpx;"
       date="{{selectedDate}}"
       marks="{{markedDates}}"
       lunar="{{true}}"
@@ -94,4 +95,5 @@
       </view>
     </view>
   </view>
-</view> 
+  <view class="appointment-bottom-spacer"></view>
+</scroll-view>

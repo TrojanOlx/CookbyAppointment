@@ -1,12 +1,12 @@
 .container {
   position: relative;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   width: 100%;
   background: var(--background-color);
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  padding-bottom: calc(48px + env(safe-area-inset-bottom));
+  display: block;
+  padding-bottom: 0;
   overflow-x: hidden;
 }
 
@@ -37,11 +37,14 @@
 
 /* ── 预约列表区域 ── */
 .appointments-section {
-  flex: 1;
   width: 100%;
   box-sizing: border-box;
   padding: 0 20rpx 20rpx;
   overflow-x: hidden;
+}
+
+.appointment-bottom-spacer {
+  height: calc(250rpx + env(safe-area-inset-bottom));
 }
 
 .section-header {
@@ -280,4 +283,124 @@
   color: var(--danger-color);
   background: var(--danger-light);
   border: 1rpx solid rgba(244,67,54,0.25);
+}
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.calendar-section calendar,
+.meal-card {
+  border: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+}
+
+.calendar-section calendar {
+  --wc-primary-color: #19c8b9;
+  --wc-primary-color-opacity: rgba(25,200,185,0.16);
+  --wc-text-color: #794f27;
+  --wc-text-color-second: #725d42;
+  --wc-bg-color: #f7f3df;
+  --wc-bg-color-hover: #fff9e8;
+  --wc-border-color: #c4b89e;
+}
+
+.calendar-section {
+  width: auto;
+  margin: 18rpx 24rpx 18rpx;
+  padding: 14rpx;
+  box-sizing: border-box;
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+  overflow: hidden;
+}
+
+.calendar-section calendar {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #fff9e8;
+  border: 0;
+  border-radius: 30rpx;
+  box-shadow: none;
+}
+
+.section-title {
+  display: inline-flex;
+  padding: 6rpx 24rpx;
+  color: #fff9e8;
+  background: var(--primary-color);
+  border-radius: 14rpx;
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.section-title::before {
+  display: none;
+}
+
+.add-btn-mini {
+  color: var(--text-color);
+  background: var(--card-bg-light);
+  border: 4rpx solid #fff7d6;
+  box-shadow: var(--shadow-fab);
+}
+
+.add-icon::before,
+.add-icon::after {
+  background: var(--primary-color);
+}
+
+.add-text {
+  color: var(--text-color);
+  font-weight: 900;
+}
+
+.meal-card {
+  background: #fff9e8;
+}
+
+.meal-type {
+  font-weight: 900;
+}
+
+.dish-image {
+  border: 4rpx solid var(--card-bg-light);
+  box-shadow: 0 4rpx 0 rgba(121,79,39,0.08);
+}
+
+.action-btn {
+  font-weight: 800;
+  border-width: 2rpx;
+}
+
+.empty-state {
+  margin-top: 12rpx;
+  background: var(--card-bg);
+  border: 2rpx solid rgba(159,146,125,0.36);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.appointment-status.status-confirmed {
+  color: #5068d8;
+  background: rgba(136,157,240,0.18);
+  border-color: rgba(136,157,240,0.32);
+}
+
+.appointment-status.status-completed {
+  color: #4f8b1e;
+  background: var(--success-light);
+  border-color: rgba(138,198,138,0.36);
+}
+
+.action-btn.edit,
+.action-btn.review {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+  border-color: #dba90e;
 }

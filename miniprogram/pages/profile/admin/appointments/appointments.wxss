@@ -244,3 +244,101 @@
 .cancel-btn { background: var(--danger-light); color: var(--danger-color); border: 1rpx solid rgba(244,67,54,0.25); }
 .review-btn { background: #FFF8E1; color: #E65100; border: 1rpx solid rgba(230,81,0,0.2); }
 .reactivate-btn { background: #ECEFF1; color: #546E7A; border: 1rpx solid rgba(84,110,122,0.25); }
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.calendar-section,
+.user-card {
+  border: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+}
+
+.calendar-section {
+  width: auto;
+  margin: 18rpx 24rpx 18rpx;
+  padding: 14rpx;
+  box-sizing: border-box;
+  background: #fff9e8;
+  overflow: hidden;
+}
+
+.calendar-section calendar {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #fff9e8;
+  border-radius: 30rpx;
+}
+
+.section-title {
+  display: inline-flex;
+  padding: 6rpx 24rpx;
+  color: #fff9e8;
+  background: var(--primary-color);
+  border-radius: 14rpx;
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.section-title::before,
+.user-name::before {
+  display: none;
+}
+
+.user-header {
+  background: #fff9e8;
+}
+
+.meal-icon-img {
+  width: 38rpx;
+  height: 38rpx;
+  margin-right: 8rpx;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+.meal-type {
+  display: flex;
+  align-items: center;
+}
+
+.meal-type-wrapper,
+.dish-name {
+  border-color: rgba(159,146,125,0.30);
+}
+
+.action-btn {
+  font-weight: 800;
+}
+
+.meal-item:nth-child(3n+2) .meal-type-wrapper {
+  border-left-color: var(--accent-yellow);
+}
+
+.meal-item:nth-child(3n+3) .meal-type-wrapper {
+  border-left-color: var(--accent-blue);
+}
+
+.status-confirmed,
+.confirm-btn {
+  color: #5068d8;
+  background: rgba(136,157,240,0.18);
+  border-color: rgba(136,157,240,0.32);
+}
+
+.status-completed,
+.complete-btn {
+  color: #4f8b1e;
+  background: var(--success-light);
+  border-color: rgba(138,198,138,0.36);
+}
+
+.review-btn {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+  border-color: #dba90e;
+}

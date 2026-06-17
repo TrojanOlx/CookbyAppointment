@@ -37,17 +37,17 @@
     <view class="menu-section">
       <view class="menu-title">用户功能</view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/appointment/appointment">
-        <text class="menu-icon">📅</text>
+        <image class="menu-icon-img" src="/images/island/icon-appointment.svg" mode="aspectFit"></image>
         <text class="menu-text">我的预约</text>
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/reviews/reviews">
-        <text class="menu-icon">⭐</text>
+        <image class="menu-icon-img" src="/images/island/icon-review.svg" mode="aspectFit"></image>
         <text class="menu-text">我的评价</text>
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/inventory/inventory">
-        <text class="menu-icon">🧊</text>
+        <image class="menu-icon-img" src="/images/island/icon-basket.svg" mode="aspectFit"></image>
         <text class="menu-text">我的库存</text>
         <text class="menu-arrow">></text>
       </view>
@@ -57,27 +57,27 @@
     <view class="menu-section" wx:if="{{isAdmin}}">
       <view class="menu-title">管理员功能</view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/menu/menu">
-        <text class="menu-icon">🍲</text>
+        <image class="menu-icon-img" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
         <text class="menu-text">编辑菜单</text>
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/appointments/appointments">
-        <text class="menu-icon">📋</text>
+        <image class="menu-icon-img" src="/images/island/icon-admin.svg" mode="aspectFit"></image>
         <text class="menu-text">查看预约</text>
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/reviews/reviews">
-        <text class="menu-icon">📊</text>
+        <image class="menu-icon-img" src="/images/island/icon-review.svg" mode="aspectFit"></image>
         <text class="menu-text">查看评价</text>
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/statistics/statistics">
-        <text class="menu-icon">📈</text>
+        <image class="menu-icon-img" src="/images/island/icon-stats.svg" mode="aspectFit"></image>
         <text class="menu-text">预约统计</text>
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/files/files">
-        <text class="menu-icon">📁</text>
+        <image class="menu-icon-img" src="/images/island/icon-file.svg" mode="aspectFit"></image>
         <text class="menu-text">文件管理</text>
         <text class="menu-arrow">></text>
       </view>
@@ -87,18 +87,18 @@
   <!-- 设置选项 -->
   <view class="settings">
     <view class="menu-item" bindtap="clearCache">
-      <text class="menu-icon">🗑️</text>
+      <image class="menu-icon-img" src="/images/island/icon-delete.svg" mode="aspectFit"></image>
       <text class="menu-text">清除缓存</text>
       <text class="menu-arrow">></text>
     </view>
     <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/settings/settings">
-      <text class="menu-icon">⚙️</text>
+      <image class="menu-icon-img" src="/images/island/icon-settings.svg" mode="aspectFit"></image>
       <text class="menu-text">设置</text>
       <text class="menu-arrow">></text>
     </view>
     <!-- 退出登录按钮 -->
     <view class="menu-item" bindtap="doLogout" wx:if="{{userInfo}}">
-      <text class="menu-icon">🚪</text>
+      <image class="menu-icon-img" src="/images/island/icon-logout.svg" mode="aspectFit"></image>
       <text class="menu-text">退出登录</text>
       <text class="menu-arrow">></text>
     </view>
@@ -106,4 +106,4 @@
 
   <!-- 版本号 -->
   <view class="profile-version">版本 {{version}}</view>
-</view> 
+</view>

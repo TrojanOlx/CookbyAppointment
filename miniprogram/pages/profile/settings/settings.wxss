@@ -78,3 +78,38 @@
   transition: opacity 0.15s;
 }
 .phone-btn:active { opacity: 0.82; }
+
+/* Animal Island native redesign */
+.settings-container {
+  background: transparent;
+}
+
+.settings-title {
+  display: inline-flex;
+  padding: 8rpx 28rpx;
+  color: #fff9e8;
+  background: var(--primary-color);
+  border-radius: 14rpx;
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.settings-section {
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.16);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.settings-header {
+  color: var(--text-color);
+  background: var(--card-bg-light);
+  font-weight: 900;
+}
+
+.settings-item {
+  border-bottom-color: rgba(159,146,125,0.28);
+}
+
+.settings-label {
+  font-weight: 800;
+}

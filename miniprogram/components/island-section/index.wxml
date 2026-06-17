@@ -1,0 +1,7 @@
+<view class="island-section">
+  <view class="island-section__header">
+    <view class="island-section__title">{{title}}</view>
+    <view class="island-section__meta" wx:if="{{meta}}">{{meta}}</view>
+  </view>
+  <slot></slot>
+</view>

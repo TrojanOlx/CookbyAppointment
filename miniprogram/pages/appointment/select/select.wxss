@@ -427,3 +427,216 @@
   color: var(--text-light);
   font-size: 24rpx;
 }
+
+/* Animal Island native redesign */
+.page-container {
+  background: transparent;
+}
+
+.fixed-top {
+  background: transparent;
+  box-sizing: border-box;
+  z-index: 300;
+}
+
+.select-top-dock {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: -26rpx;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    #fff9e8 0%,
+    #fff9e8 86%,
+    rgba(255,249,232,0.56) 96%,
+    rgba(255,249,232,0) 100%
+  );
+  border-radius: 0 0 36rpx 36rpx;
+  box-shadow: 0 9rpx 20rpx rgba(61,52,40,0.06);
+}
+
+.header,
+.meal-section,
+.filter-section {
+  position: relative;
+  z-index: 1;
+  margin: 0 20rpx;
+  width: auto;
+  background: #fff9e8;
+  border-left: 4rpx solid rgba(121,79,39,0.18);
+  border-right: 4rpx solid rgba(121,79,39,0.18);
+}
+
+.header {
+  margin-top: 16rpx;
+  border-top: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+}
+
+.filter-section {
+  border-bottom: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+}
+
+.dish-list {
+  padding: 24rpx 20rpx 16rpx;
+}
+
+.bottom-fixed-area {
+  left: 0;
+  right: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent !important;
+  border: 0;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.bottom-action-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(188rpx + env(safe-area-inset-bottom));
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255,249,232,0) 0%,
+    rgba(255,249,232,0.96) 18%,
+    #fff9e8 42%,
+    #fff9e8 100%
+  );
+  border-radius: 44rpx 44rpx 0 0;
+  box-shadow: 0 -18rpx 38rpx rgba(61,52,40,0.10);
+}
+
+.bottom-fixed-area .bottom-action-card {
+  position: relative;
+  z-index: 1;
+  width: auto;
+  margin: 0 24rpx calc(env(safe-area-inset-bottom) + 22rpx);
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+  overflow: hidden;
+}
+
+.bottom-fixed-area .selected-count-section {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: 18rpx 28rpx 12rpx;
+  background: linear-gradient(180deg, #fff9e8 0%, #fff8e7 100%);
+  border: 0;
+  border-bottom: 2rpx solid rgba(121,79,39,0.12);
+  border-radius: 0;
+}
+
+.bottom-fixed-area .action-buttons {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.bottom-fixed-area .button-wrapper {
+  padding: 20rpx 28rpx 22rpx;
+}
+
+.bottom-action-card.has-selection .button-wrapper {
+  padding-top: 16rpx;
+}
+
+.bottom-fixed-area .safe-area-bottom {
+  height: 0;
+  background: transparent;
+}
+
+.bottom-fixed-area .selected-count {
+  color: var(--primary-dark);
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.bottom-fixed-area .count-num {
+  color: var(--primary-color);
+  font-size: 32rpx;
+  font-weight: 900;
+  padding: 0 6rpx;
+}
+
+.bottom-fixed-area .clear-selection {
+  color: var(--danger-color);
+  background: #fff9e8;
+  border: 3rpx solid rgba(248,105,112,0.56);
+  box-shadow: 0 4rpx 0 rgba(248,105,112,0.12);
+}
+
+.title {
+  font-weight: 900;
+}
+
+.meal-type-item,
+.filter-tag,
+.search-input {
+  border: 2rpx solid rgba(159,146,125,0.28);
+  font-weight: 800;
+}
+
+.meal-type-item.active,
+.filter-tag.active {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+  border-color: #dba90e;
+  box-shadow: 0 4rpx 0 #dba90e;
+}
+
+.dish-item {
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.14);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.dish-item.selected {
+  background: var(--card-bg-light) !important;
+  border-color: var(--primary-color) !important;
+}
+
+.dish-image {
+  border: 4rpx solid var(--card-bg-light);
+}
+
+.check-icon {
+  color: var(--text-color) !important;
+  background: var(--accent-yellow) !important;
+}
+
+.selected-count-section {
+  background: var(--card-bg-light);
+}
+
+.cancel-btn,
+.submit-btn {
+  font-weight: 900;
+  box-shadow: var(--shadow-fab);
+}
+
+.submit-btn {
+  color: var(--text-color);
+  background: var(--card-bg-light);
+  border: 4rpx solid #fff7d6;
+}

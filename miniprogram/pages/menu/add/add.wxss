@@ -365,3 +365,108 @@
   transition: opacity 0.15s;
 }
 .submit-btn:active { opacity: 0.82; }
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.form-section,
+.bottom-fixed-area {
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.10) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    var(--card-bg);
+  border: 2rpx solid rgba(159,146,125,0.36);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.section-title {
+  display: inline-flex;
+  padding: 6rpx 24rpx;
+  color: #fff9e8;
+  background: var(--primary-color);
+  border-radius: 14rpx;
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.section-title::before {
+  display: none;
+}
+
+.form-input,
+.form-textarea,
+.picker,
+.ingredient-name,
+.ingredient-amount,
+.step-content {
+  border: 3rpx solid rgba(159,146,125,0.30);
+}
+
+.upload-btn,
+.add-ingredient,
+.add-step {
+  border: 3rpx dashed rgba(25,200,185,0.62);
+  background: var(--card-bg-light);
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
+.step-number {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+  box-shadow: 0 4rpx 0 #dba90e;
+}
+
+.cancel-btn,
+.submit-btn {
+  font-weight: 900;
+  box-shadow: var(--shadow-fab);
+}
+
+.submit-btn {
+  color: var(--text-color);
+  background: var(--card-bg-light);
+  border: 4rpx solid #fff7d6;
+}
+
+.bottom-fixed-area {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.bottom-action-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(170rpx + env(safe-area-inset-bottom));
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255,249,232,0) 0%,
+    rgba(255,249,232,0.96) 18%,
+    #fff9e8 42%,
+    #fff9e8 100%
+  );
+  border-radius: 44rpx 44rpx 0 0;
+  box-shadow: 0 -18rpx 38rpx rgba(61,52,40,0.10);
+}
+
+.bottom-fixed-area .form-actions {
+  position: relative;
+  z-index: 1;
+  margin: 0 24rpx;
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+}
+
+.bottom-fixed-area .safe-area-bottom {
+  background: transparent;
+}

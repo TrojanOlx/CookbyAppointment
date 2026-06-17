@@ -1,0 +1,28 @@
+.island-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 40rpx;
+  color: var(--text-light);
+  text-align: center;
+}
+
+.island-empty__image {
+  width: 176rpx;
+  height: 176rpx;
+  margin-bottom: 22rpx;
+}
+
+.island-empty__title {
+  color: var(--text-color);
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.island-empty__hint {
+  margin-top: 10rpx;
+  color: var(--text-light);
+  font-size: 26rpx;
+  line-height: 1.6;
+}

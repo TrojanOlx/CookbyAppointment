@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "冰箱库存",
   "usingComponents": {},
-  "backgroundColor": "#f6f6f6"
-} 
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark"
+}

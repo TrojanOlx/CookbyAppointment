@@ -1,0 +1,4 @@
+<view class="island-loading">
+  <view class="island-loading__spinner"></view>
+  <text>{{text}}</text>
+</view>

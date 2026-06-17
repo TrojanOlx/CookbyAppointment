@@ -141,3 +141,25 @@
   font-size: 28rpx;
   color: var(--text-light);
 }
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.review-card {
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.16);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.meta-meal {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+}
+
+.empty-icon-img {
+  width: 150rpx;
+  height: 150rpx;
+}

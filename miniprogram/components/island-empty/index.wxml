@@ -1,0 +1,6 @@
+<view class="island-empty">
+  <image class="island-empty__image" src="{{image}}" mode="aspectFit"></image>
+  <view class="island-empty__title">{{title}}</view>
+  <view class="island-empty__hint" wx:if="{{hint}}">{{hint}}</view>
+  <slot></slot>
+</view>

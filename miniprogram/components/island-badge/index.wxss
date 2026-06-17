@@ -1,0 +1,37 @@
+.island-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34rpx;
+  padding: 4rpx 16rpx;
+  border: 2rpx solid rgba(255,255,255,0.58);
+  border-radius: var(--radius-full);
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.island-badge--teal {
+  color: var(--primary-dark);
+  background: var(--primary-light);
+}
+
+.island-badge--yellow {
+  color: #8a5b00;
+  background: var(--warning-light);
+}
+
+.island-badge--green {
+  color: #4f8b1e;
+  background: var(--success-light);
+}
+
+.island-badge--coral {
+  color: var(--danger-color);
+  background: var(--danger-light);
+}
+
+.island-badge--blue {
+  color: #5068d8;
+  background: rgba(136,157,240,0.18);
+}

@@ -1,0 +1,1 @@
+<text class="island-badge island-badge--{{tone}}"><slot></slot></text>

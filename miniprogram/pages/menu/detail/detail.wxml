@@ -194,21 +194,22 @@
 
   <!-- 底部安全区域，留出固定按钮的空间 -->
   <view class="bottom-safe-area"></view>
-</view> 
+</view>
 
 <!-- 底部固定操作按钮 -->
 <view class="bottom-fixed-area" wx:if="{{isAdmin}}">
+  <view class="bottom-action-dock"></view>
   <!-- 查看模式的按钮 -->
   <view class="action-buttons" wx:if="{{!isEdit}}">
     <button class="action-btn edit" bindtap="startEdit">编辑</button>
     <button class="action-btn delete" bindtap="deleteDish">删除</button>
   </view>
-  
+
   <!-- 编辑模式的按钮 -->
   <view class="action-buttons" wx:else>
     <button class="action-btn save" bindtap="saveDish">保存</button>
     <button class="action-btn cancel" bindtap="cancelEdit">取消</button>
   </view>
-  
+
   <view class="safe-area-bottom"></view>
-</view> 
+</view>

@@ -1,0 +1,41 @@
+.island-card {
+  box-sizing: border-box;
+  padding: 28rpx;
+  color: var(--text-secondary);
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.12) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    radial-gradient(circle, rgba(255,255,255,0.26) 1.5rpx, transparent 2.5rpx) 12rpx 12rpx/28rpx 28rpx,
+    var(--card-bg);
+  border: 2rpx solid rgba(159,146,125,0.36);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.island-card.is-hoverable:active {
+  transform: translateY(4rpx);
+  box-shadow: 0 3rpx 0 rgba(121,79,39,0.08), 0 8rpx 18rpx rgba(61,52,40,0.10);
+}
+
+.island-card.is-dashed {
+  border-style: dashed;
+  background: rgba(255,249,232,0.78);
+}
+
+.island-card--teal {
+  background:
+    radial-gradient(circle, rgba(25,200,185,0.16) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    #e6f9f6;
+}
+
+.island-card--yellow {
+  background:
+    radial-gradient(circle, rgba(247,205,103,0.20) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    #fff4c8;
+}
+
+.island-card--pink {
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.18) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    #fde4e8;
+}

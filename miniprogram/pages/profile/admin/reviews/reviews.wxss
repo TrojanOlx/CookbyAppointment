@@ -160,3 +160,46 @@
 .empty-icon { font-size: 80rpx; color: #D0D0D0; }
 .empty-text { font-size: 30rpx; color: var(--text-secondary); }
 .loading-full { text-align: center; padding-top: 120rpx; font-size: 28rpx; color: var(--text-light); }
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.filter-bar,
+.review-card {
+  border: 2rpx solid rgba(159,146,125,0.36);
+  box-shadow: var(--shadow-md);
+}
+
+.filter-bar {
+  margin: 16rpx;
+  border-radius: var(--radius-lg);
+  background: #fff9e8;
+}
+
+.filter-chip {
+  border: 2rpx solid rgba(159,146,125,0.24);
+  font-weight: 800;
+}
+
+.chip-active {
+  background: var(--accent-yellow);
+  color: var(--text-color);
+  box-shadow: 0 4rpx 0 #dba90e;
+}
+
+.review-card {
+  background: #fff9e8;
+  border-radius: var(--radius-lg);
+}
+
+.empty-icon-img {
+  width: 150rpx;
+  height: 150rpx;
+}
+
+.delete-btn {
+  background: var(--accent-coral);
+  font-weight: 800;
+}

@@ -210,3 +210,66 @@
 }
 
 .footer-pad { height: 60rpx; }
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.range-tabs,
+.summary-item,
+.section-card {
+  border: 2rpx solid rgba(159,146,125,0.36);
+  box-shadow: var(--shadow-md);
+}
+
+.range-tabs {
+  margin: 16rpx;
+  border-radius: var(--radius-lg);
+  background: var(--card-bg);
+}
+
+.range-tab {
+  font-weight: 800;
+  border: 2rpx solid rgba(159,146,125,0.24);
+}
+
+.tab-active {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+  box-shadow: 0 5rpx 0 #dba90e;
+}
+
+.summary-item,
+.section-card {
+  background: #fff9e8;
+  border-radius: var(--radius-lg);
+}
+
+.summary-num {
+  font-weight: 900;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  padding-left: 0;
+}
+
+.section-title::before {
+  display: none;
+}
+
+.title-icon {
+  width: 42rpx;
+  height: 42rpx;
+  margin-right: 10rpx;
+}
+
+.rank-badge {
+  box-shadow: 0 3rpx 0 rgba(121,79,39,0.16);
+}
+
+.user-bar {
+  background: var(--accent-blue);
+}

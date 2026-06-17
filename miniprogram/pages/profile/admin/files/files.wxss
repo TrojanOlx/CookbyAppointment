@@ -258,7 +258,72 @@
   word-break: break-all;
 }
 
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.folder-selector,
+.action-buttons,
+.file-list,
+.file-item,
+.modal-content {
+  border: 2rpx solid rgba(159,146,125,0.36);
+  box-shadow: var(--shadow-md);
+}
+
+.folder-selector,
+.action-buttons,
+.file-list,
+.modal-content {
+  background: #fff9e8;
+  border-radius: var(--radius-lg);
+}
+
+.page-title,
+.section-title {
+  font-weight: 900;
+}
+
+.section-title::before {
+  background: var(--accent-yellow);
+  box-shadow: 0 0 0 2rpx rgba(247,205,103,0.24);
+}
+
+.folder-item {
+  border: 2rpx solid rgba(159,146,125,0.24);
+  font-weight: 800;
+}
+
+.folder-item.active {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+  box-shadow: 0 4rpx 0 #dba90e;
+}
+
+.file-item {
+  background: var(--card-bg-light);
+}
+
+.file-icon {
+  background: var(--card-bg);
+  border: 2rpx dashed rgba(159,146,125,0.30);
+}
+
+.action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg-light);
+  border: 2rpx solid rgba(159,146,125,0.28);
+}
+
+.action-icon-img {
+  width: 34rpx;
+  height: 34rpx;
+}
+
 .info-url {
   color: var(--primary-color);
   text-decoration: underline;
-} 
+}

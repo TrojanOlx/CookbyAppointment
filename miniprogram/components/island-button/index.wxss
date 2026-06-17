@@ -1,0 +1,39 @@
+.island-button {
+  min-height: 82rpx;
+  padding: 0 36rpx;
+  color: var(--text-color);
+  font-size: 30rpx;
+  font-weight: 800;
+  letter-spacing: 1rpx;
+  line-height: 82rpx;
+  background: var(--card-bg-light);
+  border: 4rpx solid #fff7d6;
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-fab);
+}
+
+.island-button::after {
+  border: 0;
+}
+
+.island-button:active {
+  transform: translateY(4rpx);
+  box-shadow: 0 3rpx 0 #bdaea0, 0 8rpx 16rpx rgba(61,52,40,0.12);
+}
+
+.island-button.is-block {
+  width: 100%;
+}
+
+.island-button--danger {
+  color: #fff9e8;
+  background: var(--accent-coral);
+  border-color: #ffbbb8;
+  box-shadow: 0 8rpx 0 #c94444, 0 14rpx 26rpx rgba(61,52,40,0.14);
+}
+
+.island-button--ghost {
+  background: transparent;
+  border-color: var(--border-color);
+  box-shadow: none;
+}

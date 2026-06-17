@@ -1,0 +1,9 @@
+<view class="island-tabs">
+  <view
+    class="island-tabs__item {{active === item.key ? 'is-active' : ''}}"
+    wx:for="{{items}}"
+    wx:key="key"
+    data-key="{{item.key}}"
+    bindtap="handleTap"
+  >{{item.label}}</view>
+</view>

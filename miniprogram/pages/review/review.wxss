@@ -391,4 +391,66 @@
   box-sizing: border-box;
   overflow-x: hidden;
   margin-bottom: 30rpx;
-} 
+}
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.page-header,
+.dish-card,
+.review-form,
+.review-result,
+.empty-form {
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.16);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.page-header {
+  margin: 16rpx 24rpx 0;
+  width: auto;
+}
+
+.appointment-info,
+.form-title,
+.result-title {
+  font-weight: 900;
+}
+
+.dish-card.active {
+  border-color: var(--primary-color);
+  background: var(--card-bg-light);
+}
+
+.dish-image,
+.result-images image,
+.image-item {
+  border: 4rpx solid var(--card-bg-light);
+  box-shadow: 0 4rpx 0 rgba(121,79,39,0.08);
+}
+
+.comment-input,
+.upload-btn,
+.result-content {
+  border: 3rpx solid rgba(159,146,125,0.30);
+}
+
+.upload-btn {
+  border-style: dashed;
+}
+
+.submit-btn {
+  color: var(--text-color);
+  background: var(--card-bg-light);
+  border: 4rpx solid #fff7d6;
+  box-shadow: var(--shadow-fab);
+  font-weight: 900;
+}
+
+.submit-btn[disabled] {
+  color: var(--text-muted);
+  background: var(--input-bg);
+}

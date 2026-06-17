@@ -34,7 +34,10 @@
 
   <!-- 每日趋势柱状图 -->
   <view class="section-card">
-    <view class="section-title">📈 每日预约趋势</view>
+    <view class="section-title">
+      <image class="title-icon" src="/images/island/icon-stats.svg" mode="aspectFit"></image>
+      <text>每日预约趋势</text>
+    </view>
     <view class="chart-wrap" wx:if="{{dailyValues.length > 0}}">
       <canvas type="2d" id="barCanvas" class="bar-canvas"></canvas>
     </view>
@@ -43,7 +46,10 @@
 
   <!-- 餐次分布 -->
   <view class="section-card" wx:if="{{mealPieItems.length > 0}}">
-    <view class="section-title">🍽️ 餐次分布</view>
+    <view class="section-title">
+      <image class="title-icon" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
+      <text>餐次分布</text>
+    </view>
     <view class="meal-list">
       <view class="meal-row" wx:for="{{mealPieItems}}" wx:key="label">
         <view class="meal-dot" style="background:{{item.color}}"></view>
@@ -58,7 +64,10 @@
 
   <!-- 最受欢迎菜品 Top5 -->
   <view class="section-card" wx:if="{{topDishes.length > 0}}">
-    <view class="section-title">🏆 最受欢迎菜品 Top5</view>
+    <view class="section-title">
+      <image class="title-icon" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
+      <text>最受欢迎菜品 Top5</text>
+    </view>
     <view class="rank-list">
       <view class="rank-row" wx:for="{{topDishes}}" wx:key="dishId">
         <view class="rank-badge rank-{{index < 3 ? index + 1 : 'other'}}">{{index + 1}}</view>
@@ -74,7 +83,10 @@
 
   <!-- 用户预约排行 Top5 -->
   <view class="section-card" wx:if="{{userRanking.length > 0}}">
-    <view class="section-title">👤 用户预约排行 Top5</view>
+    <view class="section-title">
+      <image class="title-icon" src="/images/island/icon-user.svg" mode="aspectFit"></image>
+      <text>用户预约排行 Top5</text>
+    </view>
     <view class="rank-list">
       <view class="rank-row" wx:for="{{userRanking}}" wx:key="userId">
         <view class="rank-badge rank-{{index < 3 ? index + 1 : 'other'}}">{{index + 1}}</view>

@@ -385,3 +385,115 @@
 }
 
 .delete-btn-container { display: none; }
+
+/* Animal Island native redesign */
+.container {
+  background: transparent;
+}
+
+.inventory-top-dock {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 218rpx;
+  z-index: 90;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    #fff9e8 0%,
+    #fff9e8 82%,
+    rgba(255,249,232,0.58) 94%,
+    rgba(255,249,232,0) 100%
+  );
+  border-radius: 0 0 36rpx 36rpx;
+  box-shadow: 0 9rpx 20rpx rgba(61,52,40,0.06);
+}
+
+.search-bar,
+.filter-bar {
+  left: 20rpx;
+  right: 20rpx;
+  width: auto;
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.20);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+}
+
+.search-bar {
+  top: 16rpx;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.filter-bar {
+  top: 108rpx;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  border-top: 0;
+  height: 90rpx;
+}
+
+.search-input {
+  border: 3rpx solid rgba(159,146,125,0.30);
+}
+
+.filter-item {
+  height: 90rpx;
+  font-weight: 800;
+}
+
+.filter-item.active {
+  color: var(--text-color);
+}
+
+.filter-item.active::after {
+  bottom: 10rpx;
+  height: 8rpx;
+  background: var(--accent-yellow);
+}
+
+.inventory-list {
+  position: relative;
+  z-index: 91;
+  padding-top: 226rpx;
+}
+
+.inventory-item-container,
+.movable-area,
+.movable-view,
+.inventory-item {
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.10) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    var(--card-bg);
+  border-radius: var(--radius-lg);
+}
+
+.inventory-item-container {
+  border: 4rpx solid rgba(121,79,39,0.14);
+  box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.item-image {
+  border: 4rpx solid var(--card-bg-light);
+  box-shadow: 0 4rpx 0 rgba(121,79,39,0.08);
+}
+
+.item-name {
+  font-weight: 900;
+}
+
+.item-amount {
+  color: var(--text-color);
+  background: var(--accent-yellow);
+  font-weight: 800;
+}
+
+.add-btn {
+  background: var(--card-bg-light);
+  border: 4rpx solid var(--primary-color);
+  border-radius: 36rpx;
+}
+
+.add-icon::before,
+.add-icon::after {
+  background: var(--primary-color);
+}

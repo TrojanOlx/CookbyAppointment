@@ -1,12 +1,35 @@
-.tab-bar {
+.tab-bar-dock {
   position: fixed;
-  bottom: 0;
   left: 0;
   right: 0;
-  background: white;
+  bottom: 0;
+  height: calc(188rpx + env(safe-area-inset-bottom));
+  background: linear-gradient(
+    180deg,
+    rgba(255,249,232,0) 0%,
+    rgba(255,249,232,0.96) 18%,
+    #fff9e8 42%,
+    #fff9e8 100%
+  );
+  border-radius: 44rpx 44rpx 0 0;
+  box-shadow: 0 -18rpx 38rpx rgba(61,52,40,0.10);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+.tab-bar {
+  position: fixed;
+  bottom: calc(4rpx + env(safe-area-inset-bottom));
+  left: 26rpx;
+  right: 26rpx;
+  background: #fff9e8;
   display: flex;
-  box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.1);
-  padding-bottom: env(safe-area-inset-bottom);
+  border: 4rpx solid rgba(121,79,39,0.22);
+  border-radius: 38rpx;
+  box-shadow: 0 10rpx 0 rgba(121,79,39,0.14), 0 18rpx 34rpx rgba(61,52,40,0.18);
+  padding: 12rpx;
+  box-sizing: border-box;
+  z-index: 9999;
 }
 
 .tab-bar-item {
@@ -15,30 +38,42 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 48px;
-  padding-top: 12rpx;
-  padding-bottom: 12rpx;
+  min-height: 102rpx;
+  padding-top: 8rpx;
+  padding-bottom: 8rpx;
+  border-radius: 28rpx;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.tab-bar-item.is-selected {
+  background: #f7f3df;
+  box-shadow: inset 0 0 0 2rpx rgba(25,200,185,0.30);
+}
+
+.tab-bar-item:active {
+  transform: translateY(3rpx);
 }
 
 .tab-bar-icon-wrap {
-  width: 24px;
-  height: 24px;
-  margin-bottom: 4px;
+  width: 58rpx;
+  height: 58rpx;
+  margin-bottom: 6rpx;
   display: flex;
   justify-content: center;
   align-items: center;
 }
 
 .tab-bar-icon {
-  width: 24px;
-  height: 24px;
-  filter: grayscale(100%) opacity(0.45);
+  width: 58rpx;
+  height: 58rpx;
+  filter: grayscale(100%) opacity(0.58);
   transition: filter 150ms ease;
 }
 
 .tab-bar-text {
   font-size: 12px;
-  color: #999999;
+  color: #725d42;
+  font-weight: 800;
   transition: color 150ms ease;
 }
 
@@ -47,6 +82,6 @@
 }
 
 .text-active {
-  color: #4CAF50;
-  font-weight: 600;
+  color: #0f8f85;
+  font-weight: 900;
 }

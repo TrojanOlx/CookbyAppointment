@@ -1,7 +1,10 @@
 .container {
   position: relative;
   height: 100vh;
-  background: var(--background-color);
+  background:
+    radial-gradient(circle at 18rpx 18rpx, var(--background-pattern-color) 0 9rpx, transparent 10rpx) 0 0/96rpx 96rpx,
+    radial-gradient(circle at 54rpx 52rpx, rgba(255,255,255,0.10) 0 6rpx, transparent 7rpx) 0 0/80rpx 80rpx,
+    linear-gradient(180deg, #b6dfc0 0%, #94cfb1 100%);
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -149,6 +152,7 @@
   flex: 1;
   width: 100%;
   box-sizing: border-box;
+  background: transparent;
   padding: 20rpx 24rpx;
   padding-top: calc(88rpx + 20rpx);
   height: calc(100vh - 88rpx);
@@ -304,4 +308,124 @@
   font-size: 24rpx;
   padding: 12rpx 0;
   text-align: center;
+}
+
+/* Animal Island native redesign */
+.container {
+  background:
+    radial-gradient(circle at 18rpx 18rpx, var(--background-pattern-color) 0 9rpx, transparent 10rpx) 0 0/96rpx 96rpx,
+    radial-gradient(circle at 54rpx 52rpx, rgba(255,255,255,0.10) 0 6rpx, transparent 7rpx) 0 0/80rpx 80rpx,
+    linear-gradient(180deg, #b6dfc0 0%, #94cfb1 100%);
+}
+
+.type-selector {
+  top: 24rpx;
+  left: 28rpx;
+  right: 28rpx;
+  height: 84rpx;
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.20);
+  border-radius: var(--radius-full);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+  overflow: hidden;
+  z-index: 500;
+}
+
+.type-selector-fade {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 136rpx;
+  z-index: 450;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    #fff9e8 0%,
+    #fff9e8 82%,
+    rgba(255,249,232,0.58) 94%,
+    rgba(255,249,232,0) 100%
+  );
+  border-radius: 0 0 36rpx 36rpx;
+  box-shadow: 0 9rpx 20rpx rgba(61,52,40,0.06);
+}
+
+.type-selector .type-item,
+.type-selector .type-item.fixed,
+.type-selector .scroll-types-wrap,
+.type-selector .scroll-types,
+.type-selector .type-selector-content,
+.type-selector .scroll-hint {
+  height: 84rpx;
+}
+
+.type-selector .type-item {
+  justify-content: center;
+}
+
+.type-item.fixed::before {
+  background: rgba(159,146,125,0.32);
+}
+
+.type-item.active {
+  color: var(--text-color);
+}
+
+.type-item.active::after {
+  bottom: 10rpx;
+  height: 8rpx;
+  background: var(--accent-yellow);
+}
+
+.scroll-hint {
+  background: linear-gradient(90deg, rgba(255,249,232,0), #fff9e8 60%);
+}
+
+.dish-list {
+  position: relative;
+  z-index: 460;
+  height: 100vh;
+  padding-top: 138rpx;
+  padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
+}
+
+.dish-item {
+  background: #fff9e8 !important;
+  border: 4rpx solid rgba(121,79,39,0.14);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.dish-image {
+  border: 4rpx solid var(--card-bg-light);
+  box-shadow: 0 4rpx 0 rgba(121,79,39,0.08);
+}
+
+.dish-name {
+  font-weight: 900;
+}
+
+.dish-tag.type {
+  background: var(--accent-yellow);
+  color: var(--text-color);
+}
+
+.add-btn {
+  background: var(--card-bg-light);
+  border: 4rpx solid var(--primary-color);
+  border-radius: 36rpx;
+  z-index: 700;
+}
+
+.add-icon::before,
+.add-icon::after {
+  background: var(--primary-color);
+}
+
+.empty-tip {
+  margin: 0 8rpx;
+  background: var(--card-bg);
+  border: 2rpx solid rgba(159,146,125,0.36);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
 }

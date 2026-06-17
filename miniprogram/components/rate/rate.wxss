@@ -24,11 +24,13 @@
 .star-icon {
   font-size: 60rpx;
   line-height: 1;
-  color: #ffc107;
+  color: var(--accent-yellow);
+  text-shadow: 0 3rpx 0 rgba(121,79,39,0.12);
 }
 
 .rate-text {
   margin-top: 20rpx;
   font-size: 28rpx;
-  color: #ffc107;
-} 
+  color: var(--warning-color);
+  font-weight: 800;
+}

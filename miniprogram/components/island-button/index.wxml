@@ -1,0 +1,3 @@
+<button class="island-button island-button--{{type}} {{block ? 'is-block' : ''}}" disabled="{{disabled}}" bindtap="handleTap">
+  <slot></slot>
+</button>

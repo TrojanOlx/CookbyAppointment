@@ -75,3 +75,50 @@
   border: none;
   font-weight: 600;
 }
+
+/* Animal Island native redesign */
+.privacy-container {
+  background: transparent;
+}
+
+.privacy-header,
+.privacy-content,
+.privacy-footer {
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.16);
+  box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.privacy-header {
+  margin: 16rpx 24rpx 0;
+  border-radius: var(--radius-lg);
+}
+
+.privacy-title {
+  font-weight: 900;
+}
+
+.privacy-title::before {
+  background: var(--accent-yellow);
+}
+
+.privacy-content {
+  border-radius: var(--radius-lg);
+}
+
+.privacy-footer {
+  margin: 0 24rpx 16rpx;
+  border-radius: var(--radius-lg);
+}
+
+.btn-reject,
+.btn-accept {
+  font-weight: 900;
+  box-shadow: var(--shadow-fab);
+}
+
+.btn-accept {
+  color: var(--text-color);
+  background: var(--card-bg-light);
+  border: 4rpx solid #fff7d6;
+}

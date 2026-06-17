@@ -1,0 +1,29 @@
+.island-section {
+  margin-bottom: 24rpx;
+}
+
+.island-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18rpx;
+}
+
+.island-section__title {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46rpx;
+  padding: 6rpx 24rpx;
+  color: #fff9e8;
+  font-size: 28rpx;
+  font-weight: 900;
+  background: var(--primary-color);
+  border-radius: 14rpx;
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.island-section__meta {
+  color: var(--text-light);
+  font-size: 24rpx;
+  font-weight: 700;
+}

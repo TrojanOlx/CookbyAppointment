@@ -21,13 +21,13 @@
   "window": {
     "navigationBarTextStyle": "white",
     "navigationBarTitleText": "家庭菜单预约",
-    "navigationBarBackgroundColor": "#4CAF50"
+    "navigationBarBackgroundColor": "#19c8b9"
   },
   "tabBar": {
     "custom": true,
-    "color": "#999999",
-    "selectedColor": "#4CAF50",
-    "backgroundColor": "#ffffff",
+    "color": "#8a7b66",
+    "selectedColor": "#0f8f85",
+    "backgroundColor": "#f7f3df",
     "list": [
       {
         "pagePath": "pages/index/index",
@@ -49,7 +49,16 @@
   },
   "style": "v2",
   "lazyCodeLoading": "requiredComponents",
-  "usingComponents": {},
+  "usingComponents": {
+    "island-card": "/components/island-card/index",
+    "island-title": "/components/island-title/index",
+    "island-button": "/components/island-button/index",
+    "island-badge": "/components/island-badge/index",
+    "island-empty": "/components/island-empty/index",
+    "island-loading": "/components/island-loading/index",
+    "island-section": "/components/island-section/index",
+    "island-tabs": "/components/island-tabs/index"
+  },
   "resizable": true,
   "permission": {
     "scope.userInfo": {

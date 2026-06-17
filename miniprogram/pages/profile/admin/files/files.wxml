@@ -114,17 +114,23 @@
             catch:tap="downloadFile" 
             data-path="{{item.filePath}}"
             data-name="{{item.fileName}}"
-          >⬇️</view>
+          >
+            <image class="action-icon-img" src="/images/island/icon-download.svg" mode="aspectFit"></image>
+          </view>
           <view 
             class="action-icon" 
             catch:tap="getFileInfo" 
             data-path="{{item.filePath}}"
-          >ℹ️</view>
+          >
+            <image class="action-icon-img" src="/images/island/icon-info.svg" mode="aspectFit"></image>
+          </view>
           <view 
             class="action-icon delete" 
             catch:tap="deleteFile" 
             data-path="{{item.filePath}}"
-          >🗑️</view>
+          >
+            <image class="action-icon-img" src="/images/island/icon-delete.svg" mode="aspectFit"></image>
+          </view>
         </view>
       </view>
     </view>
@@ -167,4 +173,4 @@
       </view>
     </view>
   </view>
-</view> 
+</view>

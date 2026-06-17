@@ -1,0 +1,22 @@
+.island-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14rpx;
+  padding: 42rpx 0;
+  color: var(--text-light);
+  font-size: 26rpx;
+}
+
+.island-loading__spinner {
+  width: 42rpx;
+  height: 42rpx;
+  border: 5rpx solid rgba(247,243,223,0.78);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: island-spin 0.8s linear infinite;
+}
+
+@keyframes island-spin {
+  to { transform: rotate(360deg); }
+}

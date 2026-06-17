@@ -66,7 +66,7 @@
   </block>
 
   <view class="empty-state" wx:elif="{{!loading}}">
-    <view class="empty-icon">💬</view>
+    <image class="empty-icon-img" src="/images/island/icon-review.svg" mode="aspectFit"></image>
     <view class="empty-text">暂无评价数据</view>
   </view>
 

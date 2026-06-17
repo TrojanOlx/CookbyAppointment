@@ -1,0 +1,3 @@
+<view class="island-card island-card--{{color}} {{dashed ? 'is-dashed' : ''}} {{hover ? 'is-hoverable' : ''}}">
+  <slot></slot>
+</view>
