@@ -1,5 +1,7 @@
 {
   "navigationBarTitleText": "预约菜品",
   "usingComponents": {},
-  "disableScroll": false
-} 
+  "disableScroll": true,
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark"
+}

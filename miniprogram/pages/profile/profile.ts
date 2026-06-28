@@ -3,6 +3,7 @@ import { UserService } from '../../services/userService';
 import { User } from '../../models/user';
 import { showToast, showLoading, hideLoading } from '../../utils/util';
 import { FileService } from '../../services/fileService';
+import { ImageCacheService } from '../../utils/imageCache';
 
 // 页面数据接口
 interface IPageData {
@@ -69,7 +70,7 @@ Page<IPageData, IPageMethods & {
         canIUseGetUserProfile: true
       });
     }
-    
+
     // 检查是否已登录
     const token = wx.getStorageSync('token');
     if (token) {
@@ -96,7 +97,7 @@ Page<IPageData, IPageMethods & {
         };
       };
     }>();
-    
+
     const initLoginPageHandler = () => {
       console.log('收到登录页面初始化事件');
       // 清除登录状态
@@ -113,7 +114,7 @@ Page<IPageData, IPageMethods & {
     (this as any)._initLoginPageHandler = initLoginPageHandler;
     app.globalData.eventBus.on('initLoginPage', initLoginPageHandler);
   },
-  
+
   onUnload() {
     const handler = (this as any)._initLoginPageHandler;
     if (handler) {
@@ -140,7 +141,7 @@ Page<IPageData, IPageMethods & {
       }, 500);
     }
   },
-  
+
   // 获取用户信息
   async fetchUserInfo() {
     try {
@@ -170,7 +171,7 @@ Page<IPageData, IPageMethods & {
       });
     }
   },
-  
+
   // 显示登录选项菜单
   showLoginOptions() {
     wx.showActionSheet({
@@ -206,12 +207,12 @@ Page<IPageData, IPageMethods & {
       }
     });
   },
-  
+
   // 执行登录
   async doLogin() {
     try {
       this.setData({ isLoggingIn: true });
-      
+
       // 获取登录code（冷启动 / 版本升级后首次调用可能失败，最多重试一次）
       const loginCode = await new Promise<string>((resolve, reject) => {
         const tryLogin = (retry: boolean) => {
@@ -236,35 +237,35 @@ Page<IPageData, IPageMethods & {
         };
         tryLogin(true);
       });
-      
+
       // 调用UserService进行登录
       const loginResult = await UserService.login(loginCode);
-      
+
       // 确保获取到token
       if (!loginResult.token) {
         throw new Error('登录返回数据不完整，缺少token');
       }
-      
+
       // 保存登录状态
       wx.setStorageSync('token', loginResult.token);
       wx.setStorageSync('openid', loginResult.openid);
-      
+
       this.setData({
         openid: loginResult.openid,
         isLoggingIn: false
       });
-      
+
       showToast('登录成功');
-      
+
       // 获取用户信息
       await this.fetchUserInfo();
 
       // 检查用户信息是否完整
       const isUserInfoComplete = this.isUserInfoComplete();
-      
+
       // 获取重定向URL（如果有）
       const redirectUrl = wx.getStorageSync('redirectUrl');
-      
+
       // 如果用户信息不完整，先提示完善资料
       if (!isUserInfoComplete) {
         // 登录成功后，先弹出提示获取用户资料（昵称和头像）
@@ -277,7 +278,7 @@ Page<IPageData, IPageMethods & {
             if (modalRes.confirm) {
               // 用户点击确认，触发获取用户资料
               this.getUserProfile();
-              
+
               // 设置一个延时，在获取用户资料完成后检查是否需要重定向
               setTimeout(() => {
                 this.checkAndRedirect(redirectUrl);
@@ -297,13 +298,13 @@ Page<IPageData, IPageMethods & {
       showToast('登录失败，请重试');
     }
   },
-  
+
   // 检查并执行重定向
   checkAndRedirect(redirectUrl: string) {
     if (redirectUrl) {
       // 清除存储的重定向URL
       wx.removeStorageSync('redirectUrl');
-      
+
       // 检查URL是否包含switchTab的页面
       const tabPages = [
         '/pages/index/index',
@@ -311,10 +312,10 @@ Page<IPageData, IPageMethods & {
         '/pages/appointment/appointment',
         '/pages/profile/profile'
       ];
-      
+
       // 检查是否是tabBar页面
       const isTabPage = tabPages.some(tabPage => redirectUrl.startsWith(tabPage));
-      
+
       if (isTabPage) {
         wx.switchTab({
           url: redirectUrl
@@ -326,37 +327,37 @@ Page<IPageData, IPageMethods & {
       }
     }
   },
-  
+
   // 判断用户信息是否完整
   isUserInfoComplete() {
     const { userInfo } = this.data;
     if (!userInfo) return false;
-    
+
     // 检查必要的个人信息字段是否存在
     const hasBasicInfo = Boolean(
-      userInfo.nickName && 
+      userInfo.nickName &&
       userInfo.avatarUrl
     );
-    
+
     return hasBasicInfo;
   },
-  
+
   // 退出登录
   doLogout() {
     wx.removeStorageSync('token');
     wx.removeStorageSync('openid');
     wx.removeStorageSync('userInfo');
-    
+
     this.setData({
       userInfo: null,
       hasUserInfo: false,
       isAdmin: false,
       openid: null
     });
-    
+
     showToast('已退出登录');
   },
-  
+
   // 获取用户信息 - 新版本API (wx.getUserProfile)
   getUserProfile() {
     // 这个方法必须由用户点击事件直接触发
@@ -365,13 +366,13 @@ Page<IPageData, IPageMethods & {
       success: (res) => {
         console.log("用户信息");
         console.log(res);
-        
+
         // 没有获取到用户信息
         if (!res.userInfo) {
           showToast('获取用户信息失败');
           return;
         }
-        
+
         // 更新用户信息
         const userInfo = {
           ...this.data.userInfo,
@@ -382,7 +383,7 @@ Page<IPageData, IPageMethods & {
           province: res.userInfo.province,
           city: res.userInfo.city
         };
-        
+
         // 调用接口更新用户信息
         showLoading('更新用户信息...');
         UserService.updateUserInfo(userInfo)
@@ -394,7 +395,7 @@ Page<IPageData, IPageMethods & {
             });
             this.checkAdminStatus();
             hideLoading();
-            
+
             // 显示成功提示
             showToast('资料获取成功');
           })
@@ -410,26 +411,26 @@ Page<IPageData, IPageMethods & {
       }
     });
   },
-  
+
   // 获取手机号码（需要在wxml的button组件上设置open-type="getPhoneNumber"）
   getPhoneNumber(e: WechatMiniprogram.ButtonGetPhoneNumber) {
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
       // 用户同意授权，获取code
       const code = e.detail.code;
       console.log('获取手机号成功, code:', code);
-      
+
       // 调用UserService获取手机号
       showLoading('获取手机号中...');
       UserService.getPhoneNumber(code)
         .then(result => {
           console.log('手机号信息:', result);
-          
+
           // 更新用户信息中的手机号
           const userInfo = {
             ...this.data.userInfo,
             phoneNumber: result.phoneNumber
           };
-          
+
           // 调用接口更新用户信息
           return UserService.updateUserInfo(userInfo);
         })
@@ -438,7 +439,7 @@ Page<IPageData, IPageMethods & {
           this.setData({
             userInfo: updatedUser
           });
-          
+
           hideLoading();
           showToast('手机号绑定成功');
         })
@@ -452,7 +453,7 @@ Page<IPageData, IPageMethods & {
       showToast('获取手机号失败');
     }
   },
-  
+
   // 获取用户信息
   onGetUserInfo(e: any) {
     // 先执行登录流程
@@ -468,7 +469,7 @@ Page<IPageData, IPageMethods & {
           province: e.detail.userInfo.province,
           city: e.detail.userInfo.city
         };
-        
+
         // 调用接口更新用户信息
         UserService.updateUserInfo(userInfo)
           .then(updatedUser => {
@@ -494,11 +495,11 @@ Page<IPageData, IPageMethods & {
       this.setData({ isAdmin: result.isAdmin });
     } catch (error) {
       console.error('检查管理员状态失败:', error);
-      
+
       this.setData({ isAdmin: false });
     }
   },
-  
+
   // 页面导航
   navigateTo(e: WechatMiniprogram.TouchEvent) {
     const url = e.currentTarget.dataset.url;
@@ -661,41 +662,45 @@ Page<IPageData, IPageMethods & {
       content: '确定要清除本地缓存吗？清除后需要重新登录',
       success: (res) => {
         if (res.confirm) {
-          try {
-            // 清除本地缓存
-            wx.clearStorageSync();
-            
-            // 重置页面数据
-            this.setData({
-              userInfo: null,
-              isAdmin: false,
-              hasUserInfo: false,
-              openid: null,
-              isLoggingIn: false,
-              editingNickName: false
-            });
-            
-            // 显示成功提示
-            wx.showToast({
-              title: '缓存已清除',
-              icon: 'success',
-              duration: 2000
-            });
-            
-            // 2秒后重启小程序
-            setTimeout(() => {
-              wx.reLaunch({
-                url: '/pages/index/index'
+          const clearLocalStorage = () => {
+            try {
+              // 清除本地缓存
+              wx.clearStorageSync();
+
+              // 重置页面数据
+              this.setData({
+                userInfo: null,
+                isAdmin: false,
+                hasUserInfo: false,
+                openid: null,
+                isLoggingIn: false,
+                editingNickName: false
               });
-            }, 2000);
-          } catch (e) {
-            console.error('清除缓存失败:', e);
-            wx.showToast({
-              title: '清除缓存失败',
-              icon: 'error',
-              duration: 2000
-            });
-          }
+
+              // 显示成功提示
+              wx.showToast({
+                title: '缓存已清除',
+                icon: 'success',
+                duration: 2000
+              });
+
+              // 2秒后重启小程序
+              setTimeout(() => {
+                wx.reLaunch({
+                  url: '/pages/index/index'
+                });
+              }, 2000);
+            } catch (e) {
+              console.error('清除缓存失败:', e);
+              wx.showToast({
+                title: '清除缓存失败',
+                icon: 'error',
+                duration: 2000
+              });
+            }
+          };
+
+          ImageCacheService.clear().then(clearLocalStorage, clearLocalStorage);
         }
       }
     });

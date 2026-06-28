@@ -1,5 +1,12 @@
 <!--pages/profile/admin/reviews/reviews.wxml-->
 <view class="container">
+  <view class="fixed-page-bg"></view>
+  <scroll-view
+    class="reviews-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+  >
   <!-- 筛选栏 -->
   <view class="filter-bar">
     <text class="filter-label">评分筛选：</text>
@@ -18,11 +25,11 @@
     <view class="review-card" wx:for="{{reviews}}" wx:key="id">
       <!-- 头部信息 -->
       <view class="card-header" bindtap="toggleExpand" data-id="{{item.id}}">
-        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.dishImage || '/images/default-dish.png'}}" mode="aspectFill"></image>
+        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedDishImage || item.dishImage || '/images/default-dish.png'}}" mode="aspectFill"></image>
         <view class="card-meta">
           <text class="dish-name">{{item.dishName}}</text>
           <view class="user-row">
-            <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.userAvatar || '/images/default-dish.png'}}" mode="aspectFill"></image>
+            <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.cachedUserAvatar || item.userAvatar || '/images/default-dish.png'}}" mode="aspectFill"></image>
             <text class="user-name">{{item.userName}}</text>
           </view>
           <view class="bottom-row">
@@ -71,4 +78,5 @@
   </view>
 
   <view class="loading-full" wx:if="{{loading && reviews.length === 0}}">加载中...</view>
+  </scroll-view>
 </view>

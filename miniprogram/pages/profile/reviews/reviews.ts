@@ -1,6 +1,7 @@
 // pages/profile/reviews/reviews.ts
 import { AppointmentService } from '../../../services/appointmentService';
 import { BASE_URL } from '../../../services/http';
+import { ImageCacheService } from '../../../utils/imageCache';
 
 Page({
   data: {
@@ -60,7 +61,12 @@ Page({
           createTimeStr
         };
       });
-      const allReviews = refresh ? list : [...this.data.reviews, ...list];
+      const cachedList = await ImageCacheService.withCachedImages(
+        list,
+        item => item.dishImage,
+        'cachedDishImage'
+      );
+      const allReviews = refresh ? cachedList : [...this.data.reviews, ...cachedList];
       this.setData({
         reviews: allReviews,
         page: page + 1,

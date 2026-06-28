@@ -1,3 +1,6 @@
 {
-  "navigationBarTitleText": "家庭菜单预约"
+  "navigationBarTitleText": "家庭菜单预约",
+  "disableScroll": true,
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark"
 }

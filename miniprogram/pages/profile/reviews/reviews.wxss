@@ -1,8 +1,23 @@
 .container {
-  min-height: 100vh;
-  background: var(--background-color);
-  padding: 20rpx 24rpx;
+  position: relative;
+  height: 100vh;
+  background: transparent;
   box-sizing: border-box;
+  overflow: hidden;
+}
+
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.reviews-scroll {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 20rpx 24rpx calc(40rpx + env(safe-area-inset-bottom));
+  overflow-x: hidden;
 }
 
 /* ── 评价卡片 ── */

@@ -2,5 +2,8 @@
   "navigationBarTitleText": "用户预约",
   "usingComponents": {
     "calendar": "@lspriv/wx-calendar"
-  }
-} 
+  },
+  "disableScroll": true,
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark"
+}

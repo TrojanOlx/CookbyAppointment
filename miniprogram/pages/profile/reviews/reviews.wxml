@@ -1,10 +1,17 @@
 <!--pages/profile/reviews/reviews.wxml-->
 <view class="container">
+  <view class="fixed-page-bg"></view>
+  <scroll-view
+    class="reviews-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+  >
   <block wx:if="{{reviews.length > 0}}">
     <view class="review-card" wx:for="{{reviews}}" wx:key="id" bindtap="toggleExpand" data-id="{{item.id}}">
       <!-- 菜品信息行 -->
       <view class="card-header">
-        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.dishImage}}" mode="aspectFill"></image>
+        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedDishImage || item.dishImage}}" mode="aspectFill"></image>
         <view class="card-info">
           <text class="dish-name">{{item.dishName}}</text>
           <view class="meta-row">
@@ -53,4 +60,5 @@
   </view>
 
   <view class="loading-full" wx:if="{{loading && reviews.length === 0}}">加载中...</view>
+  </scroll-view>
 </view>

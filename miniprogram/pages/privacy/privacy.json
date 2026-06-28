@@ -3,5 +3,6 @@
   "navigationBarBackgroundColor": "#19c8b9",
   "navigationBarTextStyle": "white",
   "backgroundColor": "#a8d8b9",
-  "backgroundTextStyle": "dark"
+  "backgroundTextStyle": "dark",
+  "disableScroll": true
 }

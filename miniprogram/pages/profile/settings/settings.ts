@@ -2,6 +2,7 @@
 import { showToast } from '../../../utils/util';
 import { getUserProfile } from '../../../utils/auth';
 import { UserService } from '../../../services/userService';
+import { ImageCacheService } from '../../../utils/imageCache';
 
 // 页面数据接口
 interface IPageData {
@@ -40,7 +41,7 @@ Page<IPageData, IPageMethods>({
     const phoneNumber = wx.getStorageSync('phoneNumber');
     const notifyAppointment = wx.getStorageSync('notifyAppointment') !== false;
     const notifyReview = wx.getStorageSync('notifyReview') !== false;
-    
+
     this.setData({
       phoneNumber,
       notifyAppointment,
@@ -138,7 +139,7 @@ Page<IPageData, IPageMethods>({
         showToast('获取手机号失败');
         return;
       }
-      
+
       wx.showLoading({ title: '绑定中...', mask: true });
       try {
         await this.ensureLoggedIn();
@@ -164,7 +165,7 @@ Page<IPageData, IPageMethods>({
       showToast(e.detail.errMsg === 'getPhoneNumber:fail user deny' ? '已取消授权' : '获取手机号失败');
     }
   },
-  
+
   // 更新用户信息
   updateUserInfo() {
     getUserProfile().then(userInfo => {
@@ -174,12 +175,12 @@ Page<IPageData, IPageMethods>({
       showToast('更新用户信息失败');
     });
   },
-  
+
   // 开关切换
   switchChange(e: WechatMiniprogram.SwitchChange) {
     const type = e.currentTarget.dataset.type;
     const value = e.detail.value;
-    
+
     if (type === 'appointment') {
       this.setData({ notifyAppointment: value });
       wx.setStorageSync('notifyAppointment', value);
@@ -188,7 +189,7 @@ Page<IPageData, IPageMethods>({
       wx.setStorageSync('notifyReview', value);
     }
   },
-  
+
   // 清除缓存
   clearCache() {
     wx.showModal({
@@ -200,21 +201,25 @@ Page<IPageData, IPageMethods>({
           const userInfo = wx.getStorageSync('userInfo');
           const openid = wx.getStorageSync('openid');
           const phoneNumber = wx.getStorageSync('phoneNumber');
-          
-          // 清除缓存
-          wx.clearStorageSync();
-          
-          // 恢复必要的信息
-          if (userInfo) wx.setStorageSync('userInfo', userInfo);
-          if (openid) wx.setStorageSync('openid', openid);
-          if (phoneNumber) wx.setStorageSync('phoneNumber', phoneNumber);
-          
-          showToast('缓存已清除');
+
+          const clearLocalStorage = () => {
+            // 清除缓存
+            wx.clearStorageSync();
+
+            // 恢复必要的信息
+            if (userInfo) wx.setStorageSync('userInfo', userInfo);
+            if (openid) wx.setStorageSync('openid', openid);
+            if (phoneNumber) wx.setStorageSync('phoneNumber', phoneNumber);
+
+            showToast('缓存已清除');
+          };
+
+          ImageCacheService.clear().then(clearLocalStorage, clearLocalStorage);
         }
       }
     });
   },
-  
+
   // 页面导航
   navigateTo(e: WechatMiniprogram.TouchEvent) {
     const url = e.currentTarget.dataset.url;

@@ -67,6 +67,25 @@ page {
   font-size: 14px;
   line-height: 1.5;
   box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+page::-webkit-scrollbar,
+scroll-view::-webkit-scrollbar,
+view::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+  color: transparent;
+  background: transparent;
+}
+
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+  color: transparent;
+  background: transparent;
 }
 
 .fixed-page-bg {

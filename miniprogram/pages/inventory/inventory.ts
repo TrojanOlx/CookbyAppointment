@@ -1,6 +1,7 @@
 import { InventoryCategory, InventoryItem } from '../../models/inventory';
 import { InventoryService } from '../../services/inventoryService';
 import { showConfirm, showSuccess, showToast, showLoading, hideLoading, getCurrentDate, formatDate, isDateExpired, dateDiff } from '../../utils/util';
+import { ImageCacheService } from '../../utils/imageCache';
 
 // 每页加载的数量
 const PAGE_SIZE = 10;
@@ -10,6 +11,7 @@ interface DisplayInventoryItem extends InventoryItem {
   isExpiringSoon: boolean;
   daysLeft: number | null;
   xmove?: number; // 添加滑动位移属性
+  cachedImage?: string;
 }
 
 interface CountInfo {
@@ -50,7 +52,7 @@ Page({
     // 显示页面时刷新数据
     this.loadInventory(true);
   },
-  
+
   // 设置安全区域
   setSafeArea() {
     const app = getApp<IAppOption>();
@@ -70,29 +72,29 @@ Page({
 
   // 处理安全区域数据
   processSafeArea(systemInfo: WechatMiniprogram.SystemInfo) {
-    const safeAreaBottom = systemInfo.safeArea ? 
+    const safeAreaBottom = systemInfo.safeArea ?
       (systemInfo.screenHeight - systemInfo.safeArea.bottom) : 0;
-    
+
     this.setData({
       safeAreaBottom
     });
   },
-  
+
   // 统计各状态的食材数量
   calculateCounts(inventoryItems: InventoryItem[]): CountInfo {
     const today = getCurrentDate();
     let normalCount = 0;
     let expiringCount = 0;
     let expiredCount = 0;
-    
+
     for (const item of inventoryItems) {
       const expired = isDateExpired(item.expiryDate);
       let daysLeft = null;
-      
+
       if (!expired) {
         daysLeft = dateDiff(today, item.expiryDate);
       }
-      
+
       if (expired) {
         expiredCount++;
       } else if (!expired && daysLeft !== null && daysLeft <= 3) {
@@ -101,7 +103,7 @@ Page({
         normalCount++;
       }
     }
-    
+
     return {
       totalCount: inventoryItems.length,
       normalCount,
@@ -113,24 +115,24 @@ Page({
   // 加载库存数据
   async loadInventory(refresh = false) {
     if (this.data.loading && !this.data.isRefreshing) return;
-    
-    this.setData({ 
+
+    this.setData({
       loading: true,
       isLoadingMore: !refresh && !this.data.isRefreshing
     });
-    
+
     try {
       // 只有刷新时才重新获取全部数据
       if (refresh) {
         let inventoryItems: InventoryItem[] = [];
         let response;
-        
+
         // 根据搜索关键词获取数据
         if (this.data.searchKeyword) {
           // 使用搜索接口
           response = await InventoryService.searchInventory(
-            this.data.searchKeyword, 
-            1, 
+            this.data.searchKeyword,
+            1,
             100 // 获取较多数据以便本地筛选
           );
           inventoryItems = response.list;
@@ -139,32 +141,32 @@ Page({
           response = await InventoryService.getInventoryList(1, 100); // 获取较多数据以便本地筛选
           inventoryItems = response.list;
         }
-        
+
         // 计算各状态计数
         const counts = this.calculateCounts(inventoryItems);
-        
+
         // 处理数据，添加过期信息
         const allItems: DisplayInventoryItem[] = [];
         const today = getCurrentDate();
-        
+
         // 创建ID映射以处理可能的重复ID
         const usedIds = new Set<string>();
-        
+
         for (const item of inventoryItems) {
           const expired = isDateExpired(item.expiryDate);
           let daysLeft = null;
-          
+
           if (!expired) {
             daysLeft = dateDiff(today, item.expiryDate);
           }
-          
+
           // 确保ID唯一
           let uniqueId = item.id;
           if (usedIds.has(uniqueId)) {
             uniqueId = `${uniqueId}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
           }
           usedIds.add(uniqueId);
-          
+
           const displayItem = {
             ...item,
             id: uniqueId, // 使用唯一ID
@@ -173,7 +175,7 @@ Page({
             daysLeft,
             xmove: 0 // 添加 xmove 属性
           };
-          
+
           // 根据筛选条件过滤
           if (this.data.filterStatus === '') {
             // 全部
@@ -189,38 +191,39 @@ Page({
             allItems.push(displayItem);
           }
         }
-        
+
         // 按过期情况排序：已过期 > 即将过期 > 正常
         allItems.sort((a, b) => {
           if (a.isExpired && !b.isExpired) return -1;
           if (!a.isExpired && b.isExpired) return 1;
           if (a.isExpiringSoon && !b.isExpiringSoon) return -1;
           if (!a.isExpiringSoon && b.isExpiringSoon) return 1;
-          
+
           // 同类按保质期剩余天数或按名称排序
           if (a.daysLeft !== null && b.daysLeft !== null) {
             return a.daysLeft - b.daysLeft;
           }
           return a.name.localeCompare(b.name);
         });
-        
+
         // 保存筛选并排序后的完整数据
         this.setData({
           allFilteredItems: allItems,
           ...counts // 更新各状态计数
         });
       }
-      
+
       // 使用已保存的筛选后数据进行分页
       const filteredTotal = this.data.allFilteredItems.length;
       const start = refresh ? 0 : (this.data.currentPage - 1) * this.data.pageSize;
       const end = start + this.data.pageSize;
       const items = this.data.allFilteredItems.slice(start, end);
+      const cachedItems = await ImageCacheService.withCachedImages(items, item => item.image);
       const hasMore = end < filteredTotal;
-      
+
       // 更新数据
       this.setData({
-        items: refresh ? items : [...this.data.items, ...items],
+        items: refresh ? cachedItems : [...this.data.items, ...cachedItems],
         currentPage: refresh ? 1 : this.data.currentPage + 1,
         hasMore,
         filteredTotal,
@@ -237,7 +240,7 @@ Page({
         isLoadingMore: false
       });
     }
-    
+
     if (refresh && wx.stopPullDownRefresh) {
       wx.stopPullDownRefresh();
     }
@@ -249,7 +252,7 @@ Page({
       searchKeyword: e.detail.value,
       currentPage: 1
     });
-    
+
     // 隐藏所有删除按钮
     this.hideAllDeleteButtons();
     this.loadInventory(true);
@@ -262,17 +265,17 @@ Page({
       filterStatus: status,
       currentPage: 1
     });
-    
+
     // 隐藏所有删除按钮
     this.hideAllDeleteButtons();
     this.loadInventory(true);
   },
-  
+
   // 刷新事件
   onRefresh() {
     // 隐藏所有删除按钮
     this.hideAllDeleteButtons();
-    
+
     this.setData({
       isRefreshing: true,
       currentPage: 1
@@ -326,7 +329,7 @@ Page({
   editItem(e: any) {
     // 隐藏所有删除按钮
     this.hideAllDeleteButtons();
-    
+
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
       url: `/pages/inventory/add/add?id=${id}`
@@ -337,7 +340,7 @@ Page({
   async deleteItem(e: any) {
     const id = e.currentTarget.dataset.id;
     const confirmed = await showConfirm('确认删除', '确定要删除这个食材吗？');
-    
+
     if (confirmed) {
       try {
         const result = await InventoryService.deleteInventory(id);
@@ -353,7 +356,7 @@ Page({
       }
     }
   },
-  
+
   // 下拉刷新
   onPullDownRefresh() {
     this.loadInventory(true);
@@ -378,11 +381,11 @@ Page({
    */
   handleTouchEnd(e: WechatMiniprogram.TouchEvent) {
     const deltaX = e.changedTouches[0].pageX - this.data.startX;
-    
+
     // 左滑超过30px，显示删除按钮
     if (deltaX < -30) {
       this.showDeleteButton(e);
-    } 
+    }
     // 右滑超过15px，隐藏删除按钮
     else if (deltaX > 15) {
       this.hideDeleteButton(e);
@@ -391,7 +394,7 @@ Page({
     else {
       const index = (e.currentTarget as any).dataset.index;
       const currentXmove = this.data.items[index].xmove || 0;
-      
+
       // 如果当前已经显示删除按钮，保持显示；否则隐藏
       if (currentXmove < -30) {
         this.showDeleteButton(e);
@@ -406,16 +409,16 @@ Page({
    */
   showDeleteButton(e: WechatMiniprogram.TouchEvent) {
     const index = (e.currentTarget as any).dataset.index;
-    
+
     // 先重置所有项目的xmove为0
     const items = [...this.data.items];
     items.forEach((item, idx) => {
       items[idx].xmove = 0;
     });
-    
+
     // 然后只设置当前项目的xmove为-85
     items[index].xmove = -85;
-    
+
     this.setData({
       items
     });
@@ -448,7 +451,7 @@ Page({
       // 用户正在触摸滑动，不做额外处理
       return;
     }
-    
+
     if (e.detail.source === 'friction' || e.detail.source === 'out-of-bounds') {
       // 当是惯性滑动或者超出边界时
       if (e.detail.x < -30) {
@@ -484,7 +487,7 @@ Page({
     // 隐藏所有删除按钮
     this.hideAllDeleteButtons();
   },
-  
+
   /**
    * 阻止事件冒泡
    */
@@ -499,4 +502,4 @@ Page({
     // 滚动时隐藏所有删除按钮
     this.hideAllDeleteButtons();
   },
-}); 
+});

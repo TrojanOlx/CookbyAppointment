@@ -1,4 +1,9 @@
 /**index.wxss**/
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
 .container {
   height: 100vh;
   display: flex;
@@ -28,6 +33,15 @@
   box-sizing: border-box;
   padding: 0 24rpx calc(196rpx + env(safe-area-inset-bottom));
   overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.features-scroll::-webkit-scrollbar,
+.features-scroll view::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+  background: transparent;
 }
 
 .header {
@@ -604,6 +618,7 @@
   height: 0;
   padding-bottom: calc(196rpx + env(safe-area-inset-bottom));
   overflow-x: hidden;
+  scrollbar-width: none;
 }
 
 .nav-grid,

@@ -3,5 +3,6 @@
   "enablePullDownRefresh": true,
   "backgroundColor": "#a8d8b9",
   "usingComponents": {},
-  "backgroundTextStyle": "dark"
+  "backgroundTextStyle": "dark",
+  "disableScroll": true
 }

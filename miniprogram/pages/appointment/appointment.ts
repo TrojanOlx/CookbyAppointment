@@ -3,6 +3,7 @@ import { Dish } from '../../models/dish';
 import { AppointmentService } from '../../services/appointmentService';
 import { getCurrentDate, showConfirm, showSuccess, showLoading, hideLoading, showToast } from '../../utils/util';
 import { requestSubscribeForUser } from '../../services/notificationService';
+import { ImageCacheService } from '../../utils/imageCache';
 // 引入wx-calendar和农历插件
 const { WxCalendar } = require('@lspriv/wx-calendar/lib');
 const { LunarPlugin } = require('@lspriv/wc-plugin-lunar');
@@ -16,10 +17,14 @@ interface CalendarDay {
   day: number;
 }
 
+interface DisplayDish extends Dish {
+  cachedImage?: string;
+}
+
 interface DisplayAppointment {
   id: string;
   mealType: string;
-  dishList: Dish[];
+  dishList: DisplayDish[];
   status: AppointmentStatus;
 }
 
@@ -268,10 +273,15 @@ Page({
       const displayAppointments: DisplayAppointment[] = [];
       // 遍历所有预约
       for (const appointment of appointments) {
+        const dishList = await ImageCacheService.withCachedImages(
+          (appointment.dishes || []) as Dish[],
+          item => item.images && item.images.length > 0 ? item.images[0] : undefined
+        );
+
         displayAppointments.push({
           id: appointment.id,
           mealType: appointment.mealType,
-          dishList: (appointment.dishes || []) as Dish[],
+          dishList,
           status: appointment.status || AppointmentStatus.Pending
         });
       }

@@ -1,4 +1,9 @@
 /* 页面容器 */
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
 .profile-page {
   position: relative;
   height: 100vh;

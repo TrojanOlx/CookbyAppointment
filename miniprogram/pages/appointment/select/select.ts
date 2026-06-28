@@ -4,15 +4,20 @@ import { AppointmentService } from '../../../services/appointmentService';
 import { DishService } from '../../../services/dishService';
 import { showError, showSuccess, showToast, showLoading, hideLoading } from '../../../utils/util';
 import { requestSubscribeForUser } from '../../../services/notificationService';
+import { ImageCacheService } from '../../../utils/imageCache';
 
 // 每页加载的菜品数量
 const PAGE_SIZE = 10;
 
+interface DisplayDish extends Dish {
+  cachedImage?: string;
+}
+
 Page({
   data: {
     date: '', // YYYY-MM-DD 格式的日期
-    dishes: [] as Dish[], // 所有菜品列表
-    filteredDishes: [] as Dish[], // 过滤后的菜品列表
+    dishes: [] as DisplayDish[], // 所有菜品列表
+    filteredDishes: [] as DisplayDish[], // 过滤后的菜品列表
     selectedDishes: {} as Record<string, boolean>, // 已选择的菜品ID映射
     selectedType: '', // 当前选择的菜品类型
     selectedMealType: MealType.Lunch, // 当前选择的餐次
@@ -220,7 +225,10 @@ Page({
       }
       
       console.log('接收到数据:', dishesResult.list.length, '条记录，总数:', dishesResult.total);
-      const dishes = dishesResult.list;
+      const dishes = await ImageCacheService.withCachedImages(
+        dishesResult.list,
+        item => item.images && item.images.length > 0 ? item.images[0] : undefined
+      );
       const total = dishesResult.total;
       
       this.setData({

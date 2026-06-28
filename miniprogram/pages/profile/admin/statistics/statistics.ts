@@ -1,5 +1,6 @@
 // pages/profile/admin/statistics/statistics.ts
 import { get } from '../../../../services/http';
+import { ImageCacheService } from '../../../../utils/imageCache';
 
 Page({
   data: {
@@ -43,16 +44,25 @@ Page({
         .toISOString().slice(0, 10);
       const res = await get<any>('/api/admin/statistics', { startDate, endDate });
 
-      const topDishes = (res.topDishes || []).map((d: any) => ({
+      const topDishesWithPct = (res.topDishes || []).map((d: any) => ({
         ...d,
         pct: res.topDishes[0] ? Math.round(d.count / res.topDishes[0].count * 100) : 0
       }));
+      const topDishes = await ImageCacheService.withCachedImages(
+        topDishesWithPct,
+        item => item.image
+      );
       const maxDishCount = res.topDishes && res.topDishes[0] ? res.topDishes[0].count : 1;
 
-      const userRanking = (res.userRanking || []).map((u: any) => ({
+      const userRankingWithPct = (res.userRanking || []).map((u: any) => ({
         ...u,
         pct: res.userRanking[0] ? Math.round(u.count / res.userRanking[0].count * 100) : 0
       }));
+      const userRanking = await ImageCacheService.withCachedImages(
+        userRankingWithPct,
+        item => item.avatarUrl,
+        'cachedAvatar'
+      );
       const maxUserCount = res.userRanking && res.userRanking[0] ? res.userRanking[0].count : 1;
 
       const mealColors: Record<string, string> = {

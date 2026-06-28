@@ -11,6 +11,11 @@
   overflow: hidden;
 }
 
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
 /* ── Tab 类型选择器 ── */
 .type-selector {
   position: fixed;

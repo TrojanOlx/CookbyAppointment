@@ -38,10 +38,10 @@
     bindrefresherpulling="onRefresherPulling"
     bindrefresherrestore="onRefresherRestore"
     enhanced="true"
-    show-scrollbar="true">
+    show-scrollbar="false">
     <block wx:if="{{dishes.length > 0}}">
       <view class="dish-item" wx:for="{{dishes}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-        <image referrerPolicy="no-referrer" class="dish-image" referrerPolicy="no-referrer" src="{{item.images && item.images.length > 0 ? item.images[0] : '/images/default-dish.png'}}" mode="aspectFill"></image>
+        <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || (item.images && item.images.length > 0 ? item.images[0] : '/images/default-dish.png')}}" mode="aspectFill"></image>
         <view class="dish-info">
           <view class="dish-name">{{item.name}}</view>
           <view class="dish-tags">

@@ -81,13 +81,15 @@
     refresher-enabled
     refresher-threshold="50"
     refresher-default-style="black"
-    refresher-background="#f6f6f6"
+    refresher-background="#a8d8b9"
     refresher-triggered="{{isRefreshing}}"
     bindrefresherrefresh="onRefresh"
     bindscrolltolower="onLoadMore"
     scroll-top="{{scrollTop}}"
     scroll-with-animation="{{true}}"
     bindscroll="onScroll"
+    enhanced="{{true}}"
+    show-scrollbar="false"
     style="padding-top: calc({{headerHeight}}px + 16rpx); padding-bottom: {{bottomHeight}}px;"
   >
     <!-- 加载状态 -->
@@ -106,7 +108,7 @@
           data-id="{{item.id}}"
           bindtap="toggleSelectDish"
         >
-          <image referrerPolicy="no-referrer" class="dish-image" src="{{item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
+          <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
           <view class="dish-info">
             <view class="dish-name">{{item.name}}</view>
             <view class="dish-tags">

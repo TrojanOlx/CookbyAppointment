@@ -8,6 +8,11 @@
   overflow: hidden;
 }
 
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
 /* ── 搜索 + 筛选 固定头部 ── */
 .search-bar {
   position: fixed;
@@ -115,8 +120,10 @@
   position: relative;
   z-index: 1;
   flex: 1;
+  min-height: 0;
   width: 100%;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .inventory-list {
@@ -128,6 +135,7 @@
   box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
   height: 100%;
+  min-height: 0;
   overflow-x: hidden;
 }
 
@@ -469,8 +477,8 @@
 }
 
 .filter-item.active::after {
-  bottom: 10rpx;
-  height: 8rpx;
+  bottom: 3rpx;
+  height: 6rpx;
   background: var(--accent-yellow);
 }
 
@@ -478,6 +486,8 @@
   position: relative;
   z-index: 1;
   padding-top: 226rpx;
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .inventory-item-container,
@@ -491,8 +501,20 @@
 }
 
 .inventory-item-container {
+  width: calc(100% - 48rpx);
+  margin: 0 auto 18rpx;
+  box-sizing: border-box;
   border: 4rpx solid rgba(121,79,39,0.14);
   box-shadow: 0 7rpx 0 rgba(121,79,39,0.10), 0 14rpx 24rpx rgba(61,52,40,0.12);
+}
+
+.empty-tip,
+.load-more-tip,
+.no-more-tip {
+  width: calc(100% - 48rpx);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
 }
 
 .item-image {

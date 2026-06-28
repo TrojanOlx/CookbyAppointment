@@ -1,4 +1,4 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom}};" bindtap="onContainerTap">
+<view class="container" style="padding-bottom: {{safeAreaBottom}}px;" bindtap="onContainerTap">
   <view class="fixed-page-bg"></view>
   <view class="inventory-top-dock"></view>
   <!-- 搜索区域 -->
@@ -56,21 +56,20 @@
   <view class="inventory-scroll-container">
     <scroll-view 
       class="inventory-list" 
-      scroll-y 
+      scroll-y="true"
       enable-back-to-top
       refresher-enabled
       refresher-threshold="50"
       refresher-default-style="black"
-      refresher-background="#f6f6f6"
+      refresher-background="#a8d8b9"
       refresher-triggered="{{isRefreshing}}"
       bindrefresherrefresh="onRefresh"
       bindscrolltolower="onReachBottom"
       bindscroll="onScroll"
       enhanced="{{true}}"
-      show-scrollbar="{{true}}"
+      show-scrollbar="false"
       fast-deceleration="{{true}}"
       scroll-anchoring="{{true}}"
-      style="--webkit-scrollbar-offset-right: 8rpx; padding-right: 10rpx;"
     >
       <!-- 加载状态 -->
       <view class="loading-container" wx:if="{{loading && items.length === 0}}">
@@ -88,7 +87,7 @@
               <view class="inventory-item" bindtap="editItem" data-id="{{item.id}}">
                 <!-- 左侧图片区域 -->
                 <view class="item-image">
-                  <image referrerPolicy="no-referrer" src="{{item.image || '/images/default-dish.png'}}" mode="aspectFill"></image>
+                  <image referrerPolicy="no-referrer" src="{{item.cachedImage || item.image || '/images/default-dish.png'}}" mode="aspectFill"></image>
                 </view>
                 
                 <!-- 中间食材信息区域 -->
@@ -136,7 +135,7 @@
   </view>
 
   <!-- 添加按钮 -->
-  <view class="add-btn" bindtap="addItem" style="bottom: calc(120rpx + {{safeAreaBottom ? (safeAreaBottom + 48 + 'px') : '0'}});">
+  <view class="add-btn" bindtap="addItem" style="bottom: calc(40rpx + {{safeAreaBottom}}px);">
     <view class="add-icon"></view>
   </view>
 </view>

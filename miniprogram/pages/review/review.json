@@ -2,5 +2,8 @@
   "navigationBarTitleText": "评价",
   "usingComponents": {
     "rate": "../../components/rate/rate"
-  }
-} 
+  },
+  "disableScroll": true,
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark"
+}

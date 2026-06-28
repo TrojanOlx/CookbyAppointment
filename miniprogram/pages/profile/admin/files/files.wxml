@@ -37,7 +37,7 @@
   <!-- 文件夹选择器 -->
   <view class="folder-selector">
     <view class="section-title">选择文件夹</view>
-    <scroll-view scroll-x class="folder-list">
+    <scroll-view scroll-x class="folder-list" enhanced="true" show-scrollbar="false">
       <view 
         wx:for="{{folders}}" 
         wx:key="*this" 

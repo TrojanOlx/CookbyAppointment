@@ -3,6 +3,7 @@ import { Review } from '../../models/appointment';
 import { Dish } from '../../models/dish';
 import { showToast, showLoading, hideLoading, showConfirm, formatTime } from '../../utils/util';
 import { FileService } from '../../services/fileService';
+import { ImageCacheService } from '../../utils/imageCache';
 
 // 定义菜品评价状态接口
 interface DishWithReviewStatus extends Omit<Dish, 'images'> {
@@ -11,6 +12,7 @@ interface DishWithReviewStatus extends Omit<Dish, 'images'> {
   content?: string;
   images?: string[];
   createTimeFormat?: string;
+  cachedImage?: string;
 }
 
 Page({
@@ -45,37 +47,37 @@ Page({
   async loadAppointmentDetails(appointmentId: string) {
     try {
       showLoading('加载数据中');
-      
+
       // 获取预约详情
       const appointment = await AppointmentService.getAppointmentDetail(appointmentId);
-      
+
       if (!appointment) {
         throw new Error('获取预约详情失败');
       }
 
       // 获取预约关联的菜品
       const dishes = appointment.dishes as Dish[];
-      
+
       // 获取预约的评价列表
       const reviews = await AppointmentService.getAppointmentReviews(appointmentId);
-      
+
       // 处理菜品和评价数据
       const dishesWithReviewStatus: DishWithReviewStatus[] = dishes.map(dish => {
         // 查找对应的评价
         const review = reviews.find((r: any) => r.dishId === dish.id);
-        
+
         // 添加评价状态
         if (review) {
           // 过滤掉无效的图片URL
           let filteredImages = review.images || [];
           if (Array.isArray(filteredImages)) {
-            filteredImages = filteredImages.filter(img => 
+            filteredImages = filteredImages.filter(img =>
               typeof img === 'string' && img.trim() !== '' && !img.includes('[')
             );
           } else {
             filteredImages = [];
           }
-          
+
           return {
             ...dish,
             reviewed: true,
@@ -91,13 +93,18 @@ Page({
           };
         }
       });
-      
+
+      const cachedDishes = await ImageCacheService.withCachedImages(
+        dishesWithReviewStatus,
+        item => item.images && item.images.length > 0 ? item.images[0] : undefined
+      );
+
       this.setData({
         date: appointment.date,
         mealType: appointment.mealType,
-        dishes: dishesWithReviewStatus
+        dishes: cachedDishes
       });
-      
+
       hideLoading();
     } catch (error) {
       hideLoading();
@@ -109,7 +116,7 @@ Page({
   // 选择菜品
   selectDish(e: any) {
     const index = parseInt(e.currentTarget.dataset.index);
-    
+
     // 如果点击的是当前已选中的菜品，则取消选中
     if (this.data.currentDishIndex === index) {
       this.setData({
@@ -160,7 +167,7 @@ Page({
       success: (res) => {
         const tempFiles = res.tempFiles;
         const tempFilePaths = tempFiles.map(file => file.tempFilePath);
-        
+
         // 上传图片
         this.uploadImages(tempFilePaths);
       }
@@ -170,23 +177,23 @@ Page({
   // 上传图片
   async uploadImages(tempFilePaths: string[]) {
     showLoading('上传图片中');
-    
+
     try {
       const uploadedImages = [...this.data.images];
-      
+
       for (const filePath of tempFilePaths) {
         // 上传图片
         const result = await FileService.uploadFile(filePath);
-        
+
         if (result && result.success && result.data && result.data.url) {
           uploadedImages.push(result.data.url);
         }
       }
-      
+
       this.setData({
         images: uploadedImages
       });
-      
+
       hideLoading();
     } catch (error) {
       hideLoading();
@@ -200,7 +207,7 @@ Page({
     const index = e.currentTarget.dataset.index;
     const images = [...this.data.images];
     images.splice(index, 1);
-    
+
     this.setData({
       images
     });
@@ -211,15 +218,15 @@ Page({
     const url = e.currentTarget.dataset.url;
     const currentDishIndex = this.data.currentDishIndex as number;
     const images = this.data.dishes[currentDishIndex].images || [];
-    
+
     // 确保所有图片URL格式正确
     const validImages = images.filter(img => typeof img === 'string' && img.trim() !== '' && !img.includes('['));
-    
+
     if (validImages.length === 0) {
       showToast('暂无可预览的图片');
       return;
     }
-    
+
     wx.previewImage({
       current: url,
       urls: validImages
@@ -229,18 +236,18 @@ Page({
   // 提交评价
   async submitReview() {
     if (this.data.isSubmitting) return;
-    
+
     if (!this.data.rating) {
       showToast('请先评分');
       return;
     }
-    
+
     const currentDishIndex = this.data.currentDishIndex;
     if (currentDishIndex === null) {
       showToast('请选择要评价的菜品');
       return;
     }
-    
+
     // 构建评价数据
     const reviewData: Partial<Review> = {
       appointmentId: this.data.appointmentId,
@@ -249,18 +256,18 @@ Page({
       content: this.data.content,
       images: this.data.images
     };
-    
+
     try {
       this.setData({ isSubmitting: true });
       showLoading('提交评价中');
-      
+
       // 调用API提交评价
       await AppointmentService.addReview(reviewData);
-      
+
       hideLoading();
       this.setData({ isSubmitting: false });
       showToast('评价成功');
-      
+
       // 更新菜品评价状态
       const dishes = [...this.data.dishes];
       dishes[currentDishIndex].reviewed = true;
@@ -268,7 +275,7 @@ Page({
       dishes[currentDishIndex].content = this.data.content;
       dishes[currentDishIndex].images = [...this.data.images];
       dishes[currentDishIndex].createTimeFormat = formatTime(new Date());
-      
+
       this.setData({
         dishes,
         rating: 0,
@@ -282,4 +289,4 @@ Page({
       showToast('提交评价失败，请重试');
     }
   }
-}); 
+});

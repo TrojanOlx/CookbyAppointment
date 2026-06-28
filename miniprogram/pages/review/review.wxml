@@ -1,4 +1,11 @@
 <view class="container">
+  <view class="fixed-page-bg"></view>
+  <scroll-view
+    class="review-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+  >
   <view class="page-header">
     <text class="appointment-info">{{date}} {{mealType}}</text>
   </view>
@@ -14,7 +21,7 @@
               data-index="{{index}}">
           <view class="dish-header">
             <view class="dish-info">
-              <image referrerPolicy="no-referrer" class="dish-image" src="{{item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
+              <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
               <view class="dish-details">
                 <text class="dish-name">{{item.name}}</text>
                 <view class="dish-tags">
@@ -95,4 +102,5 @@
       <text>请选择菜品进行评价</text>
     </view>
   </view>
-</view> 
+  </scroll-view>
+</view>

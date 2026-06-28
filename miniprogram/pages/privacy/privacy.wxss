@@ -39,7 +39,7 @@
   margin: 20rpx 24rpx;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  overflow-y: auto;
+  overflow: hidden;
   box-sizing: border-box;
 }
 

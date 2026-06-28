@@ -1,7 +1,6 @@
 {
-  "navigationBarTitleText": "菜品详情",
+  "navigationBarTitleText": "文件管理",
   "usingComponents": {},
-  "enablePullDownRefresh": false,
   "backgroundColor": "#a8d8b9",
   "backgroundTextStyle": "dark"
 }

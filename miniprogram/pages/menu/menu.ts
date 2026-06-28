@@ -2,13 +2,18 @@ import { Dish, DishType } from '../../models/dish';
 import { DishService } from '../../services/dishService';
 import { showLoading, hideLoading, showToast } from '../../utils/util';
 import { UserService } from '../../services/userService';
+import { ImageCacheService } from '../../utils/imageCache';
+
+interface DisplayDish extends Dish {
+  cachedImage?: string;
+}
 
 Page({
   /**
    * 页面的初始数据
    */
   data: {
-    dishes: [] as Dish[],
+    dishes: [] as DisplayDish[],
     selectedType: '', // 空字符串表示全部类型
     dishTypes: [] as string[], // 菜品类型列表
     pageSize: 10,
@@ -140,14 +145,18 @@ Page({
         this.data.selectedType || undefined
       );
       
-      console.log("获取数据成功，数量:", result.list.length, "总数:", result.total);
+      const cachedDishes = await ImageCacheService.withCachedImages(
+        result.list,
+        item => item.images && item.images.length > 0 ? item.images[0] : undefined
+      );
+      console.log("获取数据成功，数量:", cachedDishes.length, "总数:", result.total);
       
       // 计算是否还有更多数据（使用 total 对比已加载数量，避免边界误判）
       const loadedCount = refresh ? result.list.length : this.data.dishes.length + result.list.length;
       const hasMore = loadedCount < result.total;
       
       this.setData({
-        dishes: refresh ? result.list : [...this.data.dishes, ...result.list],
+        dishes: refresh ? cachedDishes : [...this.data.dishes, ...cachedDishes],
         currentPage: page + 1,
         hasMore: hasMore,
         total: result.total,

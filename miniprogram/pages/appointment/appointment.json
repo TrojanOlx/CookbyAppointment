@@ -3,5 +3,8 @@
   "usingComponents": {
     "calendar": "@lspriv/wx-calendar"
   },
-  "styleIsolation": "apply-shared"
-} 
+  "styleIsolation": "apply-shared",
+  "disableScroll": true,
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark"
+}

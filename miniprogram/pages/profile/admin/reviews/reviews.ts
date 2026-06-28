@@ -1,5 +1,6 @@
 // pages/profile/admin/reviews/reviews.ts
 import { get, del } from '../../../../services/http';
+import { ImageCacheService } from '../../../../utils/imageCache';
 
 Page({
   data: {
@@ -42,7 +43,17 @@ Page({
         createTimeStr: item.createTime
           ? new Date(item.createTime).toLocaleDateString('zh-CN') : ''
       }));
-      const all = refresh ? list : [...this.data.reviews, ...list];
+      const cachedDishList = await ImageCacheService.withCachedImages(
+        list,
+        item => item.dishImage,
+        'cachedDishImage'
+      );
+      const cachedList = await ImageCacheService.withCachedImages(
+        cachedDishList,
+        item => item.userAvatar,
+        'cachedUserAvatar'
+      );
+      const all = refresh ? cachedList : [...this.data.reviews, ...cachedList];
       this.setData({ reviews: all, page: page + 1, total: res.total, hasMore: all.length < res.total });
     } catch (e) {
       if (refresh) this.setData({ reviews: [] });
