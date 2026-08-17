@@ -1,0 +1,31 @@
+name = "cookby-appointment-staging"
+main = "worker.js"
+compatibility_date = "2026-08-17"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+keep_vars = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cookby_appointment_staging"
+database_id = "d5fcb664-7639-4bb4-a279-6cfb2bac6ecd"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "FILE_BUCKET"
+bucket_name = "cookby-appointment-staging"
+
+[vars]
+FAMILY_MODE = "on"
+DEFAULT_TIMEZONE = "Asia/Shanghai"
+FAMILY_MEMBER_LIMIT = "20"
+INVITE_TTL_HOURS = "72"
+MAX_UPLOAD_BYTES = "5242880"
+FAMILY_STORAGE_QUOTA_BYTES = "209715200"
+MINIPROGRAM_VERSION = "2.1.0-staging"
+MINIPROGRAM_MIN_VERSION = "2.1.0"
+MINIPROGRAM_UPDATE_MESSAGE = "当前为家庭版测试环境，请使用 2.1.0 或更高版本。"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
