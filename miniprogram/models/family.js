@@ -17,9 +17,9 @@ const FamilyRole = Object.freeze({
 });
 
 const ROLE_LABELS = Object.freeze({
-  owner: '创建者',
+  owner: '家庭主',
   admin: '管理员',
-  chef: '协作者',
+  chef: '厨师',
   member: '成员'
 });
 

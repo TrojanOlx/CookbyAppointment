@@ -1,5 +1,6 @@
 import { requireFamilyContext, writeAudit } from '../core/auth';
 import { ApiError, json, pagination, parseJsonField, readJson, requiredString } from '../core/http';
+import { normalizeImageList } from '../core/media';
 import type { Env } from '../core/types';
 
 interface ReviewInput {
@@ -55,10 +56,10 @@ async function listReviews(request: Request, env: Env, mode: 'user' | 'dish' | '
   return json({
     total: Number((count.results[0] as { total?: unknown } | undefined)?.total || 0),
     list: (rows.results as Array<Record<string, unknown>>).map(row => {
-      const dishImages = parseJsonField<string[]>(row.dishImages, []);
+      const dishImages = normalizeImageList(row.dishImages, env);
       return {
         ...row,
-        images: parseJsonField(row.images, []),
+        images: normalizeImageList(row.images, env),
         dishImage: dishImages[0] || '',
         dishImages: undefined,
       };

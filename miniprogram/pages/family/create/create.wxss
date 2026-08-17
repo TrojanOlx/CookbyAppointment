@@ -6,14 +6,18 @@ page {
 .family-form-page {
   position: relative;
   min-height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .family-form-scroll {
   position: relative;
   z-index: 1;
+  width: 100%;
   box-sizing: border-box;
   height: 100vh;
-  padding: 46rpx 28rpx calc(54rpx + env(safe-area-inset-bottom));
+  padding: 46rpx 28rpx 0;
+  overflow-x: hidden;
 }
 
 .form-heading { margin: 8rpx 4rpx 34rpx; }
@@ -27,7 +31,7 @@ page {
   border-radius: var(--radius-full);
   font-size: 20rpx;
   font-weight: 900;
-  letter-spacing: 2rpx;
+  letter-spacing: 0;
 }
 
 .form-title {
@@ -46,7 +50,11 @@ page {
 .form-card {
   box-sizing: border-box;
   padding: 32rpx 28rpx 36rpx;
-  background: var(--card-bg-light);
+  overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.10) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    radial-gradient(circle, rgba(255,255,255,0.22) 1.5rpx, transparent 2.5rpx) 12rpx 12rpx/28rpx 28rpx,
+    var(--card-bg-light);
   border: 4rpx solid rgba(121, 79, 39, 0.14);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -86,6 +94,8 @@ page {
 .form-note {
   display: flex;
   align-items: flex-start;
+  box-sizing: border-box;
+  max-width: 100%;
   margin: 24rpx 8rpx 30rpx;
   color: var(--text-secondary);
   font-size: 24rpx;
@@ -104,13 +114,15 @@ button::after { border: 0; }
 .form-primary-btn,
 .form-cancel-btn {
   box-sizing: border-box;
-  width: 100%;
-  height: 86rpx;
+  max-width: 100%;
+  flex: 1;
+  min-width: 0;
+  height: 82rpx;
   margin: 0;
   border-radius: var(--radius-full);
-  font-size: 30rpx;
+  font-size: 29rpx;
   font-weight: 900;
-  line-height: 86rpx;
+  line-height: 76rpx;
 }
 
 .form-primary-btn {
@@ -122,8 +134,58 @@ button::after { border: 0; }
 .form-primary-btn[disabled] { opacity: 0.58; }
 
 .form-cancel-btn {
-  margin-top: 18rpx;
   color: var(--text-secondary);
-  background: transparent;
+  background: var(--card-bg-light);
   border: 3rpx dashed var(--border-color);
+}
+
+.form-bottom-spacer {
+  height: calc(212rpx + env(safe-area-inset-bottom));
+}
+
+.form-bottom-fixed {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 100;
+}
+
+.form-bottom-dock {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  height: calc(218rpx + env(safe-area-inset-bottom));
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(255,249,232,0) 0%,
+    rgba(255,249,232,0.96) 18%,
+    #fff9e8 42%,
+    #fff9e8 100%
+  );
+  border-radius: 44rpx 44rpx 0 0;
+  box-shadow: 0 -18rpx 38rpx rgba(61,52,40,0.10);
+}
+
+.form-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 16rpx;
+  box-sizing: border-box;
+  margin: 0 24rpx;
+  padding: 16rpx 20rpx 14rpx;
+  background: #fff9e8;
+  border: 4rpx solid rgba(121,79,39,0.18);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8rpx 0 rgba(121,79,39,0.12), 0 16rpx 30rpx rgba(61,52,40,0.14);
+}
+
+.form-safe-area {
+  position: relative;
+  z-index: 1;
+  height: env(safe-area-inset-bottom);
 }

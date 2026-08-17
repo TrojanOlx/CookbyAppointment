@@ -3,14 +3,21 @@ page {
   overflow: hidden;
 }
 
-.invite-page { position: relative; min-height: 100vh; }
+.invite-page {
+  position: relative;
+  min-height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+}
 
 .invite-scroll {
   position: relative;
   z-index: 1;
+  width: 100%;
   box-sizing: border-box;
   height: 100vh;
   padding: 46rpx 28rpx calc(56rpx + env(safe-area-inset-bottom));
+  overflow-x: hidden;
 }
 
 .invite-heading { margin: 8rpx 4rpx 34rpx; }
@@ -18,13 +25,13 @@ page {
 .invite-kicker {
   display: inline-block;
   padding: 5rpx 16rpx;
-  color: #5068d8;
-  background: rgba(136, 157, 240, 0.2);
-  border: 2rpx solid rgba(80, 104, 216, 0.22);
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border: 2rpx solid rgba(25, 200, 185, 0.28);
   border-radius: var(--radius-full);
   font-size: 20rpx;
   font-weight: 900;
-  letter-spacing: 2rpx;
+  letter-spacing: 0;
 }
 
 .invite-title {
@@ -39,6 +46,7 @@ page {
   color: var(--text-light);
   font-size: 26rpx;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .invite-loading {
@@ -53,8 +61,12 @@ page {
 .invite-token-card,
 .invite-error {
   box-sizing: border-box;
+  overflow: hidden;
   padding: 34rpx 28rpx;
-  background: var(--card-bg-light);
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.10) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    radial-gradient(circle, rgba(255,255,255,0.22) 1.5rpx, transparent 2.5rpx) 12rpx 12rpx/28rpx 28rpx,
+    var(--card-bg-light);
   border: 4rpx solid rgba(121, 79, 39, 0.14);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
@@ -117,6 +129,7 @@ page {
   color: var(--text-light);
   font-size: 25rpx;
   line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 
 .invite-error image {
@@ -147,6 +160,7 @@ button::after { border: 0; }
 .invite-secondary-btn,
 .invite-share-btn {
   box-sizing: border-box;
+  max-width: 100%;
   width: 100%;
   height: 82rpx;
   margin: 26rpx 0 0;
@@ -190,7 +204,9 @@ button::after { border: 0; }
   border-radius: var(--radius-sm);
   font-size: 42rpx;
   font-weight: 900;
-  letter-spacing: 4rpx;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+  word-break: break-all;
 }
 
 .token-meta {
@@ -200,6 +216,8 @@ button::after { border: 0; }
 }
 
 .invite-text-btn {
+  box-sizing: border-box;
+  max-width: 100%;
   margin: 26rpx auto 0;
   color: var(--primary-dark);
   background: transparent;

@@ -17,16 +17,22 @@
     <block wx:elif="{{hasActiveFamily}}">
       <view class="members-heading">
         <view class="members-kicker">MEMBERS</view>
-        <view class="members-title">{{family.name || '家庭成员'}}</view>
-        <view class="members-subtitle">{{members.length}} 位成员 · {{family.roleLabel || '成员'}}</view>
+        <view class="members-title">{{(family && family.name) || '家庭成员'}}</view>
+        <view class="members-subtitle">{{members.length}} 位成员 · {{(family && family.roleLabel) || '成员'}}</view>
       </view>
 
       <view class="members-actions">
-        <button class="member-invite-btn" bindtap="openInvite" disabled="{{!canManage}}">＋ 邀请成员</button>
+        <button class="member-invite-btn" bindtap="openInvite" disabled="{{!canManage}}"><mp-icon ext-class="member-button-icon" icon="add-friends" size="16" color="#fff9e8"></mp-icon>邀请成员</button>
         <button class="member-leave-btn" bindtap="leaveFamily">退出家庭</button>
       </view>
 
-      <view wx:if="{{loading && members.length === 0}}" class="members-loading">正在读取成员...</view>
+      <view wx:if="{{loadError}}" class="members-error">
+        <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+        <view class="member-card-title">成员暂时无法加载</view>
+        <view class="member-card-subtitle">{{loadError}}</view>
+        <button class="member-primary-btn" bindtap="retryLoad" loading="{{loading}}" disabled="{{loading}}">重新加载</button>
+      </view>
+      <view wx:elif="{{loading && members.length === 0}}" class="members-loading">正在读取成员...</view>
       <view wx:elif="{{members.length === 0}}" class="members-empty">
         <image src="/images/island/icon-user.svg" mode="aspectFit"></image>
         <view class="member-card-title">还没有成员</view>
@@ -53,7 +59,7 @@
 
       <view class="members-note">
         <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
-        <text>创建者可以转让家庭，管理员可以协助维护成员。</text>
+        <text>家庭主可以转让家庭，管理员可以协助维护成员。</text>
       </view>
     </block>
   </scroll-view>

@@ -19,19 +19,28 @@
     <block wx:elif="{{hasToken}}">
       <view class="family-toolbar">
         <view class="toolbar-caption">{{families.length}} 个家庭</view>
-        <button class="toolbar-add" bindtap="openCreate">＋ 新建家庭</button>
+        <button class="toolbar-add" bindtap="openCreate"><mp-icon ext-class="toolbar-add-icon" icon="add" size="15" color="#fff9e8"></mp-icon>新建家庭</button>
       </view>
 
-      <view wx:if="{{loading && families.length === 0}}" class="family-loading">正在读取家庭...</view>
+      <view wx:if="{{loading && families.length === 0 && !loadError}}" class="family-loading">正在读取家庭...</view>
 
-      <view wx:elif="{{families.length === 0}}" class="family-empty">
+      <view wx:if="{{loadError}}" class="family-error">
+        <image class="family-error-icon" src="/images/island/icon-info.svg" mode="aspectFit"></image>
+        <view class="family-error-copy">
+          <view class="family-card-title">家庭列表暂时无法加载</view>
+          <view class="family-card-subtitle">{{loadError}}</view>
+        </view>
+        <button class="family-retry-btn" bindtap="loadFamilies" loading="{{loading}}" disabled="{{loading}}">重新加载</button>
+      </view>
+
+      <view wx:if="{{!loading && !loadError && families.length === 0}}" class="family-empty">
         <image class="family-empty-icon" src="/images/island/hero-kitchen.svg" mode="aspectFit"></image>
         <view class="family-card-title">还没有家庭</view>
         <view class="family-card-subtitle">创建一个小岛，邀请家人一起规划菜单</view>
         <button class="family-primary-btn" bindtap="openCreate">创建第一个家庭</button>
       </view>
 
-      <view wx:else class="family-list">
+      <view wx:if="{{families.length}}" class="family-list">
         <view wx:for="{{families}}" wx:key="id" class="family-item {{item.id === activeFamilyId ? 'is-active' : ''}}" data-id="{{item.id}}" bindtap="selectFamily">
           <view class="family-item-main">
             <view class="family-avatar">{{item.initial}}</view>

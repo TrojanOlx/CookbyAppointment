@@ -1,16 +1,16 @@
 <view class="preferences-page">
   <view class="fixed-page-bg"></view>
-  <scroll-view class="preferences-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+  <scroll-view class="preferences-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onPullDownRefresh">
     <view class="page-heading">
       <view class="heading-ribbon">口味偏好</view>
       <text class="heading-subtitle">让每一餐都更合心意</text>
     </view>
 
     <view class="notice-card">
-      <view class="notice-icon">!</view>
+      <view class="notice-icon"><mp-icon icon="report-problem" size="20" color="#fff9e8"></mp-icon></view>
       <view class="notice-copy">
         <text class="notice-title">只做备菜提醒，不会拦住预约</text>
-        <text class="notice-body">过敏信息很重要，下单前仍请再确认一次食材和做法。</text>
+        <text class="notice-body">过敏信息很重要，预约前仍请再确认一次食材和做法。</text>
       </view>
     </view>
 
@@ -35,7 +35,7 @@
           data-tag-index="{{tagIndex}}"
         >
           <text>{{tag.label}}</text>
-          <text class="tag-mark" wx:if="{{tag.selected}}">✓</text>
+          <mp-icon wx:if="{{tag.selected}}" ext-class="tag-mark" icon="done" size="14" color="#fff9e8"></mp-icon>
         </view>
       </view>
 
@@ -61,7 +61,7 @@
           <text class="section-title">辣度</text>
           <text class="section-eyebrow tone-yellow">偏好选择</text>
         </view>
-        <text class="section-hint">告诉家人你今天想吃多辣，未设置也可以正常预约。</text>
+        <text class="section-hint">选择最适合你的辣度，未设置时保存为不辣。</text>
       </view>
       <view class="spicy-grid">
         <view
@@ -80,17 +80,21 @@
     </view>
 
     <view class="loading-state" wx:if="{{loading}}">正在读取偏好...</view>
+    <view class="load-error" wx:elif="{{loadError}}">
+      <text>{{loadError}}</text>
+      <button bindtap="retryLoad">重新加载</button>
+    </view>
 
     <!-- 为固定操作栏预留滚动空间，避免末尾内容被遮挡 -->
     <view class="bottom-safe-area"></view>
   </scroll-view>
 
-  <view class="bottom-fixed-area">
+  <view class="preferences-bottom-fixed">
     <view class="bottom-action-dock"></view>
     <view class="save-area">
-      <button class="save-button" loading="{{saving}}" disabled="{{saving}}" bindtap="savePreferences">保存偏好</button>
+      <button class="save-button" loading="{{saving}}" disabled="{{loading || saving || !hasLoaded}}" bindtap="savePreferences">保存偏好</button>
       <text class="save-hint" wx:if="{{dirty}}">有未保存的选择</text>
-      <text class="save-hint" wx:else>偏好会随当前家庭保存</text>
+      <text class="save-hint" wx:else>偏好会用于你参与的预约提醒</text>
     </view>
     <view class="safe-area-bottom"></view>
   </view>

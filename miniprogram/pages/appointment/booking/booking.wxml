@@ -1,110 +1,130 @@
 <view class="booking-page">
   <view class="fixed-page-bg"></view>
   <scroll-view class="booking-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
-    <view class="booking-heading">
-      <view class="booking-kicker">MEAL PLAN</view>
-      <view class="booking-title">{{editMode ? '编辑预约' : '安排一餐'}}</view>
-      <view class="booking-subtitle">选择日期、菜品和一起用餐的家人</view>
+    <view class="booking-content">
+      <view class="booking-heading">
+        <view class="booking-kicker">MEAL PLAN</view>
+        <view class="booking-title">{{editMode ? '编辑预约' : '安排一餐'}}</view>
+        <view class="booking-subtitle">选择日期、菜品和一起用餐的家人</view>
+      </view>
+
+      <view wx:if="{{loading}}" class="booking-loading-card">
+        <view class="booking-loading">正在准备预约...</view>
+      </view>
+
+      <block wx:else>
+        <view class="booking-section date-section">
+          <view class="section-label">用餐日期</view>
+          <picker mode="date" value="{{date}}" bindchange="onDateChange">
+            <view class="date-picker-value">{{date}} <mp-icon ext-class="date-picker-arrow" icon="arrow" size="12" color="#19c8b9"></mp-icon></view>
+          </picker>
+        </view>
+
+        <view class="booking-section">
+          <view class="section-label">选择餐次</view>
+          <view class="meal-tabs">
+            <view wx:for="{{mealTypes}}" wx:key="*this" class="meal-tab {{selectedMealType === item ? 'is-active' : ''}}" data-type="{{item}}" bindtap="selectMealType">{{item}}</view>
+          </view>
+        </view>
+
+        <view class="booking-section members-section">
+          <view class="section-header">
+            <view class="section-label">一起用餐的家人</view>
+            <view class="section-count">已选 {{selectedDinerIds.length}}/{{members.length}}</view>
+          </view>
+          <view wx:if="{{members.length === 0}}" class="inline-empty empty-members">
+            <image class="empty-image" src="/images/island/icon-user.svg" mode="aspectFit"></image>
+            <view class="empty-title">{{loadError || '当前家庭没有成员'}}</view>
+            <view class="empty-subtitle">邀请家人后，就能一起安排这一餐</view>
+          </view>
+          <checkbox-group wx:else class="member-check-group" bindchange="onMembersChange">
+            <label wx:for="{{members}}" wx:key="userId" class="member-check-item">
+              <checkbox value="{{item.userId}}" checked="{{selectedDinerMap[item.userId]}}" color="#19c8b9" />
+              <view class="member-avatar">
+                <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+                <text wx:else>{{item.initial}}</text>
+              </view>
+              <view class="member-copy">
+                <view class="member-name">{{item.nickName}}</view>
+                <view class="member-role">{{item.roleLabel || '家庭成员'}}</view>
+              </view>
+              <view class="member-selected" wx:if="{{selectedDinerMap[item.userId]}}">已选</view>
+            </label>
+          </checkbox-group>
+        </view>
+
+        <view class="booking-section dishes-section">
+          <view class="section-header">
+            <view class="section-label">选择菜品</view>
+            <view class="section-count">已选 {{selectedDishIds.length}} 道</view>
+          </view>
+          <view class="dish-search-wrap">
+            <input class="dish-search" value="{{searchKeyword}}" placeholder="搜索菜品名称" placeholder-class="input-placeholder" bindinput="onSearchInput" />
+            <mp-icon ext-class="search-icon" icon="search" size="18" color="#9f927d"></mp-icon>
+          </view>
+          <view wx:if="{{filteredDishes.length === 0}}" class="inline-empty empty-dishes">
+            <image class="empty-image" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
+            <view class="empty-title">没有找到可选菜品</view>
+            <view class="empty-subtitle">先在菜单中添加菜品，再回来安排这一餐</view>
+          </view>
+          <view wx:else class="dish-check-list">
+            <view wx:for="{{filteredDishes}}" wx:key="id" wx:for-index="dishIndex" class="dish-check-item {{selectedDishMap[item.id] ? 'is-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleDish">
+              <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedImage || (item.images && item.images.length ? item.images[0] : '/images/default-dish.png')}}" mode="aspectFill" data-index="{{dishIndex}}" data-id="{{item.id}}" binderror="onDishImageError"></image>
+              <view class="dish-copy">
+                <view class="dish-name">{{item.name}}</view>
+                <view class="dish-meta">{{item.type}}<text wx:if="{{item.spicy && item.spicy !== '不辣'}}"> · {{item.spicy}}</text></view>
+              </view>
+              <view class="dish-check-mark"><mp-icon wx:if="{{selectedDishMap[item.id]}}" icon="done" size="16" color="#fff9e8"></mp-icon></view>
+            </view>
+          </view>
+        </view>
+
+        <view class="booking-section remarks-section">
+          <view class="section-label">备注（可选）</view>
+          <textarea class="remarks-input" maxlength="1000" value="{{remarks}}" placeholder="例如：少盐、家人六点半到家" placeholder-class="input-placeholder" bindinput="onRemarksInput"></textarea>
+          <view class="field-hint">可以写下到家时间、口味或需要提前准备的事项</view>
+        </view>
+
+        <view class="booking-section preview-section">
+          <view class="section-header">
+            <view class="section-label">口味提醒</view>
+            <view wx:if="{{warnings.length}}" class="warning-count">{{warnings.length}} 条提醒</view>
+          </view>
+          <view class="preview-intro">检查用餐成员的过敏、不吃和辣度偏好，确认后再保存。</view>
+          <button class="preview-btn" loading="{{isPreviewing}}" disabled="{{isPreviewing || selectedDishIds.length === 0 || selectedDinerIds.length === 0}}" bindtap="previewPreferences">检查口味提醒</button>
+          <view wx:if="{{previewError}}" class="preview-error">{{previewError}}</view>
+          <view wx:if="{{warnings.length}}" class="warning-list">
+            <view wx:for="{{warnings}}" wx:key="index" class="warning-item">
+            <view class="warning-dot"><mp-icon icon="report-problem" size="14" color="#fff9e8"></mp-icon></view>
+              <view class="warning-copy">
+                <view class="warning-message">{{item.message}}</view>
+                <view class="warning-detail" wx:if="{{item.dishName || item.ingredient}}">{{item.dishName || '菜品'}}<text wx:if="{{item.ingredient}}"> · {{item.ingredient}}</text></view>
+              </view>
+            </view>
+          </view>
+          <view wx:elif="{{previewReady}}" class="preview-clear">暂未发现口味冲突</view>
+        </view>
+
+        <view class="confirm-section">
+          <checkbox-group bindchange="onConfirmChange">
+            <label class="confirm-row">
+              <checkbox value="ack" checked="{{confirmed}}" color="#19c8b9" />
+              <view class="confirm-copy">我已确认用餐成员、菜品和以上口味提醒</view>
+            </label>
+          </checkbox-group>
+        </view>
+      </block>
+
+      <view class="booking-bottom-spacer" aria-hidden="true"></view>
     </view>
-
-    <view wx:if="{{loading}}" class="booking-loading">正在准备预约...</view>
-
-    <block wx:else>
-      <view class="booking-section date-section">
-        <view class="section-label">用餐日期</view>
-        <picker mode="date" value="{{date}}" bindchange="onDateChange">
-          <view class="date-picker-value">{{date}} <text class="date-picker-arrow">›</text></view>
-        </picker>
-      </view>
-
-      <view class="booking-section">
-        <view class="section-label">选择餐次</view>
-        <view class="meal-tabs">
-          <view wx:for="{{mealTypes}}" wx:key="*this" class="meal-tab {{selectedMealType === item ? 'is-active' : ''}}" data-type="{{item}}" bindtap="selectMealType">{{item}}</view>
-        </view>
-      </view>
-
-      <view class="booking-section members-section">
-        <view class="section-header">
-          <view class="section-label">一起用餐的家人</view>
-          <view class="section-count">已选 {{selectedDinerIds.length}}/{{members.length}}</view>
-        </view>
-        <view wx:if="{{members.length === 0}}" class="inline-empty">{{loadError || '当前家庭没有成员'}}</view>
-        <checkbox-group wx:else class="member-check-group" bindchange="onMembersChange">
-          <label wx:for="{{members}}" wx:key="userId" class="member-check-item">
-            <checkbox value="{{item.userId}}" checked="{{selectedDinerMap[item.userId]}}" color="#19c8b9" />
-            <view class="member-avatar">
-              <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"></image>
-              <text wx:else>{{item.initial}}</text>
-            </view>
-            <view class="member-copy">
-              <view class="member-name">{{item.nickName}}</view>
-              <view class="member-role">{{item.roleLabel || '家庭成员'}}</view>
-            </view>
-          </label>
-        </checkbox-group>
-      </view>
-
-      <view class="booking-section dishes-section">
-        <view class="section-header">
-          <view class="section-label">选择菜品</view>
-          <view class="section-count">已选 {{selectedDishIds.length}} 道</view>
-        </view>
-        <view class="dish-search-wrap">
-          <input class="dish-search" value="{{searchKeyword}}" placeholder="搜索菜品名称" placeholder-class="input-placeholder" bindinput="onSearchInput" />
-          <view class="search-symbol"></view>
-        </view>
-        <view wx:if="{{filteredDishes.length === 0}}" class="inline-empty">没有找到可选菜品</view>
-        <view wx:else class="dish-check-list">
-          <view wx:for="{{filteredDishes}}" wx:key="id" class="dish-check-item {{selectedDishMap[item.id] ? 'is-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleDish">
-            <image class="dish-thumb" src="{{item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
-            <view class="dish-copy">
-              <view class="dish-name">{{item.name}}</view>
-              <view class="dish-meta">{{item.type}}<text wx:if="{{item.spicy && item.spicy !== '不辣'}}"> · {{item.spicy}}</text></view>
-            </view>
-            <view class="dish-check-mark">{{selectedDishMap[item.id] ? '✓' : ''}}</view>
-          </view>
-        </view>
-      </view>
-
-      <view class="booking-section remarks-section">
-        <view class="section-label">备注（可选）</view>
-        <textarea class="remarks-input" maxlength="1000" value="{{remarks}}" placeholder="例如：少盐、家人六点半到家" placeholder-class="input-placeholder" bindinput="onRemarksInput"></textarea>
-      </view>
-
-      <view class="booking-section preview-section">
-        <view class="section-header">
-          <view class="section-label">口味提醒</view>
-          <view wx:if="{{warnings.length}}" class="warning-count">{{warnings.length}} 条提醒</view>
-        </view>
-        <view class="preview-intro">检查用餐成员的过敏、不吃和辣度偏好，确认后再保存。</view>
-        <button class="preview-btn" loading="{{isPreviewing}}" disabled="{{isPreviewing || selectedDishIds.length === 0 || selectedDinerIds.length === 0}}" bindtap="previewPreferences">检查口味提醒</button>
-        <view wx:if="{{previewError}}" class="preview-error">{{previewError}}</view>
-        <view wx:if="{{warnings.length}}" class="warning-list">
-          <view wx:for="{{warnings}}" wx:key="index" class="warning-item">
-            <view class="warning-dot">!</view>
-            <view class="warning-copy">
-              <view class="warning-message">{{item.message}}</view>
-              <view class="warning-detail" wx:if="{{item.dishName || item.ingredient}}">{{item.dishName || '菜品'}}<text wx:if="{{item.ingredient}}"> · {{item.ingredient}}</text></view>
-            </view>
-          </view>
-        </view>
-        <view wx:elif="{{previewReady}}" class="preview-clear">暂未发现口味冲突</view>
-      </view>
-
-      <view class="confirm-section">
-        <checkbox-group bindchange="onConfirmChange">
-          <label class="confirm-row">
-            <checkbox value="ack" checked="{{confirmed}}" color="#19c8b9" />
-            <view class="confirm-copy">我已确认用餐成员、菜品和以上口味提醒</view>
-          </label>
-        </checkbox-group>
-      </view>
-
-      <view class="booking-actions">
-        <button class="booking-cancel" bindtap="cancelBooking">取消</button>
-        <button class="booking-save" loading="{{saving}}" disabled="{{saving || selectedDishIds.length === 0 || selectedDinerIds.length === 0}}" bindtap="saveBooking">{{editMode ? '更新预约' : '创建预约'}}</button>
-      </view>
-    </block>
   </scroll-view>
+
+  <view class="booking-bottom-fixed">
+    <view class="booking-bottom-dock"></view>
+    <view class="booking-actions">
+      <button class="booking-cancel" bindtap="cancelBooking">取消</button>
+      <button class="booking-save" loading="{{saving}}" disabled="{{loading || saving || selectedDishIds.length === 0 || selectedDinerIds.length === 0}}" bindtap="saveBooking">{{editMode ? '更新预约' : '创建预约'}}</button>
+    </view>
+    <view class="safe-area-bottom"></view>
+  </view>
 </view>

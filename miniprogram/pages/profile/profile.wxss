@@ -159,16 +159,18 @@ page {
 
 .menu-text {
   flex: 1;
+  min-width: 0;
   font-size: 30rpx;
   color: var(--text-color);
   font-weight: 500;
+  overflow-wrap: anywhere;
 }
 
 .menu-arrow {
   color: var(--border-color);
   font-size: 28rpx;
   font-weight: 300;
-  letter-spacing: -2rpx;
+  letter-spacing: 0;
 }
 
 /* 设置区域 */

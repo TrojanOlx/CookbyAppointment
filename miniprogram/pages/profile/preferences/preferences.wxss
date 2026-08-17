@@ -6,20 +6,24 @@ page {
 .preferences-page {
   position: relative;
   height: 100vh;
+  box-sizing: border-box;
   overflow: hidden;
 }
 
 .preferences-scroll {
   position: relative;
   z-index: 1;
+  width: 100%;
   height: 100%;
   box-sizing: border-box;
   padding: 24rpx 24rpx 0;
+  overflow-x: hidden;
 }
 
 .page-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   gap: 18rpx;
   margin: 4rpx 6rpx 24rpx;
 }
@@ -27,6 +31,7 @@ page {
 .heading-ribbon {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   min-height: 54rpx;
   padding: 8rpx 30rpx;
   color: #fff9e8;
@@ -38,14 +43,23 @@ page {
 }
 
 .heading-subtitle {
+  flex: 1;
+  min-width: 180rpx;
+  padding-top: 14rpx;
   color: var(--text-secondary);
   font-size: 24rpx;
   font-weight: 700;
+  line-height: 1.5;
 }
 
 .notice-card,
 .preference-card {
-  background: #fff9e8;
+  box-sizing: border-box;
+  overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.10) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    radial-gradient(circle, rgba(255,255,255,0.22) 1.5rpx, transparent 2.5rpx) 12rpx 12rpx/28rpx 28rpx,
+    #fff9e8;
   border: 4rpx solid rgba(121, 79, 39, 0.16);
   border-radius: var(--radius-lg);
   box-shadow: 0 7rpx 0 rgba(121, 79, 39, 0.1), 0 14rpx 24rpx rgba(61, 52, 40, 0.12);
@@ -57,7 +71,9 @@ page {
   gap: 18rpx;
   padding: 24rpx 26rpx;
   margin-bottom: 20rpx;
-  background: #fff5d5;
+  background:
+    radial-gradient(circle, rgba(247,205,103,0.15) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    #fff5d5;
   border-color: rgba(219, 169, 14, 0.3);
 }
 
@@ -182,8 +198,7 @@ page {
 }
 
 .tag-mark {
-  font-size: 24rpx;
-  font-weight: 900;
+  flex-shrink: 0;
 }
 
 .custom-row {
@@ -293,6 +308,7 @@ page {
   position: relative;
   z-index: 1;
   margin: 0 24rpx;
+  max-width: calc(100% - 48rpx);
   padding: 18rpx 24rpx 14rpx;
   background: #fff9e8;
   border: 4rpx solid rgba(121,79,39,0.18);
@@ -333,12 +349,49 @@ page {
   text-align: center;
 }
 
+.load-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18rpx;
+  box-sizing: border-box;
+  margin-bottom: 20rpx;
+  padding: 18rpx 20rpx;
+  color: #a0443d;
+  background: var(--danger-light);
+  border: 2rpx solid rgba(224,90,90,0.24);
+  border-radius: var(--radius-md);
+  font-size: 23rpx;
+  line-height: 1.45;
+}
+
+.load-error text {
+  min-width: 0;
+  flex: 1;
+}
+
+.load-error button {
+  flex-shrink: 0;
+  height: 56rpx;
+  margin: 0;
+  padding: 0 18rpx;
+  color: var(--danger-color);
+  background: #fff9e8;
+  border: 0;
+  border-radius: var(--radius-full);
+  font-size: 22rpx;
+  font-weight: 800;
+  line-height: 56rpx;
+}
+
+.load-error button::after { border: 0; }
+
 /* ── 固定操作栏，与菜品编辑页保持一致 ── */
 .bottom-safe-area {
   height: calc(204rpx + env(safe-area-inset-bottom));
 }
 
-.bottom-fixed-area {
+.preferences-bottom-fixed {
   position: fixed;
   right: 0;
   bottom: 0;
@@ -370,7 +423,7 @@ page {
   box-shadow: 0 -18rpx 38rpx rgba(61,52,40,0.10);
 }
 
-.bottom-fixed-area .safe-area-bottom {
+.preferences-bottom-fixed .safe-area-bottom {
   height: env(safe-area-inset-bottom);
   background: transparent;
 }

@@ -1,34 +1,58 @@
 <view class="recommend-page">
-  <view class="diner-band">
-    <text class="band-title">用餐成员</text>
-    <scroll-view scroll-x enable-flex show-scrollbar="false" class="diner-scroll">
-      <view class="diner-row">
-        <view wx:for="{{members}}" wx:key="userId" class="diner {{selectedDinerIds.indexOf(item.userId || item.id) >= 0 ? 'selected' : ''}}" data-id="{{item.userId || item.id}}" bindtap="toggleDiner">
-          <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"></image>
-          <text>{{item.nickName || '家庭成员'}}</text>
-        </view>
-      </view>
-    </scroll-view>
-  </view>
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="recommend-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <view class="recommend-heading">
+      <view class="recommend-kicker">FRIDGE GUIDE</view>
+      <view class="recommend-title">冰箱推荐</view>
+      <view class="recommend-subtitle">按库存覆盖、临期食材和家人口味，优先安排更合适的菜</view>
+    </view>
 
-  <island-loading wx:if="{{loading}}"></island-loading>
-  <view class="recommend-list" wx:elif="{{recommendations.length}}">
-    <view class="recommend-item" wx:for="{{recommendations}}" wx:key="id" bindtap="openDish" data-id="{{item.id}}">
-      <image class="dish-image" src="{{item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
-      <view class="dish-content">
-        <view class="dish-head">
-          <text class="dish-name">{{item.name}}</text>
-          <text class="coverage">{{item.coverageRate}}%</text>
+    <view class="diner-band island-surface">
+      <view class="band-heading">
+        <text class="band-title">一起用餐的家人</text>
+        <text class="band-hint">可多选</text>
+      </view>
+      <scroll-view scroll-x="true" enable-flex="true" show-scrollbar="false" class="diner-scroll">
+        <view class="diner-row">
+          <view wx:for="{{members}}" wx:key="userId" class="diner {{selectedDinerIds.indexOf(item.userId || item.id) >= 0 ? 'selected' : ''}}" data-id="{{item.userId || item.id}}" bindtap="toggleDiner">
+            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+            <text class="diner-name">{{item.nickName || '家庭成员'}}</text>
+          </view>
         </view>
-        <text class="reason">{{item.reasons.stock}}</text>
-        <text class="reason expiring" wx:if="{{item.expiring.length}}">{{item.reasons.expiring}}</text>
-        <text class="reason warning" wx:if="{{item.warnings.length}}">{{item.reasons.preference}}</text>
-        <view class="missing" wx:if="{{item.missing.length}}">
-          <text>缺少：</text>
-          <text wx:for="{{item.missing}}" wx:key="id" wx:for-item="ingredient">{{ingredient.name}}{{index < item.missing.length - 1 ? '、' : ''}}</text>
+      </scroll-view>
+    </view>
+
+    <view wx:if="{{loading}}" class="recommend-state island-surface">
+      <island-loading></island-loading>
+    </view>
+    <view wx:elif="{{loadError}}" class="recommend-error island-surface">
+      <view class="recommend-error-title">推荐暂时没有加载成功</view>
+      <view class="recommend-error-hint">{{loadError}}</view>
+      <button bindtap="retryRecommendations">重新加载</button>
+    </view>
+    <view class="recommend-list" wx:elif="{{recommendations.length}}">
+      <view class="recommend-item island-surface" wx:for="{{recommendations}}" wx:key="id" wx:for-index="recommendIndex" bindtap="openDish" data-id="{{item.id}}">
+        <view class="dish-media">
+          <image class="dish-image" src="{{item.images && item.images.length ? item.images[0] : '/images/default-dish.png'}}" mode="aspectFill" lazy-load="true" data-index="{{recommendIndex}}" data-id="{{item.id}}" binderror="onDishImageError"></image>
+          <view class="coverage-badge">{{item.coverageRate}}% 有库存</view>
+        </view>
+        <view class="dish-content">
+          <view class="dish-head">
+            <text class="dish-name">{{item.name}}</text>
+            <mp-icon ext-class="dish-arrow" icon="arrow" size="14" color="#9f927d"></mp-icon>
+          </view>
+          <view class="reason-row stock"><text class="reason-dot"></text><text class="reason">{{item.reasons.stock}}</text></view>
+          <view class="reason-row expiring" wx:if="{{item.expiring.length}}"><text class="reason-dot"></text><text class="reason">{{item.reasons.expiring}}</text></view>
+          <view class="reason-row warning" wx:if="{{item.warnings.length}}"><text class="reason-dot"></text><text class="reason">{{item.reasons.preference}}</text></view>
+          <view class="missing" wx:if="{{item.missing.length}}">
+            <text class="missing-label">缺少：</text>
+            <text wx:for="{{item.missing}}" wx:key="id" wx:for-item="ingredient">{{ingredient.name}}{{index < item.missing.length - 1 ? '、' : ''}}</text>
+          </view>
         </view>
       </view>
     </view>
-  </view>
-  <island-empty wx:else text="当前家庭还没有可推荐的菜谱"></island-empty>
+    <view wx:else class="recommend-empty island-surface">
+      <island-empty title="当前家庭还没有可推荐的菜谱" hint="先添加菜谱和冰箱食材，再回来看看"></island-empty>
+    </view>
+  </scroll-view>
 </view>

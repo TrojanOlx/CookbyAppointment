@@ -5,6 +5,8 @@ const http = require('../../../services/http');
 
 const MEAL_TYPES = ['早餐', '午餐', '晚餐'];
 
+let bookingLoadRequestId = 0;
+
 const todayString = () => {
   const date = new Date();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -73,6 +75,7 @@ const extractDishIds = appointment => {
 
 Page({
   data: {
+    familyId: '',
     date: '',
     mealTypes: MEAL_TYPES,
     selectedMealType: '午餐',
@@ -107,6 +110,7 @@ Page({
     this.setData({
       date,
       appointmentId,
+      familyId: String(FamilyService.getActiveFamilyId() || ''),
       editMode: !!appointmentId,
       selectedMealType: '午餐',
       loading: true
@@ -115,7 +119,28 @@ Page({
     return this.loadBookingData(appointmentId);
   },
 
+  onShow() {
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    if (familyId === this.data.familyId) return;
+    bookingLoadRequestId += 1;
+    this.setData({
+      familyId,
+      members: [],
+      dishes: [],
+      filteredDishes: [],
+      selectedDinerIds: [],
+      selectedDinerMap: {},
+      selectedDishIds: [],
+      selectedDishMap: {},
+      loading: true,
+      loadError: ''
+    });
+    this.loadBookingData(this.data.appointmentId);
+  },
+
   async loadBookingData(appointmentId) {
+    const requestId = ++bookingLoadRequestId;
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
     try {
       const memberPromise = FamilyService.members();
       const dishPromise = DishService.getDishList(1, 100);
@@ -127,6 +152,7 @@ Page({
         dishPromise,
         appointmentPromise
       ]);
+      if (requestId !== bookingLoadRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || familyId !== this.data.familyId) return;
 
       const members = (Array.isArray(memberResult) ? memberResult : [])
         .map(normalizeMember)
@@ -169,6 +195,7 @@ Page({
         loadError: members.length ? '' : '当前家庭还没有可选的用餐成员'
       });
     } catch (error) {
+      if (requestId !== bookingLoadRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || familyId !== this.data.familyId) return;
       console.error('加载预约编辑数据失败:', error);
       this.setData({
         loading: false,
@@ -178,6 +205,13 @@ Page({
       });
       wx.showToast({ title: this.data.loadError, icon: 'none' });
     }
+  },
+
+  hasCurrentFamilyContext() {
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    if (familyId && familyId === this.data.familyId) return true;
+    wx.showToast({ title: '家庭已切换，请重新加载页面', icon: 'none' });
+    return false;
   },
 
   onDateChange(event) {
@@ -252,6 +286,7 @@ Page({
   },
 
   async requestPreview() {
+    if (!this.hasCurrentFamilyContext()) return null;
     const dishIds = this.data.selectedDishIds;
     const dinerIds = this.data.selectedDinerIds;
     if (!dishIds.length) {
@@ -309,6 +344,7 @@ Page({
 
   async saveBooking() {
     if (this.data.saving) return;
+    if (!this.hasCurrentFamilyContext()) return;
     if (!this.data.selectedDishIds.length) {
       wx.showToast({ title: '请至少选择一道菜', icon: 'none' });
       return;
@@ -358,6 +394,18 @@ Page({
     } finally {
       this.setData({ saving: false });
     }
+  },
+
+  onDishImageError(event) {
+    const index = Number(event.currentTarget.dataset.index);
+    const dishId = String(event.currentTarget.dataset.id || '');
+    const current = this.data.filteredDishes[index];
+    if (!Number.isInteger(index) || !current || !dishId || String(current.id) !== dishId) return;
+    const fallback = '/images/default-dish.png';
+    this.setData({
+      dishes: this.data.dishes.map(item => String(item.id) === dishId ? { ...item, cachedImage: fallback } : item),
+      filteredDishes: this.data.filteredDishes.map(item => String(item.id) === dishId ? { ...item, cachedImage: fallback } : item)
+    });
   },
 
   cancelBooking() {

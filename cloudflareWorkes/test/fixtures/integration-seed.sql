@@ -87,6 +87,8 @@ VALUES (
 INSERT OR REPLACE INTO dishes (id, name, type, spicy, images, steps, notice, remark, reference, creatorId, creatorOpenid, createTime, updateTime, familyId)
 VALUES
   ('it-dish-a', '家庭A菜品', '家常菜', '不辣', '["/api/file/download?id=it-file-a"]', '[]', '', '', '', 'it-owner-a', 'openid-owner-a', 1700000000000, 1700000000000, 'it-family-a'),
+  ('it-dish-legacy-image', '旧图片菜品', '家常菜', '不辣', '["dishes/qjcr1_88603_1746002490203.jpeg","/pages/menu/detail/dishes/legacy-page.jpeg","http://tmp/local.jpeg","tmp_local.jpeg","https://cdn.example.com/dish.jpeg","/api/file/download"]', '[]', '', '', '', 'it-owner-a', 'openid-owner-a', 1700000000000, 1700000000000, 'it-family-a'),
+  ('it-dish-invalid-images', '异常图片菜品', '家常菜', '不辣', '{"unexpected":true}', '[]', '', '', '', 'it-owner-a', 'openid-owner-a', 1700000000000, 1700000000000, 'it-family-a'),
   ('it-dish-b', '家庭B菜品', '家常菜', '不辣', '["/api/file/download?id=it-file-a"]', '[]', '', '', '', 'it-owner-b', 'openid-owner-b', 1700000000000, 1700000000000, 'it-family-b'),
   ('it-dish-mixed', '混合食材菜品', '家常菜', '不辣', '[]', '[]', '', '', '', 'it-limit-owner', 'openid-limit-owner', 1700000000000, 1700000000000, 'it-family-limit');
 

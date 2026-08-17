@@ -13,6 +13,9 @@ const { LunarPlugin } = require('@lspriv/wc-plugin-lunar');
 // 初始化日历插件
 WxCalendar.use(LunarPlugin);
 
+let appointmentListRequestId = 0;
+let calendarMarksRequestId = 0;
+
 interface CalendarDay {
   year: number;
   month: number;
@@ -137,6 +140,8 @@ Page({
   // 更新日历标记
   async updateCalendarMarks(firstDay: string, lastDay: string) {
     console.log('更新日历标记');
+    const requestId = ++calendarMarksRequestId;
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
     try {
       showLoading('加载数据中');
       this.setData({ isLoading: true });
@@ -149,6 +154,7 @@ Page({
         lastDay
       );
       const appointments = result.list;
+      if (requestId !== calendarMarksRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '')) return;
 
       // 创建日期到预约类型的映射
       const dateToMeals = new Map<string, {
@@ -266,10 +272,12 @@ Page({
         }
       }
 
+      if (requestId !== calendarMarksRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '')) return;
       console.log('设置日历标记:', marks);
       this.setData({ markedDates: marks, isLoading: false });
       hideLoading();
     } catch (error) {
+      if (requestId !== calendarMarksRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '')) return;
       console.error('更新日历标记时出错:', error);
       this.setData({ isLoading: false });
       hideLoading();
@@ -284,30 +292,41 @@ Page({
       return;
     }
 
+    const requestId = ++appointmentListRequestId;
+    let familyId = String(FamilyService.getActiveFamilyId() || '');
+    const selectedDate = this.data.selectedDate;
+    if (this.data.familyId && this.data.familyId !== familyId) {
+      calendarMarksRequestId += 1;
+      this.setData({ familyId, familyRole: '', todayAppointments: [], markedDates: [] });
+    }
+
     try {
       showLoading('加载预约中');
       this.setData({ isLoading: true });
 
       // 使用新的getAppointmentListByDate方法获取预约数据
-      const result = await AppointmentService.getAppointmentListByDate(this.data.selectedDate);
+      const result = await AppointmentService.getAppointmentListByDate(selectedDate);
+      if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
 
       const userInfo = wx.getStorageSync('userInfo') || {};
       const currentUserId = String(userInfo.id || userInfo.userId || '');
-      const activeFamilyId = String(FamilyService.getActiveFamilyId() || '');
-      let familyRole = this.data.familyId === activeFamilyId ? (this.data.familyRole || '') : '';
-      this.setData({ familyId: activeFamilyId, familyRole });
+      let familyRole = this.data.familyId === familyId ? (this.data.familyRole || '') : '';
+      this.setData({ familyId, familyRole });
       if (!familyRole && wx.getStorageSync('token')) {
         try {
           const context = await getFamilyRoleContext();
+          if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
           familyRole = String(context && context.role || '');
           if (!familyRole) {
             const families = await FamilyService.list();
-            const active = (families || []).find((family: any) => String(family.id) === activeFamilyId)
+            if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
+            const active = (families || []).find((family: any) => String(family.id) === familyId)
               || ((families || []).length === 1 ? (families || [])[0] : null);
             if (active) {
               familyRole = String(active.role || '');
-              if (!activeFamilyId) {
-                this.setData({ familyId: FamilyService.setActiveFamilyId(active.id) });
+              if (!familyId) {
+                familyId = FamilyService.setActiveFamilyId(active.id);
+                this.setData({ familyId });
               }
             }
           }
@@ -365,6 +384,8 @@ Page({
         return mealOrder[a.mealType as MealType] - mealOrder[b.mealType as MealType];
       });
 
+      if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
+
       console.log('加载到的预约:', displayAppointments);
       this.setData({
         todayAppointments: displayAppointments,
@@ -372,6 +393,7 @@ Page({
       });
       hideLoading();
     } catch (error) {
+      if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
       console.error('加载预约数据时出错:', error);
       this.setData({ isLoading: false });
       hideLoading();

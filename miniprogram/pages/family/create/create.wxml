@@ -19,10 +19,18 @@
 
     <view class="form-note">
       <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
-      <text>创建后你会成为家庭创建者，可以邀请家人并管理成员权限。</text>
+      <text>创建后你会成为家庭主，可以邀请家人并管理成员权限。</text>
     </view>
 
-    <button class="form-primary-btn" loading="{{saving}}" disabled="{{saving}}" bindtap="createFamily">创建家庭</button>
-    <button class="form-cancel-btn" bindtap="goBack">先不创建</button>
+    <view class="form-bottom-spacer" aria-hidden="true"></view>
   </scroll-view>
+
+  <view class="form-bottom-fixed">
+    <view class="form-bottom-dock"></view>
+    <view class="form-actions">
+      <button class="form-cancel-btn" bindtap="goBack">取消</button>
+      <button class="form-primary-btn" loading="{{saving}}" disabled="{{saving}}" bindtap="createFamily">创建家庭</button>
+    </view>
+    <view class="form-safe-area"></view>
+  </view>
 </view>

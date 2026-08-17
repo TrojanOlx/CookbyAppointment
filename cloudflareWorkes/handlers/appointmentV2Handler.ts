@@ -1,6 +1,7 @@
 import { requireCapability, requireFamilyContext, writeAudit } from '../core/auth';
 import { collectPreferenceWarnings, normalizeIngredientName, normalizeQuantity } from '../core/domain';
 import { ApiError, json, pagination, parseJsonField, readJson, requiredString } from '../core/http';
+import { normalizeImageList } from '../core/media';
 import { withOperationLock } from '../core/operationLock';
 import type { Env, FamilyContext } from '../core/types';
 import { recalculateFamilyShoppingWithinLock, withFamilyShoppingLock } from './shoppingV2Handler';
@@ -179,7 +180,7 @@ async function listAppointments(request: Request, env: Env): Promise<Response> {
     dinerIds: typeof row.dinerIds === 'string' && row.dinerIds ? row.dinerIds.split(',') : [],
     dishes: (parseJsonField<Array<Record<string, unknown>>>(row.dishesJson, [])).map(dish => ({
       ...dish,
-      images: parseJsonField(dish.images, []),
+      images: normalizeImageList(dish.images, env),
     })),
     dishesJson: undefined,
   }));
@@ -211,7 +212,7 @@ async function appointmentDetailResponse(
   return json({
     ...appointment,
     preferenceWarnings: parseJsonField(appointment.preferenceWarnings, []),
-    dishes: (dishes.results as Array<Record<string, unknown>>).map(row => ({ ...row, images: parseJsonField(row.images, []), steps: parseJsonField(row.steps, []) })),
+    dishes: (dishes.results as Array<Record<string, unknown>>).map(row => ({ ...row, images: normalizeImageList(row.images, env), steps: parseJsonField(row.steps, []) })),
     diners: (diners.results as Array<Record<string, unknown>>).map(row => ({ ...row, preferenceSnapshot: parseJsonField(row.preferenceSnapshot, []) })),
   }, status);
 }
@@ -534,7 +535,7 @@ async function appointmentDishes(request: Request, env: Env): Promise<Response> 
     FROM appointment_dishes ad JOIN dishes d ON d.id = ad.dishId
     WHERE ad.appointmentId = ? AND d.familyId = ?
   `).bind(appointmentId, context.familyId).all();
-  return json(rows.results.map(row => ({ ...row, images: parseJsonField(row.images, []) })));
+  return json(rows.results.map(row => ({ ...row, images: normalizeImageList(row.images, env) })));
 }
 
 async function addAppointmentDish(request: Request, env: Env): Promise<Response> {

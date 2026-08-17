@@ -158,12 +158,32 @@ try {
     crossFamilyFile,
   );
 
-  const signedFileResponse = await fetch(signedDishImage.data.images[0]);
-  await signedFileResponse.arrayBuffer();
+  const legacyDishImage = await api('/api/dish/detail?id=it-dish-legacy-image', 'token-owner-a', 'it-family-a');
   assert(
-    signedFileResponse.status !== 426,
-    'signed file download was incorrectly blocked by the app-version gate',
-    { status: signedFileResponse.status },
+    legacyDishImage.status === 200
+      && legacyDishImage.data.images?.join('|') === [
+        'https://images.wx.oulongxing.com/dishes/qjcr1_88603_1746002490203.jpeg',
+        'https://images.wx.oulongxing.com/dishes/legacy-page.jpeg',
+        'https://cdn.example.com/dish.jpeg',
+      ].join('|'),
+    'legacy R2 image path was not converted to an absolute display URL',
+    legacyDishImage,
+  );
+
+  const invalidDishImages = await api('/api/dish/detail?id=it-dish-invalid-images', 'token-owner-a', 'it-family-a');
+  assert(
+    invalidDishImages.status === 200 && Array.isArray(invalidDishImages.data.images) && invalidDishImages.data.images.length === 0,
+    'invalid legacy image payload was not safely normalized',
+    invalidDishImages,
+  );
+
+  const signedFileUrl = new URL(signedDishImage.data.images[0]);
+  const signedFileResponse = await fetch(`${origin}${signedFileUrl.pathname}${signedFileUrl.search}`);
+  const signedFileBody = await signedFileResponse.json();
+  assert(
+    signedFileResponse.status === 404 && signedFileBody.code === 'FILE_OBJECT_NOT_FOUND',
+    'signed local file download did not reach the R2 object lookup',
+    { status: signedFileResponse.status, body: signedFileBody },
   );
 
   const addedReview = await api('/api/review/add', 'token-owner-a', 'it-family-a', {
@@ -461,7 +481,7 @@ try {
   const revokedSession = await api('/api/user/export', 'token-member-a');
   assert(revokedSession.status === 401, 'deleted account session remained active', revokedSession);
 
-  console.log('Worker+D1 integration checks passed (46 assertions).');
+  console.log('Worker+D1 integration checks passed (48 assertions).');
 } finally {
   worker.kill('SIGTERM');
   await delay(200);

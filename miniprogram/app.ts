@@ -4,7 +4,7 @@ import { isLoggedIn } from './utils/auth';
 import { eventBus } from './utils/eventBus';
 import { BASE_URL } from './services/http';
 
-const CURRENT_MINIPROGRAM_VERSION = '2.0.6';
+const CURRENT_MINIPROGRAM_VERSION = '2.1.0';
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000;
 
 // 需要登录才能访问的页面路径（必须与 app.json 中注册的页面路径一致）

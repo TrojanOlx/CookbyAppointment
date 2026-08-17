@@ -1,6 +1,8 @@
 const shoppingService = require('../../services/shopping');
 const shoppingModel = require('../../models/shopping');
 
+let shoppingListRequestId = 0;
+
 let FamilyService = null;
 try {
   FamilyService = require('../../services/family').FamilyService;
@@ -50,6 +52,7 @@ Page({
     hasFamily: false,
     hasToken: false,
     loading: false,
+    loadError: '',
     refreshing: false,
     items: [],
     activeItems: [],
@@ -84,7 +87,19 @@ Page({
     const familyId = String(shoppingService.getActiveFamilyId() || '');
     const hasToken = !!shoppingService.getToken();
     if (familyId !== this.data.familyId || hasToken !== this.data.hasToken) {
-      this.setData({ familyId, hasFamily: !!familyId, hasToken });
+      shoppingListRequestId += 1;
+      this.setData({
+        familyId,
+        hasFamily: !!familyId,
+        hasToken,
+        loadError: '',
+        items: [],
+        activeItems: [],
+        purchasedItems: [],
+        activeCount: 0,
+        purchasedCount: 0,
+        selectedStockIds: []
+      });
       this.loadMembers();
       this.loadList();
     }
@@ -99,13 +114,15 @@ Page({
   },
 
   async loadMembers() {
-    if (!this.data.hasToken || !shoppingService.getActiveFamilyId()) {
+    const familyId = String(shoppingService.getActiveFamilyId() || '');
+    if (!this.data.hasToken || !familyId) {
       this.setData({ members: [] });
       return;
     }
     try {
       if (FamilyService && typeof FamilyService.members === 'function') {
         const members = await FamilyService.members();
+        if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
         const normalized = (Array.isArray(members) ? members : []).map(normalizeMember).filter(Boolean);
         if (normalized.length) {
           this.setData({ members: normalized });
@@ -114,6 +131,7 @@ Page({
         }
       }
     } catch (error) {
+      if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
       console.warn('获取家庭成员失败:', error);
     }
 
@@ -125,6 +143,7 @@ Page({
       avatarUrl: userInfo.avatarUrl || ''
     });
     const fallbackMembers = current ? [current] : [];
+    if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
     this.setData({ members: fallbackMembers });
     this.refreshAssigneeNames(fallbackMembers);
   },
@@ -144,15 +163,18 @@ Page({
   async loadList() {
     const familyId = String(shoppingService.getActiveFamilyId() || '');
     const hasToken = !!shoppingService.getToken();
-    this.setData({ familyId, hasFamily: !!familyId, hasToken });
+    const requestId = ++shoppingListRequestId;
+    this.setData({ familyId, hasFamily: !!familyId, hasToken, loadError: '' });
     if (!familyId || !hasToken) {
-      this.setData({ items: [], activeItems: [], purchasedItems: [], activeCount: 0, purchasedCount: 0 });
+      this.setData({ items: [], activeItems: [], purchasedItems: [], activeCount: 0, purchasedCount: 0, loading: false });
       return;
     }
 
     this.setData({ loading: true });
     try {
       const response = await shoppingService.getShoppingList('active');
+      const currentFamilyId = String(shoppingService.getActiveFamilyId() || '');
+      if (requestId !== shoppingListRequestId || currentFamilyId !== familyId) return;
       const normalized = shoppingModel.normalizeShoppingListResponse(response);
       const selectedStockIds = this.data.selectedStockIds;
       const items = normalized.items.map(item => {
@@ -171,12 +193,19 @@ Page({
         selectedStockIds: selectedStockIds.filter(id => purchasedItems.some(item => item.id === id && !item.stockedAt))
       });
     } catch (error) {
+      const currentFamilyId = String(shoppingService.getActiveFamilyId() || '');
+      if (requestId !== shoppingListRequestId || currentFamilyId !== familyId) return;
       console.error('加载采购清单失败:', error);
-      this.setData({ items: [], activeItems: [], purchasedItems: [], activeCount: 0, purchasedCount: 0 });
+      this.setData({ loadError: error && error.message ? error.message : '采购清单加载失败，请稍后重试。' });
       showError(error, '加载采购清单失败');
     } finally {
-      this.setData({ loading: false });
+      const currentFamilyId = String(shoppingService.getActiveFamilyId() || '');
+      if (requestId === shoppingListRequestId && currentFamilyId === familyId) this.setData({ loading: false });
     }
+  },
+
+  retryList() {
+    this.loadList();
   },
 
   setTab(event) {

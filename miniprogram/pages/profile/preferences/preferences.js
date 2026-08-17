@@ -1,5 +1,7 @@
-const { PreferencesService, getCurrentFamilyId } = require('../../../services/preferences');
+const { PreferencesService } = require('../../../services/preferences');
 const preferenceModel = require('../../../models/preferences');
+
+let preferencesRequestId = 0;
 
 const CATEGORY_CONFIG = Object.freeze([
   {
@@ -64,38 +66,43 @@ Page({
     spicyLevels: preferenceModel.SPICY_LEVELS.filter((level) => level.value),
     spicyLevel: '',
     spicyLabel: '未设置',
-    familyId: '',
     loading: false,
+    refreshing: false,
     saving: false,
-    dirty: false
+    dirty: false,
+    hasLoaded: false,
+    loadError: ''
   },
 
-  onLoad(options) {
-    const queryFamilyId = options && (options.familyId || options.family_id);
-    const familyId = getCurrentFamilyId(queryFamilyId);
-    this.setData({ familyId });
+  onLoad() {
     wx.setNavigationBarTitle({ title: '口味偏好' });
     this.loadPreferences();
   },
 
   onPullDownRefresh() {
+    this.setData({ refreshing: true });
     this.loadPreferences(true);
   },
 
   async loadPreferences(fromRefresh) {
     if (this.data.loading && !fromRefresh) return;
-    this.setData({ loading: true });
+    const requestId = ++preferencesRequestId;
+    this.setData({ loading: true, loadError: '' });
 
     try {
-      const preferences = await PreferencesService.getPreferences(this.data.familyId);
+      const preferences = await PreferencesService.getPreferences();
+      if (requestId !== preferencesRequestId) return;
       this.applyPreferences(preferences);
     } catch (error) {
+      if (requestId !== preferencesRequestId) return;
       console.warn('加载口味偏好失败:', error);
-      // 偏好是辅助提醒，接口暂时不可用时仍允许浏览和编辑本地表单。
+      this.setData({ hasLoaded: false, loadError: '口味偏好暂时无法加载，请重试后再编辑。' });
       wx.showToast({ title: '偏好暂时无法加载', icon: 'none' });
     } finally {
-      this.setData({ loading: false });
-      wx.stopPullDownRefresh();
+      if (requestId === preferencesRequestId) {
+        this.setData({ loading: false, refreshing: false });
+        wx.stopPullDownRefresh();
+      }
     }
   },
 
@@ -105,8 +112,14 @@ Page({
       categories: createCategoryState(preferences),
       spicyLevel: preferences.spicyLevel,
       spicyLabel: spicyLabel(preferences.spicyLevel),
-      dirty: false
+      dirty: false,
+      hasLoaded: true,
+      loadError: ''
     });
+  },
+
+  retryLoad() {
+    this.loadPreferences();
   },
 
   toggleTag(event) {
@@ -178,11 +191,15 @@ Page({
 
   async savePreferences() {
     if (this.data.saving) return;
+    if (!this.data.hasLoaded) {
+      wx.showToast({ title: '请先重新加载偏好', icon: 'none' });
+      return;
+    }
     this.setData({ saving: true });
 
     const payload = this.collectPreferences();
     try {
-      const response = await PreferencesService.updatePreferences(payload, this.data.familyId);
+      const response = await PreferencesService.updatePreferences(payload);
       if (preferenceModel.hasPreferencePayload(response)) {
         this.applyPreferences(response);
       } else {

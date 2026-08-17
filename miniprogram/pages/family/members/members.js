@@ -1,11 +1,17 @@
 const { FamilyService } = require('../../../services/family');
 const { FamilyRole } = require('../../../models/family');
 
+let membersRequestId = 0;
+
+const activeFamilyId = () => String(FamilyService.getActiveFamilyId() || '');
+
 Page({
   data: {
     family: null,
+    familyId: '',
     members: [],
     loading: false,
+    loadError: '',
     hasActiveFamily: false,
     currentUserId: '',
     currentUserOpenid: '',
@@ -17,31 +23,70 @@ Page({
 
   onLoad() {
     const userInfo = wx.getStorageSync('userInfo') || {};
+    const familyId = activeFamilyId();
     this.setData({
       currentUserId: String(userInfo.id || userInfo.userId || ''),
       currentUserOpenid: String(userInfo.openid || ''),
-      hasActiveFamily: !!FamilyService.getActiveFamilyId()
+      familyId,
+      hasActiveFamily: !!familyId
     });
   },
 
   onShow() {
-    const hasActiveFamily = !!FamilyService.getActiveFamilyId();
-    this.setData({ hasActiveFamily });
-    if (hasActiveFamily) this.loadMembers();
+    const familyId = activeFamilyId();
+    const familyChanged = familyId !== this.data.familyId;
+    if (familyChanged) {
+      membersRequestId += 1;
+      this.setData({
+        familyId,
+        hasActiveFamily: !!familyId,
+        family: null,
+        members: [],
+        loadError: '',
+        canManage: false,
+        isOwner: false,
+        actorRole: FamilyRole.MEMBER,
+        loading: false
+      }, () => {
+        if (familyId) this.loadMembers();
+      });
+      return;
+    }
+    this.setData({ hasActiveFamily: !!familyId });
+    if (familyId) this.loadMembers();
   },
 
   async loadMembers() {
     if (this.data.loading) return;
-    this.setData({ loading: true });
+    const familyId = activeFamilyId();
+    if (!familyId) {
+      membersRequestId += 1;
+      this.setData({
+        familyId: '',
+        hasActiveFamily: false,
+        family: null,
+        members: [],
+        loadError: '',
+        canManage: false,
+        isOwner: false,
+        actorRole: FamilyRole.MEMBER,
+        loading: false,
+        refreshing: false
+      });
+      return;
+    }
+    const requestId = ++membersRequestId;
+    this.setData({ loading: true, familyId, hasActiveFamily: true, loadError: '' });
     try {
       const [familyResult, membersResult] = await Promise.all([
         FamilyService.detail().catch(() => null),
         FamilyService.members()
       ]);
+      if (requestId !== membersRequestId || activeFamilyId() !== familyId) return;
       const members = Array.isArray(membersResult) ? membersResult : [];
       const current = members.find(item => this.isCurrentMember(item));
       const family = familyResult || {
-        id: FamilyService.getActiveFamilyId(),
+        id: familyId,
         name: '当前家庭',
         role: current ? current.role : FamilyRole.MEMBER
       };
@@ -54,16 +99,27 @@ Page({
         members: decorated,
         canManage,
         isOwner,
-        actorRole: role
+        actorRole: role,
+        familyId,
+        hasActiveFamily: true,
+        loadError: ''
       });
     } catch (error) {
+      if (requestId !== membersRequestId || activeFamilyId() !== familyId) return;
       console.error('获取家庭成员失败:', error);
+      const message = error && error.message ? error.message : '成员加载失败，请重试';
+      this.setData({ loadError: message });
       wx.showToast({ title: error && error.message ? error.message : '成员加载失败', icon: 'none' });
-      this.setData({ members: [] });
     } finally {
-      this.setData({ loading: false, refreshing: false });
-      if (wx.stopPullDownRefresh) wx.stopPullDownRefresh();
+      if (requestId === membersRequestId && activeFamilyId() === familyId) {
+        this.setData({ loading: false, refreshing: false });
+        if (wx.stopPullDownRefresh) wx.stopPullDownRefresh();
+      }
     }
+  },
+
+  retryLoad() {
+    this.loadMembers();
   },
 
   isCurrentMember(member) {
@@ -99,7 +155,7 @@ Page({
 
   openInvite() {
     if (!this.data.canManage) {
-      wx.showToast({ title: '只有管理员可以邀请成员', icon: 'none' });
+      wx.showToast({ title: '只有家庭主或管理员可以邀请成员', icon: 'none' });
       return;
     }
     wx.navigateTo({ url: '/pages/family/invite/invite' });
@@ -121,9 +177,9 @@ Page({
         ? ['设为普通成员', '移出家庭']
         : role === FamilyRole.CHEF
           ? ['设为管理员', '设为普通成员', '移出家庭']
-          : ['设为管理员', '设为协作者', '移出家庭'];
+          : ['设为管理员', '设为厨师', '移出家庭'];
     } else {
-      itemList = role === FamilyRole.CHEF ? ['设为普通成员', '移出家庭'] : ['设为协作者', '移出家庭'];
+      itemList = role === FamilyRole.CHEF ? ['设为普通成员', '移出家庭'] : ['设为厨师', '移出家庭'];
     }
     wx.showActionSheet({
       itemList,
@@ -153,7 +209,7 @@ Page({
   async updateRole(userId, role) {
     try {
       await FamilyService.updateMemberRole(userId, role);
-      const roleText = role === FamilyRole.ADMIN ? '管理员' : role === FamilyRole.CHEF ? '协作者' : '普通成员';
+      const roleText = role === FamilyRole.ADMIN ? '管理员' : role === FamilyRole.CHEF ? '厨师' : '普通成员';
       wx.showToast({ title: `已设为${roleText}`, icon: 'success' });
       this.loadMembers();
     } catch (error) {
@@ -189,18 +245,18 @@ Page({
     const member = this.data.members.find(item => item.userId === userId);
     if (!member) return;
     wx.showModal({
-      title: '转让创建者身份',
-      content: `确定将“${member.nickName}”设为创建者吗？转让后你仍是成员，但不能再管理家庭。`,
+      title: '转让家庭主身份',
+      content: `确定将“${member.nickName}”设为家庭主吗？转让后你仍是成员，但不能再管理家庭。`,
       confirmText: '确认转让',
       confirmColor: '#e59266',
       success: async (result) => {
         if (!result.confirm) return;
         try {
           await FamilyService.transferOwnership(userId);
-          wx.showToast({ title: '创建者身份已转让', icon: 'success' });
+          wx.showToast({ title: '家庭主身份已转让', icon: 'success' });
           this.loadMembers();
         } catch (error) {
-          console.error('转让创建者身份失败:', error);
+          console.error('转让家庭主身份失败:', error);
           wx.showToast({ title: error && error.message ? error.message : '转让失败', icon: 'none' });
         }
       }
@@ -211,7 +267,7 @@ Page({
     if (this.data.isOwner) {
       wx.showModal({
         title: '暂不能退出',
-        content: '你是创建者，请先把创建者身份转让给其他成员。',
+        content: '你是家庭主，请先把家庭主身份转让给其他成员。',
         showCancel: false
       });
       return;

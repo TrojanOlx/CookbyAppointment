@@ -5,6 +5,7 @@ Page({
     families: [],
     activeFamilyId: '',
     loading: false,
+    loadError: '',
     hasToken: false,
     refreshing: false
   },
@@ -21,7 +22,7 @@ Page({
 
   async loadFamilies() {
     if (this.data.loading) return;
-    this.setData({ loading: true });
+    this.setData({ loading: true, loadError: '' });
     try {
       const families = await FamilyService.list();
       let activeFamilyId = FamilyService.getActiveFamilyId();
@@ -32,7 +33,8 @@ Page({
       this.setData({ families, activeFamilyId });
     } catch (error) {
       console.error('获取家庭列表失败:', error);
-      this.setData({ families: [] });
+      this.setData({ loadError: error && error.message ? error.message : '家庭列表暂时无法加载，请重试' });
+      wx.showToast({ title: error && error.message ? error.message : '家庭列表加载失败', icon: 'none' });
     } finally {
       this.setData({ loading: false, refreshing: false });
       if (wx.stopPullDownRefresh) wx.stopPullDownRefresh();

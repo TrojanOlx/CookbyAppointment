@@ -1,6 +1,7 @@
 import { requireCapability, requireFamilyContext, writeAudit } from '../core/auth';
 import { collectPreferenceWarnings, compareRecommendations, normalizeIngredientName, normalizeQuantity } from '../core/domain';
 import { ApiError, json, pagination, parseJsonField, readJson, requiredString } from '../core/http';
+import { normalizeImageList } from '../core/media';
 import type { Env, FamilyContext } from '../core/types';
 
 interface IngredientInput {
@@ -35,8 +36,8 @@ function stringList(value: unknown, maxItems: number, maxLength: number): string
   return parsed.slice(0, maxItems).map(item => requiredString(item, '数组项', maxLength));
 }
 
-function mapDish(row: Record<string, unknown>): Record<string, unknown> {
-  return { ...row, images: parseJsonField(row.images, []), steps: parseJsonField(row.steps, []) };
+function mapDish(row: Record<string, unknown>, env: Env): Record<string, unknown> {
+  return { ...row, images: normalizeImageList(row.images, env), steps: parseJsonField(row.steps, []) };
 }
 
 async function resolveCatalog(env: Env, name: string, requestedId?: unknown): Promise<string> {
@@ -97,7 +98,7 @@ async function listDishes(request: Request, env: Env): Promise<Response> {
   ]);
   return json({
     total: Number((count.results[0] as { total?: unknown } | undefined)?.total || 0),
-    list: (rows.results as Array<Record<string, unknown>>).map(row => mapDish(row)), page, pageSize,
+    list: (rows.results as Array<Record<string, unknown>>).map(row => mapDish(row, env)), page, pageSize,
   });
 }
 
@@ -110,7 +111,7 @@ async function getDish(request: Request, env: Env): Promise<Response> {
   if (!dish) throw new ApiError(404, 'DISH_NOT_FOUND', '菜品不存在');
   const ingredients = await env.DB.prepare('SELECT * FROM ingredients WHERE dishId = ? ORDER BY createTime ASC')
     .bind(id).all();
-  return json({ ...mapDish(dish), ingredients: ingredients.results });
+  return json({ ...mapDish(dish, env), ingredients: ingredients.results });
 }
 
 async function insertIngredients(env: Env, dishId: string, inputs: IngredientInput[], now: number): Promise<void> {
@@ -311,7 +312,7 @@ async function recommend(request: Request, env: Env): Promise<Response> {
   }
   const expiryCutoff = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
   const recommendations = (dishRows.results as Array<Record<string, unknown>>).map(row => {
-    const dish = mapDish(row);
+    const dish = mapDish(row, env);
     const required = ingredientsByDish.get(String(row.id)) || [];
     const existing: unknown[] = [];
     const missing: unknown[] = [];

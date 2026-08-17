@@ -8,7 +8,11 @@ const ACTIVE_FAMILY_KEY = 'active_family_id';
 
 const getActiveFamilyId = () => {
   const value = wx.getStorageSync(ACTIVE_FAMILY_KEY);
-  return value === undefined || value === null ? '' : String(value);
+  if (value === undefined || value === null) return '';
+  if (typeof value === 'object') {
+    return String(value.id || value.familyId || value.family_id || '');
+  }
+  return String(value);
 };
 
 const setActiveFamilyId = (familyId) => {

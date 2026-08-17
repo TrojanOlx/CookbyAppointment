@@ -3,14 +3,21 @@ page {
   overflow: hidden;
 }
 
-.members-page { position: relative; min-height: 100vh; }
+.members-page {
+  position: relative;
+  min-height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+}
 
 .members-scroll {
   position: relative;
   z-index: 1;
+  width: 100%;
   box-sizing: border-box;
   height: 100vh;
   padding: 46rpx 28rpx calc(60rpx + env(safe-area-inset-bottom));
+  overflow-x: hidden;
 }
 
 .members-heading { margin: 8rpx 4rpx 28rpx; }
@@ -24,7 +31,7 @@ page {
   border-radius: var(--radius-full);
   font-size: 20rpx;
   font-weight: 900;
-  letter-spacing: 2rpx;
+  letter-spacing: 0;
 }
 
 .members-title {
@@ -46,6 +53,8 @@ page {
 .members-actions {
   display: flex;
   gap: 16rpx;
+  box-sizing: border-box;
+  max-width: 100%;
   margin: 0 4rpx 20rpx;
 }
 
@@ -55,6 +64,8 @@ button::after { border: 0; }
 .member-leave-btn {
   flex: 1;
   min-width: 0;
+  box-sizing: border-box;
+  max-width: 100%;
   height: 72rpx;
   margin: 0;
   border-radius: var(--radius-full);
@@ -70,6 +81,8 @@ button::after { border: 0; }
 }
 
 .member-invite-btn[disabled] { opacity: 0.48; }
+
+.member-button-icon { margin-right: 7rpx; }
 
 .member-leave-btn {
   color: var(--danger-color);
@@ -96,7 +109,10 @@ button::after { border: 0; }
   min-height: 108rpx;
   box-sizing: border-box;
   padding: 18rpx 20rpx;
-  background: var(--card-bg);
+  overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(247,205,103,0.12) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    var(--card-bg);
   border: 3rpx solid rgba(159, 146, 125, 0.3);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -152,6 +168,8 @@ button::after { border: 0; }
 
 .member-more-btn,
 .member-transfer-btn {
+  box-sizing: border-box;
+  max-width: 100%;
   min-width: 86rpx;
   height: 56rpx;
   margin: 0;
@@ -173,20 +191,34 @@ button::after { border: 0; }
   box-shadow: 0 4rpx 0 #bd6c3c;
 }
 
-.members-empty {
+.members-empty,
+.members-error {
   display: flex;
   flex-direction: column;
   align-items: center;
   box-sizing: border-box;
+  overflow: hidden;
   padding: 42rpx 30rpx;
-  background: var(--card-bg-light);
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.10) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    radial-gradient(circle, rgba(255,255,255,0.22) 1.5rpx, transparent 2.5rpx) 12rpx 12rpx/28rpx 28rpx,
+    var(--card-bg-light);
   border: 4rpx solid rgba(121, 79, 39, 0.14);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
   text-align: center;
 }
 
-.members-empty image {
+.members-error {
+  margin-bottom: 20rpx;
+  border-color: rgba(224, 90, 90, 0.24);
+  background:
+    radial-gradient(circle, rgba(224,90,90,0.08) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    var(--danger-light);
+}
+
+.members-empty image,
+.members-error image {
   width: 88rpx;
   height: 88rpx;
   margin-bottom: 16rpx;
@@ -203,10 +235,14 @@ button::after { border: 0; }
   color: var(--text-light);
   font-size: 25rpx;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .member-primary-btn {
-  min-width: 270rpx;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420rpx;
+  min-width: 0;
   height: 78rpx;
   margin: 24rpx 0 0;
   padding: 0 28rpx;
@@ -224,6 +260,8 @@ button::after { border: 0; }
 .members-note {
   display: flex;
   align-items: flex-start;
+  box-sizing: border-box;
+  max-width: 100%;
   margin: 24rpx 8rpx;
   color: var(--text-light);
   font-size: 23rpx;

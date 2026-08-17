@@ -1,5 +1,8 @@
 {
   "navigationBarTitleText": "家庭成员",
+  "usingComponents": {
+    "mp-icon": "/miniprogram_npm/weui-miniprogram/icon/icon"
+  },
   "backgroundColor": "#a8d8b9",
   "backgroundTextStyle": "dark",
   "enablePullDownRefresh": true
