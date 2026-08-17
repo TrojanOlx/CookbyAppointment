@@ -14,10 +14,6 @@ Component({
       text: "预约",
       icon: "/images/icons/icon-appointment.svg"
     }, {
-      pagePath: "/pages/shopping/index",
-      text: "采购",
-      icon: "/images/island/icon-basket.svg"
-    }, {
       pagePath: "/pages/profile/profile",
       text: "我的",
       icon: "/images/icons/icon-profile.svg"

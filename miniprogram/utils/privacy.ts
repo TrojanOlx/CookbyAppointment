@@ -23,13 +23,14 @@ export function getPrivacyPolicy(): string {
           <li>家庭、家庭角色和邀请记录</li>
           <li>菜谱、冰箱库存、预约、采购、评价和上传文件</li>
           <li>过敏、忌口、喜好和辣度等口味标签</li>
+          <li>保障服务运行所需的请求状态、故障和关键操作审计记录</li>
         </ul>
         
         <h2 style="font-size:16px;margin-top:20px;">二、我们如何使用这些信息</h2>
         
         <p>1. <strong>提供服务</strong>：基于家庭库存、预约用餐人和口味标签提供菜谱推荐、冲突提醒和采购清单。口味冲突仅作提醒，不会自动禁止预约。</p>
         
-        <p>2. <strong>改进服务</strong>：分析用户行为数据，持续优化我们的服务体验。</p>
+        <p>2. <strong>运行与安全</strong>：处理必要的请求状态、故障和关键操作审计记录，用于排查问题、防止滥用和保障家庭数据安全。</p>
         
         <p>3. <strong>通知提醒</strong>：向您发送预约确认、菜品准备完成等相关通知。</p>
         
@@ -63,10 +64,6 @@ export function getPrivacyPolicy(): string {
         <h2 style="font-size:16px;margin-top:20px;">七、隐私政策的更新</h2>
         
         <p>我们可能会不时更新本隐私政策。当政策发生重大变更时，我们会通过小程序内通知的方式向您发出提醒。</p>
-        
-        <h2 style="font-size:16px;margin-top:20px;">八、联系我们</h2>
-        
-        <p>如您对本隐私政策有任何疑问或建议，请通过小程序内的"联系我们"功能与我们联系。</p>
         
         <p style="margin-top:30px;color:#999;">最后更新时间：2026年8月17日</p>
       </div>

@@ -5,14 +5,14 @@
     <view class="type-item fixed {{selectedType === '' ? 'active' : ''}}" bindtap="selectType" data-type="">
       <text>全部</text>
     </view>
-    <view class="recommend-entry" bindtap="goToRecommend">
-      <text>冰箱推荐</text>
-    </view>
 
-    <!-- 可滚动的其他选项 -->
+    <!-- 可滚动的推荐与菜品类型 -->
     <view class="scroll-types-wrap">
       <scroll-view class="scroll-types" scroll-x="true" enhanced="true" show-scrollbar="false" enable-flex="true" scroll-with-animation="true" scroll-anchoring="true">
         <view class="type-selector-content">
+          <view class="type-item recommend-type" bindtap="goToRecommend">
+            <text>冰箱推荐</text>
+          </view>
           <view class="type-item {{selectedType === item ? 'active' : ''}}" wx:for="{{dishTypes}}" wx:key="*this" bindtap="selectType" data-type="{{item}}">
             <text>{{item}}</text>
           </view>

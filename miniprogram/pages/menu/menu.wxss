@@ -59,19 +59,6 @@ page {
   font-weight: 700;
 }
 
-.recommend-entry {
-  flex-shrink: 0;
-  min-width: 148rpx;
-  height: 88rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #0f8f85;
-  font-size: 27rpx;
-  font-weight: 700;
-  border-right: 1rpx solid var(--border-color);
-  background: #e6f9f6;
-}
 /* 可滚动区域 */
 .scroll-types-wrap {
   flex: 1;

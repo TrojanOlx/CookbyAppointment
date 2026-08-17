@@ -24,8 +24,12 @@
         <view class="nav-label">预约</view>
       </view>
       <view class="nav-item" bindtap="navigateToInventory">
-        <image class="nav-icon-img" src="/images/island/icon-basket.svg" mode="aspectFit"></image>
+        <image class="nav-icon-img" src="/images/island/inventory-basket.svg" mode="aspectFit"></image>
         <view class="nav-label">库存</view>
+      </view>
+      <view class="nav-item" bindtap="navigateToShopping">
+        <image class="nav-icon-img" src="/images/island/icon-basket.svg" mode="aspectFit"></image>
+        <view class="nav-label">采购</view>
       </view>
     </view>
 

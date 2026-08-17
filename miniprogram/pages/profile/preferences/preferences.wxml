@@ -79,12 +79,19 @@
       <view class="current-spicy">当前：{{spicyLabel}}</view>
     </view>
 
+    <view class="loading-state" wx:if="{{loading}}">正在读取偏好...</view>
+
+    <!-- 为固定操作栏预留滚动空间，避免末尾内容被遮挡 -->
+    <view class="bottom-safe-area"></view>
+  </scroll-view>
+
+  <view class="bottom-fixed-area">
+    <view class="bottom-action-dock"></view>
     <view class="save-area">
       <button class="save-button" loading="{{saving}}" disabled="{{saving}}" bindtap="savePreferences">保存偏好</button>
       <text class="save-hint" wx:if="{{dirty}}">有未保存的选择</text>
       <text class="save-hint" wx:else>偏好会随当前家庭保存</text>
     </view>
-
-    <view class="loading-state" wx:if="{{loading}}">正在读取偏好...</view>
-  </scroll-view>
+    <view class="safe-area-bottom"></view>
+  </view>
 </view>

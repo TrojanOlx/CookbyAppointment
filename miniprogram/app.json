@@ -51,10 +51,6 @@
         "text": "预约"
       },
       {
-        "pagePath": "pages/shopping/index",
-        "text": "采购"
-      },
-      {
         "pagePath": "pages/profile/profile",
         "text": "我的"
       }
@@ -77,9 +73,5 @@
     "scope.userInfo": {
       "desc": "用于显示你的昵称和头像"
     }
-  },
-  "requiredPrivateInfos": [
-    "chooseLocation",
-    "getLocation"
-  ]
+  }
 }

@@ -152,7 +152,7 @@ Page<IPageData, IPageMethods & {
       const tabBar = this.getTabBar();
       if (tabBar) {
         tabBar.setData({
-          selected: 4
+          selected: 3
         });
       }
     }
@@ -380,7 +380,6 @@ Page<IPageData, IPageMethods & {
         '/pages/index/index',
         '/pages/menu/menu',
         '/pages/appointment/appointment',
-        '/pages/shopping/index',
         '/pages/profile/profile'
       ];
 
@@ -593,7 +592,6 @@ Page<IPageData, IPageMethods & {
       '/pages/index/index',
       '/pages/menu/menu',
       '/pages/appointment/appointment',
-      '/pages/shopping/index',
       '/pages/profile/profile'
     ];
     const isTabPage = tabPages.includes(url);

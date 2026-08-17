@@ -3,7 +3,9 @@
     <text class="privacy-title">隐私政策</text>
   </view>
   <scroll-view class="privacy-content" scroll-y enhanced="true" show-scrollbar="false">
-    <rich-text nodes="{{privacyContent}}"></rich-text>
+    <view class="privacy-body">
+      <rich-text class="privacy-rich-text" nodes="{{privacyContent}}"></rich-text>
+    </view>
   </scroll-view>
   <view class="privacy-footer">
     <button class="btn-reject" bindtap="rejectPrivacy">拒绝</button>

@@ -122,6 +122,13 @@ Page({
     });
   },
 
+  // 打开家庭采购二级页面
+  navigateToShopping() {
+    wx.navigateTo({
+      url: '/pages/shopping/index'
+    });
+  },
+
   // 跳转到我的页面（未登录引导）
   navigateToProfile() {
     wx.switchTab({ url: '/pages/profile/profile' });
