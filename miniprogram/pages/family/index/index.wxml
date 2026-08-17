@@ -1,0 +1,56 @@
+<view class="family-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="family-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onPullDownRefresh">
+    <view class="family-heading">
+      <view class="family-kicker">FAMILY ISLAND</view>
+      <view class="family-title">我的家庭</view>
+      <view class="family-subtitle">选择一个家庭，开始共同安排每一餐</view>
+    </view>
+
+    <view wx:if="{{!hasToken}}" class="family-login-card">
+      <image class="family-login-icon" src="/images/island/icon-user.svg" mode="aspectFit"></image>
+      <view class="family-login-copy">
+        <view class="family-card-title">登录后管理家庭</view>
+        <view class="family-card-subtitle">登录即可创建家庭或加入家人的邀请</view>
+      </view>
+      <button class="family-link-btn" bindtap="goProfile">去登录</button>
+    </view>
+
+    <block wx:elif="{{hasToken}}">
+      <view class="family-toolbar">
+        <view class="toolbar-caption">{{families.length}} 个家庭</view>
+        <button class="toolbar-add" bindtap="openCreate">＋ 新建家庭</button>
+      </view>
+
+      <view wx:if="{{loading && families.length === 0}}" class="family-loading">正在读取家庭...</view>
+
+      <view wx:elif="{{families.length === 0}}" class="family-empty">
+        <image class="family-empty-icon" src="/images/island/hero-kitchen.svg" mode="aspectFit"></image>
+        <view class="family-card-title">还没有家庭</view>
+        <view class="family-card-subtitle">创建一个小岛，邀请家人一起规划菜单</view>
+        <button class="family-primary-btn" bindtap="openCreate">创建第一个家庭</button>
+      </view>
+
+      <view wx:else class="family-list">
+        <view wx:for="{{families}}" wx:key="id" class="family-item {{item.id === activeFamilyId ? 'is-active' : ''}}" data-id="{{item.id}}" bindtap="selectFamily">
+          <view class="family-item-main">
+            <view class="family-avatar">{{item.initial}}</view>
+            <view class="family-item-copy">
+              <view class="family-item-name">{{item.name}}</view>
+              <view class="family-item-meta">{{item.roleLabel}}<text wx:if="{{item.memberCount}}"> · {{item.memberCount}} 位成员</text></view>
+            </view>
+          </view>
+          <view class="family-item-actions">
+            <text wx:if="{{item.id === activeFamilyId}}" class="active-mark">当前</text>
+            <button class="family-manage-btn" catchtap="openMembers" data-id="{{item.id}}">成员</button>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{families.length > 0}}" class="family-tip">
+        <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+        <text>切换家庭后，菜单、库存和预约会使用所选家庭的数据。</text>
+      </view>
+    </block>
+  </scroll-view>
+</view>

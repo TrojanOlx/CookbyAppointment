@@ -4,6 +4,9 @@ import { validateTokenAndGetUser, processImageUrls } from './_shared.js';
 // 获取菜品列表
 export async function handleGetDishList(request, env) {
   try {
+    const user = await getOptionalRequestUser(request, env);
+    if (!user) return createErrorResponse('请先登录', 401);
+
     // 获取查询参数
     const query = new URL(request.url).searchParams;
     const page = parseInt(query.get('page')) || 1;
@@ -22,6 +25,9 @@ export async function handleGetDishList(request, env) {
 // 获取菜品详情
 export async function handleGetDishDetail(request, env) {
   try {
+    const user = await getOptionalRequestUser(request, env);
+    if (!user) return createErrorResponse('请先登录', 401);
+
     // 获取查询参数
     const query = new URL(request.url).searchParams;
     const id = query.get('id');
@@ -39,12 +45,7 @@ export async function handleGetDishDetail(request, env) {
     
     // 获取菜品的食材列表
     const ingredients = await getIngredientsByDishId(env.DB, id);
-    const user = await getOptionalRequestUser(request, env);
-
-    // 登录用户可看到库存联动；未登录用户仍可浏览菜品详情。
-    const ingredientsWithStatus = user
-      ? await annotateIngredientsWithInventory(env.DB, user.id, ingredients || [])
-      : (ingredients || []);
+    const ingredientsWithStatus = await annotateIngredientsWithInventory(env.DB, user.id, ingredients || []);
 
     // 构建完整的菜品信息
     const fullDish = {

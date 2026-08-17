@@ -5,6 +5,7 @@ import { UserService } from '../../../services/userService';
 import { FileService } from '../../../services/fileService';
 import cnchar from 'cnchar';
 import 'cnchar-poly'; // 引入多音字功能
+const { getFamilyRoleContext } = require('../../../services/familyRole');
 
 // 从URL中提取路径部分的辅助函数
 function extractPathFromUrl(url: string): string {
@@ -49,6 +50,7 @@ Page({
     safeAreaBottom: 0,
     loading: false,
     isAdmin: false, // 是否为管理员
+    familyRole: '',
     isEdit: false,  // 是否处于编辑状态
     tempDish: {} as Dish, // 存储编辑时的临时数据
     dishTypes: Object.values(DishType),
@@ -94,17 +96,23 @@ Page({
    */
   async checkAdminStatus() {
     if (!wx.getStorageSync('token')) {
-      this.setData({ isAdmin: false });
+      this.setData({ isAdmin: false, familyRole: '' });
       return;
     }
 
+    let legacyAdmin = false;
     try {
       const result = await UserService.checkAdmin();
-      this.setData({ isAdmin: result.isAdmin });
+      legacyAdmin = !!result.isAdmin;
     } catch (error) {
-      console.error('检查管理员状态失败:', error);
-      this.setData({ isAdmin: false });
+      console.warn('检查旧版管理员状态失败:', error);
     }
+
+    const context = await getFamilyRoleContext();
+    this.setData({
+      isAdmin: legacyAdmin || context.canManageMenu,
+      familyRole: context.role
+    });
   },
 
   // 设置安全区域

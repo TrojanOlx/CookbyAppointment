@@ -1,0 +1,25 @@
+{
+  "families": [
+    {
+      "id": "family-sunrise",
+      "name": "日出厨房",
+      "members": [
+        { "userId": "user-owner-a", "role": "owner" },
+        { "userId": "user-admin-a", "role": "admin" },
+        { "userId": "user-chef-a", "role": "chef" },
+        { "userId": "user-shared", "role": "member" }
+      ]
+    },
+    {
+      "id": "family-harbor",
+      "name": "港湾厨房",
+      "members": [
+        { "userId": "user-owner-b", "role": "owner" },
+        { "userId": "user-shared", "role": "chef" },
+        { "userId": "user-admin-b", "role": "admin" },
+        { "userId": "user-member-b", "role": "member" }
+      ]
+    }
+  ],
+  "overlappingMemberIds": ["user-shared"]
+}

@@ -4,7 +4,8 @@
 
 name = "black-frost-08dc"
 main = "worker.js"
-compatibility_date = "2024-11-01"
+compatibility_date = "2026-08-17"
+compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 
 # Keep variables/secrets that already exist in the Cloudflare dashboard
@@ -19,14 +20,22 @@ routes = [
 binding = "DB"
 database_name = "cookby_appointment"
 database_id = "07358a9d-1108-41be-9b00-01fbc2b5e922"
+migrations_dir = "migrations"
 
 [[r2_buckets]]
 binding = "FILE_BUCKET"
 bucket_name = "cookby-appointment"
 
 [vars]
+FAMILY_MODE = "off"
+DEFAULT_TIMEZONE = "Asia/Shanghai"
+FAMILY_MEMBER_LIMIT = "20"
+INVITE_TTL_HOURS = "72"
+MAX_UPLOAD_BYTES = "5242880"
+FAMILY_STORAGE_QUOTA_BYTES = "209715200"
 R2_PUBLIC_URL = "https://images.wx.oulongxing.com"
 MINIPROGRAM_VERSION = "2.0.6"
+MINIPROGRAM_MIN_VERSION = "2.1.0"
 MINIPROGRAM_UPDATE_MESSAGE = "小程序已有新版本，请移除最近使用后重新打开。"
 TMPL_APPOINTMENT = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
 TMPL_NEW_APPT = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
@@ -34,6 +43,10 @@ TMPL_CONFIRMED = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
 TMPL_CANCELLED = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
 TMPL_COMPLETED = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
 TMPL_REMINDER = "bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0"
+
+[observability]
+enabled = true
+head_sampling_rate = 1
 
 # Cron Trigger：UTC 00:00 = 北京时间 08:00，每天自动发送当日预约提醒
 [triggers]

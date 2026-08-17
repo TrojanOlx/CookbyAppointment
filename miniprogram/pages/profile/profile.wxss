@@ -257,6 +257,63 @@ page {
   text-align: center;
 }
 
+.family-empty-card {
+  box-sizing: border-box;
+  margin: 0 0 20rpx;
+  padding: 28rpx 26rpx;
+  background: var(--card-bg-light);
+  border: 4rpx solid rgba(25, 200, 185, 0.24);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.family-empty-title {
+  color: var(--text-color);
+  font-size: 31rpx;
+  font-weight: 900;
+}
+
+.family-empty-subtitle {
+  margin-top: 8rpx;
+  color: var(--text-light);
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.family-empty-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.family-action-btn {
+  box-sizing: border-box;
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  margin: 0;
+  padding: 0 10rpx;
+  border-radius: var(--radius-full);
+  font-size: 26rpx;
+  font-weight: 900;
+  line-height: 76rpx;
+  white-space: nowrap;
+}
+
+.family-action-btn::after { border: 0; }
+
+.family-action-create {
+  color: #fff9e8;
+  background: var(--primary-color);
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.family-action-join {
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border: 3rpx solid rgba(25, 200, 185, 0.26);
+}
+
 .menu-section,
 .settings {
   background: #fff9e8;

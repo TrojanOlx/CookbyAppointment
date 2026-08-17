@@ -30,6 +30,14 @@
       <text class="summary-num">{{summary.cancelled}}</text>
       <text class="summary-label">已取消</text>
     </view>
+    <view class="summary-item">
+      <text class="summary-num">{{reviewTotal}}</text>
+      <text class="summary-label">评价 · {{reviewAverage}}分</text>
+    </view>
+    <view class="summary-item">
+      <text class="summary-num">{{inventoryTotal}}</text>
+      <text class="summary-label">库存食材</text>
+    </view>
   </view>
 
   <!-- 每日趋势柱状图 -->
@@ -48,7 +56,7 @@
   <view class="section-card" wx:if="{{mealPieItems.length > 0}}">
     <view class="section-title">
       <image class="title-icon" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
-      <text>餐次分布</text>
+      <text>预约状态分布</text>
     </view>
     <view class="meal-list">
       <view class="meal-row" wx:for="{{mealPieItems}}" wx:key="label">

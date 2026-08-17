@@ -32,8 +32,28 @@ const getGlobalApp = (): WechatMiniprogram.App.Instance<{
 // 清除所有登录相关信息
 const clearLoginInfo = () => {
   wx.removeStorageSync('token');
+  wx.removeStorageSync('user_token');
+  wx.removeStorageSync('session_key');
   wx.removeStorageSync('userInfo');
   wx.removeStorageSync('openid');
+  wx.removeStorageSync('active_family_id');
+  wx.removeStorageSync('active_family');
+};
+
+const getFamilyId = (): string => {
+  const value = wx.getStorageSync('active_family_id');
+  if (value && typeof value === 'object') {
+    return String(value.id || value.familyId || value.family_id || '');
+  }
+  return value ? String(value) : '';
+};
+
+const getAppVersion = (): string => {
+  try {
+    return wx.getAccountInfoSync().miniProgram.version || '2.1.0-dev';
+  } catch {
+    return '2.1.0-dev';
+  }
 };
 
 // ---------- 静默刷新 token ----------
@@ -119,9 +139,12 @@ const handleUnauthorized = (statusCode: number) => {
 const doRequest = <T = any>(options: RequestOptions, allowRetry: boolean): Promise<T> => {
   return new Promise((resolve, reject) => {
     const token = wx.getStorageSync('token') || '';
+    const familyId = getFamilyId();
     const header = {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
+      'X-App-Version': getAppVersion(),
+      ...(familyId ? { 'X-Family-Id': familyId } : {}),
       ...options.header
     };
     let data = options.data;
@@ -153,10 +176,14 @@ const doRequest = <T = any>(options: RequestOptions, allowRetry: boolean): Promi
               handleUnauthorized(401);
               reject(new Error('登录已过期，请重新登录'));
             });
-        } else if (res.statusCode === 401 || res.statusCode === 403) {
-          // 重试后仍失败，或 403 权限不足（不重试）
-          handleUnauthorized(res.statusCode);
-          const errMsg = res.statusCode === 401 ? '登录已过期，请重新登录' : '权限不足';
+        } else if (res.statusCode === 401) {
+          // 静默刷新重试后仍失败，清理失效登录态。
+          handleUnauthorized(401);
+          reject(new Error('登录已过期，请重新登录'));
+        } else if (res.statusCode === 403) {
+          // RBAC 拒绝不代表登录失效，保留会话和当前家庭。
+          const errMsg = res.data && res.data.message ? res.data.message : '权限不足';
+          wx.showToast({ title: errMsg, icon: 'none', duration: 2000 });
           reject(new Error(errMsg));
         } else {
           const errMsg = res.data && res.data.message
@@ -229,8 +256,9 @@ export const del = <T = any>(url: string, params?: Record<string, any>): Promise
 };
 
 export function upload<T>(url: string, filePath: string, formData: Record<string, any> = {}, header: Record<string, any> = {}): Promise<T> {
-  return new Promise((resolve, reject) => {
+  const attempt = (allowRetry: boolean): Promise<T> => new Promise((resolve, reject) => {
     const token = wx.getStorageSync('token') || '';
+    const familyId = getFamilyId();
     wx.uploadFile({
       url: url.startsWith('http') ? url : `${BASE_URL}${url}`,
       filePath,
@@ -239,19 +267,63 @@ export function upload<T>(url: string, filePath: string, formData: Record<string
       header: {
         'content-type': 'multipart/form-data',
         'Authorization': token ? `Bearer ${token}` : '',
+        'X-App-Version': getAppVersion(),
+        ...(familyId ? { 'X-Family-Id': familyId } : {}),
         ...header
       },
       success(res) {
-        try {
-          const data = JSON.parse(res.data);
-          resolve(data);
-        } catch (err) {
-          reject(err);
+        let body: any = res.data;
+        if (typeof body === 'string') {
+          try {
+            body = JSON.parse(body);
+          } catch {
+            body = null;
+          }
         }
+
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          if (body === null || body === undefined) {
+            reject(new Error('上传响应无效'));
+          } else {
+            resolve(body as T);
+          }
+          return;
+        }
+
+        const message = body && typeof body.message === 'string'
+          ? body.message
+          : `请求失败(${res.statusCode})`;
+        if (res.statusCode === 401 && allowRetry) {
+          silentRefreshToken()
+            .then(() => attempt(false).then(resolve).catch(reject))
+            .catch(() => {
+              handleUnauthorized(401);
+              reject(new Error('登录已过期，请重新登录'));
+            });
+          return;
+        }
+        if (res.statusCode === 401) {
+          handleUnauthorized(401);
+          reject(new Error('登录已过期，请重新登录'));
+          return;
+        }
+        if (res.statusCode === 403) {
+          wx.showToast({ title: message, icon: 'none', duration: 2000 });
+          reject(new Error(message));
+          return;
+        }
+        if (res.statusCode === 426) {
+          wx.showModal({ title: '需要更新', content: message, showCancel: false });
+        } else {
+          wx.showToast({ title: message, icon: 'none', duration: 2000 });
+        }
+        reject(new Error(message));
       },
       fail(err) {
         reject(err);
       }
     });
   });
-} 
+
+  return attempt(true);
+}

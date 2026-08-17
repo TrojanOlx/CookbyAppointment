@@ -37,12 +37,33 @@ Page({
       const params: any = { page, pageSize: this.data.pageSize };
       if (this.data.filterRating > 0) params.maxRating = this.data.filterRating;
       const res = await get<{ total: number, list: any[] }>('/api/admin/review/list', params);
-      const list = (res.list || []).map((item: any) => ({
-        ...item,
-        stars: Array.from({ length: 5 }, (_: any, i: number) => i < item.rating),
-        createTimeStr: item.createTime
-          ? new Date(item.createTime).toLocaleDateString('zh-CN') : ''
-      }));
+      const rawList = Array.isArray(res.list) ? res.list : [];
+      const list = rawList.map((item: any) => {
+        let images: string[] = [];
+        if (Array.isArray(item.images)) {
+          images = item.images.filter((image: unknown): image is string => typeof image === 'string');
+        } else if (typeof item.images === 'string') {
+          try {
+            const parsed = JSON.parse(item.images);
+            images = Array.isArray(parsed)
+              ? parsed.filter((image: unknown): image is string => typeof image === 'string')
+              : [];
+          } catch {
+            images = [];
+          }
+        }
+        return {
+          ...item,
+          dishName: item.dishName || (item.dish && item.dish.name) || '未知菜品',
+          dishImage: item.dishImage || item.image || '/images/default-dish.png',
+          userName: item.userName || item.nickName || '家庭成员',
+          userAvatar: item.userAvatar || item.avatarUrl || '',
+          images,
+          stars: Array.from({ length: 5 }, (_: any, i: number) => i < Number(item.rating || 0)),
+          createTimeStr: item.createTime
+            ? new Date(item.createTime).toLocaleDateString('zh-CN') : ''
+        };
+      });
       const cachedDishList = await ImageCacheService.withCachedImages(
         list,
         item => item.dishImage,
@@ -54,7 +75,13 @@ Page({
         'cachedUserAvatar'
       );
       const all = refresh ? cachedList : [...this.data.reviews, ...cachedList];
-      this.setData({ reviews: all, page: page + 1, total: res.total, hasMore: all.length < res.total });
+      const responseTotal = Number(res.total || 0);
+      this.setData({
+        reviews: all,
+        page: page + 1,
+        total: responseTotal,
+        hasMore: page * this.data.pageSize < responseTotal
+      });
     } catch (e) {
       if (refresh) this.setData({ reviews: [] });
     } finally {

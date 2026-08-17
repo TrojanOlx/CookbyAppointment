@@ -1,0 +1,3 @@
+-- Insert-time family constraints are intentionally deferred while FAMILY_MODE
+-- remains off because the compatibility V1 handlers do not write familyId.
+-- A later family-only release can rebuild these tables with NOT NULL columns.

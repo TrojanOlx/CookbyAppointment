@@ -1,0 +1,209 @@
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.invite-page { position: relative; min-height: 100vh; }
+
+.invite-scroll {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  height: 100vh;
+  padding: 46rpx 28rpx calc(56rpx + env(safe-area-inset-bottom));
+}
+
+.invite-heading { margin: 8rpx 4rpx 34rpx; }
+
+.invite-kicker {
+  display: inline-block;
+  padding: 5rpx 16rpx;
+  color: #5068d8;
+  background: rgba(136, 157, 240, 0.2);
+  border: 2rpx solid rgba(80, 104, 216, 0.22);
+  border-radius: var(--radius-full);
+  font-size: 20rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
+}
+
+.invite-title {
+  margin-top: 18rpx;
+  color: var(--text-color);
+  font-size: 44rpx;
+  font-weight: 900;
+}
+
+.invite-subtitle {
+  margin-top: 8rpx;
+  color: var(--text-light);
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
+.invite-loading {
+  padding: 100rpx 0;
+  color: var(--text-light);
+  font-size: 28rpx;
+  text-align: center;
+}
+
+.invite-preview-card,
+.invite-create-card,
+.invite-token-card,
+.invite-error {
+  box-sizing: border-box;
+  padding: 34rpx 28rpx;
+  background: var(--card-bg-light);
+  border: 4rpx solid rgba(121, 79, 39, 0.14);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.invite-preview-card,
+.invite-error { text-align: center; }
+
+.invite-family-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 120rpx;
+  height: 120rpx;
+  margin: 0 auto 18rpx;
+  color: #fff9e8;
+  background: var(--accent-orange);
+  border: 4rpx solid rgba(255, 255, 255, 0.68);
+  border-radius: 38rpx;
+  font-size: 52rpx;
+  font-weight: 900;
+}
+
+.invite-family-name {
+  color: var(--text-color);
+  font-size: 38rpx;
+  font-weight: 900;
+}
+
+.invite-family-meta {
+  margin-top: 10rpx;
+  color: var(--text-secondary);
+  font-size: 27rpx;
+}
+
+.invite-expiry {
+  margin-top: 16rpx;
+  color: var(--text-light);
+  font-size: 23rpx;
+}
+
+.invite-status {
+  margin-top: 22rpx;
+  padding: 14rpx 20rpx;
+  color: var(--text-secondary);
+  background: var(--input-bg);
+  border-radius: var(--radius-sm);
+  font-size: 25rpx;
+  font-weight: 800;
+}
+
+.invite-card-title {
+  color: var(--text-color);
+  font-size: 32rpx;
+  font-weight: 900;
+}
+
+.invite-card-subtitle {
+  margin-top: 10rpx;
+  color: var(--text-light);
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.invite-error image {
+  width: 66rpx;
+  height: 66rpx;
+  margin-bottom: 14rpx;
+}
+
+.create-label,
+.token-label {
+  color: var(--text-color);
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.create-hint {
+  margin-top: 18rpx;
+  color: var(--text-light);
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+island-tabs { display: block; margin-top: 18rpx; }
+
+button::after { border: 0; }
+
+.invite-primary-btn,
+.invite-secondary-btn,
+.invite-share-btn {
+  box-sizing: border-box;
+  width: 100%;
+  height: 82rpx;
+  margin: 26rpx 0 0;
+  border-radius: var(--radius-full);
+  font-size: 29rpx;
+  font-weight: 900;
+  line-height: 82rpx;
+}
+
+.invite-primary-btn {
+  color: #fff9e8;
+  background: var(--primary-color);
+  box-shadow: 0 7rpx 0 var(--primary-dark);
+}
+
+.invite-primary-btn[disabled] { opacity: 0.58; }
+
+.invite-secondary-btn {
+  color: var(--text-secondary);
+  background: transparent;
+  border: 3rpx dashed var(--border-color);
+}
+
+.invite-share-btn {
+  color: var(--text-color);
+  background: var(--warning-light);
+  border: 3rpx solid rgba(247, 205, 103, 0.46);
+}
+
+.invite-token-card {
+  margin-top: 20rpx;
+  text-align: center;
+}
+
+.token-value {
+  margin-top: 16rpx;
+  padding: 20rpx 10rpx;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border: 3rpx dashed rgba(25, 200, 185, 0.48);
+  border-radius: var(--radius-sm);
+  font-size: 42rpx;
+  font-weight: 900;
+  letter-spacing: 4rpx;
+}
+
+.token-meta {
+  margin-top: 12rpx;
+  color: var(--text-light);
+  font-size: 24rpx;
+}
+
+.invite-text-btn {
+  margin: 26rpx auto 0;
+  color: var(--primary-dark);
+  background: transparent;
+  border: 0;
+  font-size: 25rpx;
+  font-weight: 900;
+}

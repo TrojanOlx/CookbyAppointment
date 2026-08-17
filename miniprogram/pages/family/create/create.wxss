@@ -1,0 +1,129 @@
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.family-form-page {
+  position: relative;
+  min-height: 100vh;
+}
+
+.family-form-scroll {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  height: 100vh;
+  padding: 46rpx 28rpx calc(54rpx + env(safe-area-inset-bottom));
+}
+
+.form-heading { margin: 8rpx 4rpx 34rpx; }
+
+.form-kicker {
+  display: inline-block;
+  padding: 5rpx 16rpx;
+  color: #8a5b00;
+  background: var(--warning-light);
+  border: 2rpx solid rgba(247, 205, 103, 0.5);
+  border-radius: var(--radius-full);
+  font-size: 20rpx;
+  font-weight: 900;
+  letter-spacing: 2rpx;
+}
+
+.form-title {
+  margin-top: 18rpx;
+  color: var(--text-color);
+  font-size: 46rpx;
+  font-weight: 900;
+}
+
+.form-subtitle {
+  margin-top: 8rpx;
+  color: var(--text-light);
+  font-size: 26rpx;
+}
+
+.form-card {
+  box-sizing: border-box;
+  padding: 32rpx 28rpx 36rpx;
+  background: var(--card-bg-light);
+  border: 4rpx solid rgba(121, 79, 39, 0.14);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.form-label {
+  margin-bottom: 14rpx;
+  color: var(--text-color);
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.timezone-label { margin-top: 32rpx; }
+
+.family-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 88rpx;
+  padding: 0 24rpx;
+  color: var(--text-color);
+  background: var(--input-bg);
+  border: 3rpx solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 30rpx;
+}
+
+.family-input:focus { border-color: var(--primary-color); }
+.family-placeholder { color: var(--text-light); }
+
+.form-hint {
+  margin-top: 10rpx;
+  color: var(--text-light);
+  font-size: 23rpx;
+  line-height: 1.5;
+}
+
+.form-note {
+  display: flex;
+  align-items: flex-start;
+  margin: 24rpx 8rpx 30rpx;
+  color: var(--text-secondary);
+  font-size: 24rpx;
+  line-height: 1.55;
+}
+
+.form-note image {
+  width: 30rpx;
+  height: 30rpx;
+  flex-shrink: 0;
+  margin: 3rpx 10rpx 0 0;
+}
+
+button::after { border: 0; }
+
+.form-primary-btn,
+.form-cancel-btn {
+  box-sizing: border-box;
+  width: 100%;
+  height: 86rpx;
+  margin: 0;
+  border-radius: var(--radius-full);
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 86rpx;
+}
+
+.form-primary-btn {
+  color: #fff9e8;
+  background: var(--primary-color);
+  box-shadow: 0 7rpx 0 var(--primary-dark);
+}
+
+.form-primary-btn[disabled] { opacity: 0.58; }
+
+.form-cancel-btn {
+  margin-top: 18rpx;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 3rpx dashed var(--border-color);
+}

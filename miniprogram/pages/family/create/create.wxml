@@ -1,0 +1,28 @@
+<view class="family-form-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="family-form-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <view class="form-heading">
+      <view class="form-kicker">NEW FAMILY</view>
+      <view class="form-title">创建家庭小岛</view>
+      <view class="form-subtitle">给共同生活的人一个熟悉的名字</view>
+    </view>
+
+    <view class="form-card">
+      <view class="form-label">家庭名称</view>
+      <input class="family-input" value="{{name}}" maxlength="32" placeholder="例如：周末厨房" placeholder-class="family-placeholder" focus="true" bindinput="onNameInput" bindconfirm="onNameConfirm" confirm-type="done" />
+      <view class="form-hint">名称会显示给所有家庭成员</view>
+
+      <view class="form-label timezone-label">时区</view>
+      <input class="family-input" value="{{timezone}}" maxlength="64" placeholder="Asia/Shanghai" placeholder-class="family-placeholder" bindinput="onTimezoneChange" />
+      <view class="form-hint">用于安排日期和餐次，默认使用中国标准时间</view>
+    </view>
+
+    <view class="form-note">
+      <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <text>创建后你会成为家庭创建者，可以邀请家人并管理成员权限。</text>
+    </view>
+
+    <button class="form-primary-btn" loading="{{saving}}" disabled="{{saving}}" bindtap="createFamily">创建家庭</button>
+    <button class="form-cancel-btn" bindtap="goBack">先不创建</button>
+  </scroll-view>
+</view>

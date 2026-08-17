@@ -271,12 +271,13 @@ Page<PageData, PageInstance>({
   // 下载文件
   async downloadFile(e) {
     const filePath = e.currentTarget.dataset.path as string;
+    const signedUrl = e.currentTarget.dataset.url as string;
     const fileName = e.currentTarget.dataset.name as string;
     console.log('下载文件:', filePath, fileName);
 
     try {
       wx.showLoading({ title: '下载中...' });
-      const downloadUrl = FileService.getDownloadUrl(filePath);
+      const downloadUrl = signedUrl || FileService.getDownloadUrl(filePath);
 
       // 下载文件到本地
       const result = await new Promise<WechatMiniprogram.DownloadFileSuccessCallbackResult>((resolve, reject) => {
@@ -613,4 +614,4 @@ Page<PageData, PageInstance>({
       minute: '2-digit'
     });
   }
-}); 
+});

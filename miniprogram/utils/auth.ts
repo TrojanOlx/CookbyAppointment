@@ -4,17 +4,17 @@
 const BASE_URL = 'https://wx.oulongxing.com';
 
 // 存储用户登录态的key
-const USER_TOKEN_KEY = 'user_token';
+const USER_TOKEN_KEY = 'token';
+const LEGACY_USER_TOKEN_KEY = 'user_token';
 const USER_INFO_KEY = 'userInfo';
 const OPEN_ID_KEY = 'openid';
-const SESSION_KEY = 'session_key';
+const LEGACY_SESSION_KEY = 'session_key';
 
 // 用户登录信息接口
 export interface LoginResult {
   openid: string;
-  session_key: string;
   unionid?: string;
-  token?: string;
+  token: string;
 }
 
 // 用户信息接口
@@ -72,9 +72,9 @@ export const code2Session = async (code: string): Promise<LoginResult> => {
   try {
     console.log('开始请求后端:');
     
-    // 这里假设后端有一个/api/login接口，接收code并返回openid等信息
+    // 使用统一的多会话登录接口，服务端不会返回微信 session_key。
     const response = await requestWithLoading<LoginResult>({
-      url: `${BASE_URL}/api/getUserProfile`,
+      url: `${BASE_URL}/api/user/login`,
       method: 'POST',
       data: { code }
     }, '登录中...');
@@ -83,10 +83,9 @@ export const code2Session = async (code: string): Promise<LoginResult> => {
     if (response) {
       // 保存登录信息
       wx.setStorageSync(OPEN_ID_KEY, response.openid);
-      wx.setStorageSync(SESSION_KEY, response.session_key);
-      if (response.token) {
-        wx.setStorageSync(USER_TOKEN_KEY, response.token);
-      }
+      wx.setStorageSync(USER_TOKEN_KEY, response.token);
+      wx.removeStorageSync(LEGACY_USER_TOKEN_KEY);
+      wx.removeStorageSync(LEGACY_SESSION_KEY);
       return response;
     } else {
       throw new Error('服务器返回数据格式错误');
@@ -141,7 +140,7 @@ export const getPhoneNumber = async (code: string): Promise<PhoneNumberResult> =
  * @returns boolean 是否已登录
  */
 export const isLoggedIn = (): boolean => {
-  return !!(wx.getStorageSync('token') || wx.getStorageSync(USER_TOKEN_KEY));
+  return !!wx.getStorageSync(USER_TOKEN_KEY);
 };
 
 /**
@@ -149,8 +148,9 @@ export const isLoggedIn = (): boolean => {
  */
 export const logout = (): void => {
   wx.removeStorageSync(USER_TOKEN_KEY);
+  wx.removeStorageSync(LEGACY_USER_TOKEN_KEY);
   wx.removeStorageSync(OPEN_ID_KEY);
-  wx.removeStorageSync(SESSION_KEY);
+  wx.removeStorageSync(LEGACY_SESSION_KEY);
   wx.removeStorageSync(USER_INFO_KEY);
 };
 

@@ -2,11 +2,27 @@
 import { get } from '../../../../services/http';
 import { ImageCacheService } from '../../../../utils/imageCache';
 
+type AppointmentStatusKey = 'pending' | 'confirmed' | 'completed' | 'cancelled';
+
+const STATUS_ALIASES: Record<string, AppointmentStatusKey> = {
+  '待确认': 'pending', pending: 'pending',
+  '已确认': 'confirmed', confirmed: 'confirmed',
+  '已完成': 'completed', completed: 'completed',
+  '已取消': 'cancelled', cancelled: 'cancelled'
+};
+
+function normalizeStatus(value: unknown): AppointmentStatusKey | null {
+  return STATUS_ALIASES[String(value || '').trim().toLowerCase()] || null;
+}
+
 Page({
   data: {
     loading: false,
     rangeTab: 7 as number,
     summary: { total: 0, completed: 0, cancelled: 0, pending: 0, confirmed: 0 },
+    reviewTotal: 0,
+    reviewAverage: '0.0',
+    inventoryTotal: 0,
     mealDistribution: {} as Record<string, number>,
     mealPieItems: [] as any[],
     topDishes: [] as any[],
@@ -44,46 +60,86 @@ Page({
         .toISOString().slice(0, 10);
       const res = await get<any>('/api/admin/statistics', { startDate, endDate });
 
-      const topDishesWithPct = (res.topDishes || []).map((d: any) => ({
-        ...d,
-        pct: res.topDishes[0] ? Math.round(d.count / res.topDishes[0].count * 100) : 0
+      const appointments = res && res.appointments && typeof res.appointments === 'object'
+        ? res.appointments : {};
+      const reviews = res && res.reviews && typeof res.reviews === 'object' ? res.reviews : {};
+      const inventory = res && res.inventory && typeof res.inventory === 'object' ? res.inventory : {};
+      const statusCounts: Record<AppointmentStatusKey, number> = {
+        pending: 0,
+        confirmed: 0,
+        completed: 0,
+        cancelled: 0
+      };
+      const statusRows = Array.isArray(appointments.byStatus) ? appointments.byStatus : [];
+      statusRows.forEach((row: any) => {
+        const key = normalizeStatus(row && row.status);
+        if (key) statusCounts[key] += Number(row.count || 0);
+      });
+      const totalAppointments = Number(appointments.total || Object.values(statusCounts).reduce((sum, count) => sum + count, 0));
+      const summary = {
+        total: totalAppointments,
+        pending: statusCounts.pending,
+        confirmed: statusCounts.confirmed,
+        completed: statusCounts.completed,
+        cancelled: statusCounts.cancelled
+      };
+
+      // V2 exposes status distribution rather than meal/daily breakdowns.
+      // Keep the existing visualization slots populated with the supported data.
+      const statusLabels: Record<AppointmentStatusKey, string> = {
+        pending: '待确认',
+        confirmed: '已确认',
+        completed: '已完成',
+        cancelled: '已取消'
+      };
+      const statusColors: Record<AppointmentStatusKey, string> = {
+        pending: '#FB8C00',
+        confirmed: '#2196F3',
+        completed: '#4CAF50',
+        cancelled: '#E53935'
+      };
+      const mealPieItems = (Object.keys(statusLabels) as AppointmentStatusKey[])
+        .filter(key => statusCounts[key] > 0)
+        .map(key => ({
+          label: statusLabels[key],
+          count: statusCounts[key],
+          pct: totalAppointments ? Math.round(statusCounts[key] / totalAppointments * 100) : 0,
+          color: statusColors[key]
+        }));
+
+      const popularDishes = Array.isArray(res && res.popularDishes) ? res.popularDishes : [];
+      const maxPopularCount = Math.max(
+        ...popularDishes.map((dish: any) => Number(dish && dish.count || 0)),
+        1
+      );
+      const topDishesWithPct = popularDishes.map((dish: any) => ({
+        ...dish,
+        dishId: dish.dishId || dish.id,
+        count: Number(dish.count || 0),
+        pct: Math.round(Number(dish.count || 0) / maxPopularCount * 100)
       }));
       const topDishes = await ImageCacheService.withCachedImages(
         topDishesWithPct,
-        item => item.image
+        (item: any) => item.image || (Array.isArray(item.images) ? item.images[0] : undefined)
       );
-      const maxDishCount = res.topDishes && res.topDishes[0] ? res.topDishes[0].count : 1;
 
-      const userRankingWithPct = (res.userRanking || []).map((u: any) => ({
-        ...u,
-        pct: res.userRanking[0] ? Math.round(u.count / res.userRanking[0].count * 100) : 0
-      }));
-      const userRanking = await ImageCacheService.withCachedImages(
-        userRankingWithPct,
-        item => item.avatarUrl,
-        'cachedAvatar'
-      );
-      const maxUserCount = res.userRanking && res.userRanking[0] ? res.userRanking[0].count : 1;
-
-      const mealColors: Record<string, string> = {
-        '早餐': '#FF9800', '午餐': '#4CAF50', '晚餐': '#2196F3'
-      };
-      const mealDist = res.mealDistribution || {};
-      const mealTotal = Object.values(mealDist).reduce((a: number, b: any) => a + Number(b), 0) || 1;
-      const mealPieItems = Object.entries(mealDist).map(([label, count]) => ({
-        label,
-        count,
-        pct: Math.round(Number(count) / mealTotal * 100),
-        color: mealColors[label] || '#9E9E9E'
-      }));
-
-      const dailyTrend: { date: string, count: number }[] = res.dailyTrend || [];
-      const dailyLabels = dailyTrend.map(d => d.date.slice(5));
-      const dailyValues = dailyTrend.map(d => d.count);
-      const maxDailyValue = Math.max(...dailyValues, 1);
+      const maxDishCount = maxPopularCount;
+      const userRanking: any[] = [];
+      const maxUserCount = 1;
+      const mealDist = statusRows.reduce((result: Record<string, number>, row: any) => {
+        const key = normalizeStatus(row && row.status);
+        if (key) result[statusLabels[key]] = statusCounts[key];
+        return result;
+      }, {});
+      const dailyLabels: string[] = [];
+      const dailyValues: number[] = [];
+      const maxDailyValue = 1;
 
       this.setData({
-        summary: res.summary || {},
+        summary,
+        reviewTotal: Number(reviews.total || 0),
+        reviewAverage: Number(reviews.averageRating || 0).toFixed(1),
+        inventoryTotal: Number(inventory.total || 0),
         mealDistribution: mealDist,
         mealPieItems,
         topDishes,

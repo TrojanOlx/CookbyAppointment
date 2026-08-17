@@ -1,83 +1,34 @@
 // 文件服务
-import { get, post, del, BASE_URL } from './http';
+import { get, post, del, upload } from './http';
 import { FileInfo, FileListResponse, FileUploadResponse, FileOperationResponse, BatchDeleteResponse } from '../models/file';
 
 // 文件服务类
 export class FileService {
   // 上传文件
   static async uploadFile(filePath: string, folder: string = 'default', fileName?: string): Promise<FileUploadResponse> {
-    
-    return new Promise((resolve) => {
-      // 获取token
-      const token = wx.getStorageSync('token') || '';
-      
-      // 如果没有提供文件名，从路径中提取
-      if (!fileName) {
-        const pathParts = filePath.split('/');
-        fileName = pathParts[pathParts.length - 1];
-      }
-      
-      console.log('开始上传文件:', filePath, '到文件夹:', folder, '文件名:', fileName);
-      wx.uploadFile({
-        url: `${BASE_URL}/api/file/upload`, // 使用完整URL
-        header: {
-          'content-type': 'multipart/form-data',
-          'Authorization': token ? `Bearer ${token}` : ''
-        },
-        filePath,
-        name: 'file',
-        formData: {
-          folder,
-          fileName: fileName || '' // 确保fileName不是undefined
-        },
-        success(res) {
-          console.log('上传文件成功，返回数据:', res.data);
-          try {
-            const data = JSON.parse(res.data);
-            
-            // 检查是否有token错误
-            if (data.error && (data.message === '未提供token' || data.message?.includes('token'))) {
-              console.error('认证失败，缺少有效token');
-              wx.showToast({
-                title: '请先登录',
-                icon: 'none'
-              });
-            }
-            
-            resolve(data);
-          } catch (error) {
-            console.error('解析响应数据失败:', error, '原始数据:', res.data);
-            resolve({
-              success: false,
-              error: '解析响应失败'
-            });
-          }
-        },
-        fail(err) {
-          console.error('上传文件失败:', err);
-          resolve({
-            success: false,
-            error: err.errMsg || '上传失败'
-          });
-        }
+    const resolvedName = fileName || filePath.split('/').pop() || 'file';
+    try {
+      const result = await upload<any>('/api/file/upload', filePath, {
+        purpose: folder,
+        fileName: resolvedName
       });
-    });
+      if (!result || result.error) {
+        return { success: false, error: result?.message || result?.error || '上传失败' };
+      }
+      return { success: true, data: this.normalizeFile(result) };
+    } catch (error) {
+      console.error('上传文件失败:', error);
+      return { success: false, error: error instanceof Error ? error.message : '上传失败' };
+    }
   }
   
   // 获取文件信息
   static async getFileInfo(filePath: string): Promise<FileInfo | null> {
     try {
-      const result = await get<{success: boolean, data: FileInfo}>('/api/file/info', { filePath });
-      
-      // 确保文件类型字段存在
-      if (result.success && result.data) {
-        // 如果缺少fileType，根据文件名推断
-        if (!result.data.fileType) {
-          result.data.fileType = this.guessFileTypeByName(result.data.fileName);
-        }
-      }
-      
-      return result.success ? result.data : null;
+      const id = this.extractFileId(filePath);
+      if (!id) return null;
+      const result = await get<any>('/api/file/info', { id });
+      return result && !result.error ? this.normalizeFile(result) : null;
     } catch (error) {
       console.error('获取文件信息失败:', error);
       return null;
@@ -87,8 +38,9 @@ export class FileService {
   // 删除文件 - 使用DELETE方法，参数放在请求体中
   static async deleteFile(filePath: string): Promise<FileOperationResponse> {
     try {
-      // 使用DELETE请求，参数通过URL传递
-      return await del<FileOperationResponse>('/api/file/delete', { filePath });
+      const id = this.extractFileId(filePath);
+      if (!id) return { success: false, message: '文件地址无效' };
+      return await del<FileOperationResponse>('/api/file/delete', { id });
     } catch (error) {
       console.error('删除文件失败:', error);
       return {
@@ -101,7 +53,23 @@ export class FileService {
   // 批量删除文件 - 新增方法
   static async batchDeleteFiles(filePaths: string[]): Promise<BatchDeleteResponse> {
     try {
-      return await post<BatchDeleteResponse>('/api/file/batch-delete', { filePaths });
+      const ids = filePaths.map(path => this.extractFileId(path)).filter((id): id is string => !!id);
+      const result = await post<any>('/api/file/batch-delete', { ids });
+      const deleted = Array.isArray(result.deleted) ? result.deleted : [];
+      const notFound = Array.isArray(result.notFound) ? result.notFound : [];
+      return {
+        success: result.success === true,
+        data: {
+          total: ids.length,
+          successful: deleted.length,
+          failed: notFound.length,
+          details: ids.map(id => ({
+            filePath: `/api/file/download?id=${encodeURIComponent(id)}`,
+            success: deleted.includes(id),
+            error: notFound.includes(id) ? '文件不存在' : undefined
+          }))
+        }
+      };
     } catch (error) {
       console.error('批量删除文件失败:', error);
       return {
@@ -119,19 +87,14 @@ export class FileService {
   // 获取文件列表
   static async listFiles(folder: string = 'default', limit: number = 100): Promise<FileListResponse | null> {
     try {
-      const result = await get<{success: boolean, data: FileListResponse}>('/api/file/list', { folder, limit });
-      
-      // 处理返回数据，确保文件类型字段存在
-      if (result.success && result.data && result.data.files) {
-        // 为缺少fileType的文件项添加默认值
-        result.data.files = result.data.files.map(file => ({
-          ...file,
-          // 如果缺少fileType，根据文件扩展名推断
-          fileType: file.fileType || this.guessFileTypeByName(file.fileName)
-        }));
-      }
-      
-      return result.success ? result.data : null;
+      const pageSize = Math.min(100, Math.max(1, limit));
+      const result = await get<any>('/api/file/list', { purpose: folder, pageSize });
+      if (!result || !Array.isArray(result.list)) return null;
+      return {
+        files: result.list.map((file: any) => this.normalizeFile(file)),
+        truncated: Number(result.total || 0) > result.list.length,
+        total: Number(result.total || result.list.length)
+      };
     } catch (error) {
       console.error('获取文件列表失败:', error);
       return null;
@@ -180,8 +143,28 @@ export class FileService {
   // 获取文件下载链接
   static getDownloadUrl(filePath: string): string {
     if (!filePath) return '';
-    const BASE_URL = 'https://wx.oulongxing.com';
-    return `${BASE_URL}/api/file/download?filePath=${encodeURIComponent(filePath)}`;
+    return filePath;
+  }
+
+  private static normalizeFile(file: any): FileInfo {
+    const fileName = String(file.fileName || file.name || 'file');
+    return {
+      filePath: String(file.filePath || ''),
+      fileName,
+      fileType: String(file.fileType || file.contentType || this.guessFileTypeByName(fileName)),
+      fileSize: Number(file.fileSize ?? file.size ?? 0),
+      uploadTime: file.uploadTime || (file.createdAt ? new Date(Number(file.createdAt)).toISOString() : undefined),
+      url: String(file.url || file.filePath || '')
+    };
+  }
+
+  private static extractFileId(value: string): string | null {
+    try {
+      const parsed = new URL(value, 'https://files.internal');
+      return parsed.pathname === '/api/file/download' ? parsed.searchParams.get('id') : null;
+    } catch {
+      return null;
+    }
   }
   
   // 上传图片（从相册或相机）
@@ -276,4 +259,4 @@ export class FileService {
       return 'files';
     }
   }
-} 
+}

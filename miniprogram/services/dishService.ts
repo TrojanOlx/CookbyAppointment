@@ -50,14 +50,14 @@ export class DishService {
     });
   }
 
-  // 根据食材推荐菜品
+  // 根据用餐成员的口味偏好推荐菜品
   static async recommendByIngredients(
-    ingredientIds: string[],
+    dinerIds: string[],
     page: number = 1,
     pageSize: number = 10
   ): Promise<{ total: number, list: Dish[] }> {
     return post<{ total: number, list: Dish[] }>('/api/dish/recommend', {
-      ingredientIds,
+      dinerIds,
       page,
       pageSize
     });
@@ -82,4 +82,4 @@ export class DishService {
   static async deleteIngredient(id: string): Promise<{ success: boolean }> {
     return del<{ success: boolean }>('/api/dish/ingredient/delete', { id });
   }
-} 
+}

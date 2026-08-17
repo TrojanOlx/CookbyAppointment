@@ -1,9 +1,15 @@
 {
   "name": "miniprogram-ts-less-quickstart",
-  "version": "2.0.8",
+  "version": "2.1.0",
   "description": "这是一个家庭菜单预约小程序，用于记录每天早中晚餐的菜单，并且记录每一餐所需的食材和做法。用户可以创建、修改、删除和查询菜品，进行日历预约，并管理冰箱库存。",
   "scripts": {
-    "build": "echo 构建完成",
+    "build": "npm run check",
+    "typecheck": "tsc -p cloudflareWorkes/tsconfig.json --noEmit",
+    "lint": "eslint \"cloudflareWorkes/**/*.ts\"",
+    "test": "vitest run cloudflareWorkes/test",
+    "test:integration": "node scripts/test-worker-integration.mjs",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "db:migrate:local": "wrangler d1 migrations apply cookby_appointment --local --config cloudflareWorkes/wrangler.toml",
     "worker:login": "npx --yes wrangler login",
     "worker:whoami": "npx --yes wrangler whoami",
     "worker:dry-run": "npx --yes wrangler deploy --dry-run --config cloudflareWorkes/wrangler.toml",
@@ -14,9 +20,16 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260817.1",
     "@babel/preset-typescript": "^7.24.7",
+    "@eslint/js": "^9.33.0",
+    "eslint": "^9.33.0",
     "miniprogram-ci": "^2.0.7",
-    "miniprogram-api-typings": "^2.8.3-1"
+    "miniprogram-api-typings": "^2.8.3-1",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.1",
+    "vitest": "^2.1.9",
+    "wrangler": "^4.30.0"
   },
   "main": ".eslintrc.js",
   "dependencies": {

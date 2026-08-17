@@ -7,10 +7,19 @@
     "pages/menu/detail/detail",
     "pages/appointment/appointment",
     "pages/appointment/select/select",
+    "pages/appointment/booking/booking",
     "pages/inventory/inventory",
     "pages/inventory/add/add",
     "pages/profile/profile",
     "pages/profile/settings/settings",
+    "pages/profile/account/account",
+    "pages/profile/preferences/preferences",
+    "pages/family/index/index",
+    "pages/family/create/create",
+    "pages/family/invite/invite",
+    "pages/family/members/members",
+    "pages/menu/recommend/recommend",
+    "pages/shopping/index",
     "pages/profile/admin/appointments/appointments",
     "pages/profile/admin/reviews/reviews",
     "pages/profile/admin/statistics/statistics",
@@ -40,6 +49,10 @@
       {
         "pagePath": "pages/appointment/appointment",
         "text": "预约"
+      },
+      {
+        "pagePath": "pages/shopping/index",
+        "text": "采购"
       },
       {
         "pagePath": "pages/profile/profile",

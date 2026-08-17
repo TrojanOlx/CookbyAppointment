@@ -1,10 +1,13 @@
 // 引入数据管理工具和类型定义
 import { AdminAppointmentService } from '../../../../services/adminAppointmentService';
 import { AppointmentService } from '../../../../services/appointmentService';
-import { Appointment } from '../../../../models/appointment';
+import { Appointment, AppointmentStatus } from '../../../../models/appointment';
 import { formatDate, getCurrentDate, showLoading, hideLoading, showToast } from '../../../../utils/util';
 import { requestSubscribeForAdmin } from '../../../../services/notificationService';
 import { MealType } from '../../../../utils/model';
+import { UserService } from '../../../../services/userService';
+const { getFamilyRoleContext } = require('../../../../services/familyRole');
+import { request } from '../../../../services/http';
 
 // 引入wx-calendar和农历插件
 const { WxCalendar } = require('@lspriv/wx-calendar/lib');
@@ -48,6 +51,106 @@ interface MarkItem {
   style?: any;
 }
 
+interface CompletionDeduction {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string | null;
+}
+
+interface CompletionUnresolved {
+  label: string;
+}
+
+interface CompletionPreview {
+  appointmentId: string;
+  deductions: CompletionDeduction[];
+  unresolved: CompletionUnresolved[];
+}
+
+interface CompletionResponse {
+  success?: boolean;
+  requiresInventoryConfirmation?: boolean;
+  deductions?: Array<Partial<CompletionDeduction>>;
+  unresolved?: Array<Record<string, any>>;
+}
+
+interface CompletionRequest {
+  id: string;
+  confirmDeduction?: boolean;
+  deductions?: CompletionDeduction[];
+}
+
+const unresolvedReasonLabel: Record<string, string> = {
+  quantity_not_convertible: '数量单位无法换算',
+  inventory_insufficient: '库存不足'
+};
+
+const APPOINTMENT_STATUS_ALIASES: Record<string, AppointmentStatus> = {
+  '待确认': AppointmentStatus.Pending,
+  pending: AppointmentStatus.Pending,
+  '已确认': AppointmentStatus.Confirmed,
+  confirmed: AppointmentStatus.Confirmed,
+  '已完成': AppointmentStatus.Completed,
+  completed: AppointmentStatus.Completed,
+  '已取消': AppointmentStatus.Cancelled,
+  cancelled: AppointmentStatus.Cancelled
+};
+
+function normalizeAppointmentStatus(value: unknown): AppointmentStatus {
+  return APPOINTMENT_STATUS_ALIASES[String(value || '').trim().toLowerCase()] || AppointmentStatus.Pending;
+}
+
+const normalizeCompletionPreview = (
+  appointmentId: string,
+  response: CompletionResponse
+): CompletionPreview => {
+  const deductions = Array.isArray(response.deductions)
+    ? response.deductions.map((item) => ({
+      id: String(item.id || ''),
+      name: String(item.name || '未命名食材'),
+      quantity: typeof item.quantity === 'number' ? item.quantity : 0,
+      unit: item.unit === undefined || item.unit === null ? null : String(item.unit)
+    }))
+    : [];
+  const unresolved = Array.isArray(response.unresolved)
+    ? response.unresolved.map((item) => {
+      const name = String(item.name || item.ingredient || '未匹配食材');
+      const reason = unresolvedReasonLabel[String(item.reason || '')] || '暂时无法扣减';
+      const missing = item.missingQuantity === undefined || item.missingQuantity === null
+        ? ''
+        : `，还缺 ${item.missingQuantity}${item.unit || ''}`;
+      return { label: `${name}：${reason}${missing}` };
+    })
+    : [];
+
+  return { appointmentId, deductions, unresolved };
+};
+
+const completeAppointmentRequest = (
+  payload: CompletionRequest
+): Promise<CompletionResponse> => {
+  const storedFamily = wx.getStorageSync('active_family_id');
+  const familyId = storedFamily && typeof storedFamily === 'object'
+    ? storedFamily.id || storedFamily.familyId || storedFamily.family_id || ''
+    : storedFamily;
+  const options: {
+    url: string;
+    method: 'PUT';
+    data: CompletionRequest;
+    header?: Record<string, string>;
+  } = {
+    url: '/api/appointment/complete',
+    method: 'PUT',
+    data: payload
+  };
+  if (familyId !== undefined && familyId !== null && familyId !== '') {
+    options.header = { 'X-Family-Id': String(familyId) };
+  }
+  // request 统一注入 Authorization，家庭上下文仅在选中家庭时附加。
+  return request<CompletionResponse>(options);
+};
+
 Page({
   data: {
     calendarMode: 'month', // 日历视图模式：month, week, schedule
@@ -58,8 +161,12 @@ Page({
     plugins: [LunarPlugin],  // 使用农历插件
     safeAreaBottom: 0,
     isLoading: false, // 加载状态
+    canManageAppointments: false,
+    familyRole: '',
     firstDay: '',
-    lastDay: ''
+    lastDay: '',
+    completionPreview: null as CompletionPreview | null,
+    isCompleting: false
   },
 
   onLoad() {
@@ -77,11 +184,37 @@ Page({
 
   onShow() {
     console.log('页面显示');
-    // 加载当前选中日期的预约
+    this.syncRoleVisibility();
+  },
+
+  async syncRoleVisibility() {
+    if (!wx.getStorageSync('token')) {
+      this.setData({ canManageAppointments: false, familyRole: '', userAppointments: [] });
+      return;
+    }
+    let legacyAdmin = false;
+    try {
+      const result = await UserService.checkAdmin();
+      legacyAdmin = !!result.isAdmin;
+    } catch (error) {
+      console.warn('检查旧版管理员状态失败:', error);
+    }
+
+    const context = await getFamilyRoleContext();
+    const canManageAppointments = legacyAdmin || context.canManageAppointments;
+    this.setData({
+      canManageAppointments,
+      familyRole: context.role
+    });
+
+    // 仅在角色已确认有权限时加载管理员预约数据，避免普通成员进入深链触发权限跳转。
+    if (!canManageAppointments) {
+      this.setData({ userAppointments: [] });
+      return;
+    }
     if (this.data.selectedDate) {
       this.loadUserAppointments();
     } else {
-      // 如果没有选中日期，默认加载今天的预约
       const today = getCurrentDate();
       this.setData({ selectedDate: today }, () => {
         this.loadUserAppointments();
@@ -341,7 +474,7 @@ Page({
         userAppointment.meals.push({
           type: appointment.mealType,
           dishes: dishNames,
-          status: appointment.status || '待确认',
+          status: normalizeAppointmentStatus(appointment.status),
           id: appointment.id
         });
       }
@@ -626,6 +759,8 @@ Page({
   
   // 完成预约
   async completeAppointment(e: any) {
+    if (this.data.isCompleting) return;
+
     try {
       const { appointmentId } = e.currentTarget.dataset;
       
@@ -636,12 +771,22 @@ Page({
 
       // 管理员订阅「新预约」通知，确保后续有新预约时能收到推送
       await requestSubscribeForAdmin();
-      
-      showLoading('更新状态中');
-      
-      // 调用AppointmentService的completeAppointment方法
-      const result = await AppointmentService.completeAppointment(appointmentId);
-      
+
+      this.setData({ isCompleting: true });
+      showLoading('检查库存中');
+
+      // 首次请求只生成消费预览，不直接扣减库存。
+      const result = await completeAppointmentRequest({ id: appointmentId });
+
+      if (result.requiresInventoryConfirmation) {
+        hideLoading();
+        this.setData({
+          completionPreview: normalizeCompletionPreview(appointmentId, result),
+          isCompleting: false
+        });
+        return;
+      }
+
       if (result.success) {
         hideLoading();
         showToast('预约已完成');
@@ -655,7 +800,52 @@ Page({
       console.error('完成预约失败:', error);
       hideLoading();
       showToast('完成预约失败');
+    } finally {
+      this.setData({ isCompleting: false });
     }
+  },
+
+  // 用户确认消费预览后，带扣减清单完成预约。
+  async confirmCompletion() {
+    const preview = this.data.completionPreview as CompletionPreview | null;
+    if (!preview || this.data.isCompleting) return;
+
+    this.setData({ isCompleting: true });
+    try {
+      showLoading('扣减库存中');
+      const result = await completeAppointmentRequest({
+        id: preview.appointmentId,
+        confirmDeduction: true,
+        deductions: preview.deductions
+      });
+
+      if (result.requiresInventoryConfirmation) {
+        hideLoading();
+        this.setData({
+          completionPreview: normalizeCompletionPreview(preview.appointmentId, result)
+        });
+        showToast('库存发生变化，请重新确认');
+        return;
+      }
+
+      if (!result.success) throw new Error('更新状态失败');
+
+      hideLoading();
+      this.setData({ completionPreview: null });
+      showToast('预约已完成');
+      this.loadUserAppointments();
+    } catch (error) {
+      console.error('确认完成预约失败:', error);
+      hideLoading();
+      showToast('完成预约失败，请重试');
+    } finally {
+      this.setData({ isCompleting: false });
+    }
+  },
+
+  cancelCompletion() {
+    if (this.data.isCompleting) return;
+    this.setData({ completionPreview: null });
   },
   
   // 查看评价
@@ -735,4 +925,4 @@ Page({
       });
     }, 10);
   }
-}); 
+});

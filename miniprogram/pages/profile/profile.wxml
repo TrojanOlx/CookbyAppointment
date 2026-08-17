@@ -41,6 +41,34 @@
   
   <!-- 功能菜单 -->
   <view class="menu-list">
+    <view class="menu-section" wx:if="{{userInfo}}">
+      <view class="menu-title">家庭</view>
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/family/index/index">
+        <image class="menu-icon-img" src="/images/island/icon-home.svg" mode="aspectFit"></image>
+        <text class="menu-text">{{currentFamilyName || '创建或加入家庭'}}{{currentFamilyRole ? ' · ' + currentFamilyRole : ''}}</text>
+        <text class="menu-arrow">></text>
+      </view>
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/preferences/preferences">
+        <image class="menu-icon-img" src="/images/island/icon-settings.svg" mode="aspectFit"></image>
+        <text class="menu-text">口味与忌口</text>
+        <text class="menu-arrow">></text>
+      </view>
+    </view>
+    <view wx:if="{{userInfo && !familyLoading && !hasFamily && !familySelectionRequired}}" class="family-empty-card">
+      <view class="family-empty-title">还没有家庭</view>
+      <view class="family-empty-subtitle">创建一个家庭，或扫码加入家人的邀请</view>
+      <view class="family-empty-actions">
+        <button class="family-action-btn family-action-create" bindtap="openCreateFamily">创建家庭</button>
+        <button class="family-action-btn family-action-join" bindtap="openJoinFamily">扫码加入</button>
+      </view>
+    </view>
+    <view wx:elif="{{userInfo && !familyLoading && familySelectionRequired}}" class="family-empty-card">
+      <view class="family-empty-title">请选择家庭</view>
+      <view class="family-empty-subtitle">你加入了多个家庭，请先选择当前要使用的家庭。</view>
+      <view class="family-empty-actions">
+        <button class="family-action-btn family-action-create" bindtap="navigateTo" data-url="/pages/family/index/index">选择家庭</button>
+      </view>
+    </view>
     <view class="menu-section">
       <view class="menu-title">用户功能</view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/appointment/appointment">
@@ -55,13 +83,13 @@
       </view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/inventory/inventory">
         <image class="menu-icon-img" src="/images/island/icon-basket.svg" mode="aspectFit"></image>
-        <text class="menu-text">我的库存</text>
+        <text class="menu-text">家庭冰箱</text>
         <text class="menu-arrow">></text>
       </view>
     </view>
 
     <!-- 管理员功能 -->
-    <view class="menu-section" wx:if="{{isAdmin}}">
+    <view class="menu-section" wx:if="{{isAdmin || canManageFamily}}">
       <view class="menu-title">管理员功能</view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/menu/menu">
         <image class="menu-icon-img" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
@@ -73,17 +101,17 @@
         <text class="menu-text">查看预约</text>
         <text class="menu-arrow">></text>
       </view>
-      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/reviews/reviews">
+      <view wx:if="{{isAdmin}}" class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/reviews/reviews">
         <image class="menu-icon-img" src="/images/island/icon-review.svg" mode="aspectFit"></image>
         <text class="menu-text">查看评价</text>
         <text class="menu-arrow">></text>
       </view>
-      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/statistics/statistics">
+      <view wx:if="{{isAdmin}}" class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/statistics/statistics">
         <image class="menu-icon-img" src="/images/island/icon-stats.svg" mode="aspectFit"></image>
         <text class="menu-text">预约统计</text>
         <text class="menu-arrow">></text>
       </view>
-      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/files/files">
+      <view wx:if="{{isAdmin}}" class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/files/files">
         <image class="menu-icon-img" src="/images/island/icon-file.svg" mode="aspectFit"></image>
         <text class="menu-text">文件管理</text>
         <text class="menu-arrow">></text>

@@ -4,6 +4,8 @@ import { AppointmentService } from '../../services/appointmentService';
 import { getCurrentDate, showConfirm, showSuccess, showLoading, hideLoading, showToast } from '../../utils/util';
 import { requestSubscribeForUser } from '../../services/notificationService';
 import { ImageCacheService } from '../../utils/imageCache';
+const { FamilyService } = require('../../services/family');
+const { getFamilyRoleContext } = require('../../services/familyRole');
 // 引入wx-calendar和农历插件
 const { WxCalendar } = require('@lspriv/wx-calendar/lib');
 const { LunarPlugin } = require('@lspriv/wc-plugin-lunar');
@@ -26,6 +28,25 @@ interface DisplayAppointment {
   mealType: string;
   dishList: DisplayDish[];
   status: AppointmentStatus;
+  canEdit: boolean;
+  canCancel: boolean;
+  canReview: boolean;
+  canReactivate: boolean;
+}
+
+const APPOINTMENT_STATUS_ALIASES: Record<string, AppointmentStatus> = {
+  '待确认': AppointmentStatus.Pending,
+  pending: AppointmentStatus.Pending,
+  '已确认': AppointmentStatus.Confirmed,
+  confirmed: AppointmentStatus.Confirmed,
+  '已完成': AppointmentStatus.Completed,
+  completed: AppointmentStatus.Completed,
+  '已取消': AppointmentStatus.Cancelled,
+  cancelled: AppointmentStatus.Cancelled
+};
+
+function normalizeAppointmentStatus(value: unknown): AppointmentStatus {
+  return APPOINTMENT_STATUS_ALIASES[String(value || '').trim().toLowerCase()] || AppointmentStatus.Pending;
 }
 
 interface MarkItem {
@@ -46,6 +67,8 @@ Page({
     plugins: [LunarPlugin],  // 使用农历插件
     safeAreaBottom: 0,
     isLoading: false, // 加载状态
+    familyId: '',
+    familyRole: '',
     firstDay: '', // 日历初始化时选中的第一天
     lastDay: '' // 日历初始化时选中的最后一天
   },
@@ -268,6 +291,33 @@ Page({
       // 使用新的getAppointmentListByDate方法获取预约数据
       const result = await AppointmentService.getAppointmentListByDate(this.data.selectedDate);
 
+      const userInfo = wx.getStorageSync('userInfo') || {};
+      const currentUserId = String(userInfo.id || userInfo.userId || '');
+      const activeFamilyId = String(FamilyService.getActiveFamilyId() || '');
+      let familyRole = this.data.familyId === activeFamilyId ? (this.data.familyRole || '') : '';
+      this.setData({ familyId: activeFamilyId, familyRole });
+      if (!familyRole && wx.getStorageSync('token')) {
+        try {
+          const context = await getFamilyRoleContext();
+          familyRole = String(context && context.role || '');
+          if (!familyRole) {
+            const families = await FamilyService.list();
+            const active = (families || []).find((family: any) => String(family.id) === activeFamilyId)
+              || ((families || []).length === 1 ? (families || [])[0] : null);
+            if (active) {
+              familyRole = String(active.role || '');
+              if (!activeFamilyId) {
+                this.setData({ familyId: FamilyService.setActiveFamilyId(active.id) });
+              }
+            }
+          }
+          this.setData({ familyRole });
+        } catch (error) {
+          console.warn('读取家庭角色失败:', error);
+        }
+      }
+      const canManageAppointments = ['owner', 'admin', 'chef'].includes(familyRole);
+
       // 按餐次分类预约
       const appointments = result.list;
       const displayAppointments: DisplayAppointment[] = [];
@@ -278,11 +328,30 @@ Page({
           item => item.images && item.images.length > 0 ? item.images[0] : undefined
         );
 
+        const status = normalizeAppointmentStatus(appointment.status);
+        const ownerId = String(appointment.userId || '');
+        const rawDinerIds = (appointment as any).dinerIds;
+        const dinerIds = Array.isArray(rawDinerIds)
+          ? rawDinerIds.map((id: unknown) => String(id))
+          : typeof rawDinerIds === 'string'
+            ? rawDinerIds.split(',').map((id: string) => id.trim()).filter(Boolean)
+            : [];
+        const isOwner = !!currentUserId && ownerId === currentUserId;
+        const isParticipant = isOwner || dinerIds.includes(currentUserId);
+        const isActive = status !== AppointmentStatus.Completed && status !== AppointmentStatus.Cancelled;
+        const canModify = isActive && (
+          canManageAppointments || (isOwner && status === AppointmentStatus.Pending)
+        );
+
         displayAppointments.push({
           id: appointment.id,
           mealType: appointment.mealType,
           dishList,
-          status: appointment.status || AppointmentStatus.Pending
+          status,
+          canEdit: canModify,
+          canCancel: canModify,
+          canReview: status === AppointmentStatus.Completed && isParticipant,
+          canReactivate: status === AppointmentStatus.Cancelled && (canManageAppointments || isOwner)
         });
       }
 
@@ -413,7 +482,7 @@ Page({
   // 添加预约
   addAppointment() {
     wx.navigateTo({
-      url: `./select/select?date=${this.data.selectedDate}`
+      url: `./booking/booking?date=${this.data.selectedDate}`
     });
   },
 
@@ -421,7 +490,7 @@ Page({
   editAppointment(e: any) {
     const id = e.currentTarget.dataset.id;
     wx.navigateTo({
-      url: `./select/select?id=${id}&date=${this.data.selectedDate}`
+      url: `./booking/booking?id=${id}&date=${this.data.selectedDate}`
     });
   },
 

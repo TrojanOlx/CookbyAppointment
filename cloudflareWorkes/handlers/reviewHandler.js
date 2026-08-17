@@ -54,6 +54,16 @@ export async function handleGetUserReviews(request, env) {
 // 获取菜品的所有评价
 export async function handleGetDishReviews(request, env) {
   try {
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.replace('Bearer ', '');
+    if (!token) return createErrorResponse('未提供token', 401);
+    try {
+      const { loginInfo, user } = await validateTokenAndGetUser(env.DB, token);
+      if (!loginInfo || !user) return createErrorResponse('无效的token或用户不存在', 401);
+    } catch {
+      return createErrorResponse('无效的token或用户不存在', 401);
+    }
+
     // 获取查询参数
     const query = new URL(request.url).searchParams;
     const dishId = query.get('dishId');

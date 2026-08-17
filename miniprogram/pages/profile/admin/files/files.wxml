@@ -113,6 +113,7 @@
             class="action-icon" 
             catch:tap="downloadFile" 
             data-path="{{item.filePath}}"
+            data-url="{{item.url}}"
             data-name="{{item.fileName}}"
           >
             <image class="action-icon-img" src="/images/island/icon-download.svg" mode="aspectFit"></image>

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "冰箱推荐",
+  "usingComponents": {
+    "island-empty": "/components/island-empty/index",
+    "island-loading": "/components/island-loading/index"
+  }
+}

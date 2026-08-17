@@ -5,7 +5,7 @@ import { User, LoginInfo, UserPhone } from '../models/user';
 // 登录接口响应
 interface LoginResponse {
   openid: string;
-  session_key: string;
+  session_key?: string;
   unionid?: string;
   token?: string;
 }
@@ -22,6 +22,10 @@ export class UserService {
     return post<UserPhone>('/api/user/phone', { code });
   }
 
+  static async logout(): Promise<{ success: boolean }> {
+    return post<{ success: boolean }>('/api/user/logout');
+  }
+
   // 获取用户信息
   static async getUserInfo(userId?: string): Promise<User> {
     // 如果userId未定义或为空字符串，则获取当前登录用户信息
@@ -33,7 +37,14 @@ export class UserService {
 
   // 更新用户信息
   static async updateUserInfo(user: Partial<User>): Promise<User> {
-    return put<User>('/api/user/info', user);
+    const allowedFields = ['nickName', 'avatarUrl', 'gender', 'country', 'province', 'city', 'language'] as const;
+    const profile = allowedFields.reduce((result, field) => {
+      if (user[field] !== undefined) {
+        (result as any)[field] = user[field];
+      }
+      return result;
+    }, {} as Partial<User>);
+    return put<User>('/api/user/info', profile);
   }
 
   // 检查是否为管理员
@@ -54,4 +65,4 @@ export class UserService {
       { fileName: localPath.split('/').pop() || 'avatar.jpg' }
     );
   }
-} 
+}

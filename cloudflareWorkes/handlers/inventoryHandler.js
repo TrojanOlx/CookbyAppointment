@@ -64,6 +64,10 @@ export async function handleGetInventoryDetail(request, env) {
     if (!item) {
       return createErrorResponse('库存项不存在', 404);
     }
+
+    if (item.userId !== user.id && user.isAdmin !== 1) {
+      return createErrorResponse('权限不足', 403);
+    }
     
     return createJsonResponse(item);
   } catch (error) {
@@ -453,4 +457,4 @@ function formatDate(date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-} 
+}

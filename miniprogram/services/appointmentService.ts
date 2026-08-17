@@ -2,6 +2,26 @@
 import { get, post, put, del } from './http';
 import { Appointment, AppointmentDish, Review } from '../models/appointment';
 
+export interface AppointmentCompletionDeduction {
+  id: string;
+  quantity: number;
+  unit?: string | null;
+  name?: string;
+}
+
+export interface AppointmentCompletionOptions {
+  confirmDeduction?: boolean;
+  deductions?: AppointmentCompletionDeduction[];
+}
+
+export interface AppointmentCompletionResponse {
+  success?: boolean;
+  requiresInventoryConfirmation?: boolean;
+  deductions?: AppointmentCompletionDeduction[];
+  unresolved?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
 // 预约服务类
 export class AppointmentService {
   // 获取预约列表
@@ -54,12 +74,19 @@ export class AppointmentService {
 
   // 确认预约
   static async confirmAppointment(id: string): Promise<{ success: boolean }> {
-    return put<{ success: boolean }>('/api/appointment/confirm', { id });
+    const result = await put<Record<string, unknown>>('/api/appointment/confirm', { id });
+    return { success: !!result && !result.error };
   }
 
   // 完成预约
-  static async completeAppointment(id: string): Promise<{ success: boolean }> {
-    return put<{ success: boolean }>('/api/appointment/complete', { id });
+  static async completeAppointment(
+    id: string,
+    options: AppointmentCompletionOptions = {}
+  ): Promise<AppointmentCompletionResponse> {
+    const payload: Record<string, unknown> = { id };
+    if (options.confirmDeduction !== undefined) payload.confirmDeduction = options.confirmDeduction;
+    if (options.deductions !== undefined) payload.deductions = options.deductions;
+    return put<AppointmentCompletionResponse>('/api/appointment/complete', payload);
   }
 
   // 重新预约（恢复已取消的预约）
@@ -110,4 +137,4 @@ export class AppointmentService {
   ): Promise<{ total: number, list: any[] }> {
     return get<{ total: number, list: any[] }>('/api/review/user', { page, pageSize });
   }
-} 
+}

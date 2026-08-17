@@ -1,0 +1,73 @@
+<view class="invite-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="invite-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <block wx:if="{{isPreview}}">
+      <view class="invite-heading">
+        <view class="invite-kicker">FAMILY INVITATION</view>
+        <view class="invite-title">有人邀请你加入家庭</view>
+        <view class="invite-subtitle">确认后，你们可以共享菜单、库存和预约</view>
+      </view>
+
+      <view wx:if="{{loading}}" class="invite-loading">正在读取邀请...</view>
+
+      <view wx:elif="{{errorMessage}}" class="invite-error">
+        <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+        <view class="invite-card-title">邀请不可用</view>
+        <view class="invite-card-subtitle">{{errorMessage}}</view>
+        <button class="invite-secondary-btn" bindtap="openList">打开家庭列表</button>
+      </view>
+
+      <view wx:elif="{{preview || previewFamily}}" class="invite-preview-card">
+        <view class="invite-family-avatar">{{previewFamily.initial || '家'}}</view>
+        <view class="invite-family-name">{{previewFamily.name || preview.familyName || '一个家庭'}}</view>
+        <view class="invite-family-meta">邀请你以{{preview.roleLabel || '成员'}}身份加入</view>
+        <view wx:if="{{preview.expiresAt}}" class="invite-expiry">有效期至 {{preview.expiresAt}}</view>
+        <view wx:if="{{preview.alreadyMember}}" class="invite-status">你已经是这个家庭的成员</view>
+        <view wx:elif="{{preview.status && preview.status !== 'active'}}" class="invite-status">这条邀请{{preview.status === 'expired' ? '已过期' : preview.status === 'revoked' ? '已撤销' : '已使用'}}</view>
+        <button wx:if="{{canAccept && !preview.alreadyMember}}" class="invite-primary-btn" loading="{{accepting}}" disabled="{{accepting}}" bindtap="acceptInvite">接受邀请并加入</button>
+        <button class="invite-secondary-btn" bindtap="openList">暂不加入</button>
+      </view>
+    </block>
+
+      <block wx:else>
+        <view class="invite-heading">
+        <view class="invite-kicker">INVITE FAMILY</view>
+        <view class="invite-title">邀请家人加入</view>
+        <view class="invite-subtitle">生成一个邀请码，发给想一起安排餐食的人</view>
+      </view>
+
+      <view wx:if="{{!hasActiveFamily}}" class="invite-error">
+        <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+        <view class="invite-card-title">请先选择家庭</view>
+        <view class="invite-card-subtitle">从家庭列表选择要邀请成员的小岛。</view>
+        <button class="invite-primary-btn" bindtap="openList">去选择家庭</button>
+      </view>
+
+      <view wx:elif="{{!canCreateInvite}}" class="invite-error">
+        <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+        <view class="invite-card-title">暂无邀请权限</view>
+        <view class="invite-card-subtitle">只有家庭创建者或管理员可以生成邀请。</view>
+        <button class="invite-primary-btn" bindtap="openMembers">返回成员管理</button>
+      </view>
+
+      <block wx:else>
+        <view class="invite-create-card">
+          <view class="create-label">成员权限</view>
+          <island-tabs items="{{roleOptions}}" active="{{role}}" bind:change="onRoleChange"></island-tabs>
+          <view class="create-hint">管理员可以协助管理家庭成员，普通成员可以共同使用家庭数据。</view>
+          <button class="invite-primary-btn" loading="{{creating}}" disabled="{{creating}}" bindtap="createInvite">生成邀请码</button>
+        </view>
+
+        <view wx:if="{{invite}}" class="invite-token-card">
+          <view class="token-label">邀请码</view>
+          <view class="token-value">{{invite.token}}</view>
+          <view class="token-meta">{{invite.roleLabel}} · 可转发给家人</view>
+          <button class="invite-secondary-btn" bindtap="copyToken">复制邀请码</button>
+          <button class="invite-share-btn" open-type="share">转发邀请</button>
+        </view>
+
+        <button class="invite-text-btn" bindtap="openMembers">返回成员管理</button>
+        </block>
+    </block>
+  </scroll-view>
+</view>

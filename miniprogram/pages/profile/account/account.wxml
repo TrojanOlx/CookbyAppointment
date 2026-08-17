@@ -1,0 +1,14 @@
+<view class="account-page">
+  <view class="section">
+    <view class="section-title">个人数据</view>
+    <view class="section-copy">导出内容包含个人资料、口味标签、家庭关系和您参与产生的业务记录。</view>
+    <button class="primary-action" loading="{{exporting}}" disabled="{{exporting}}" bindtap="exportData">导出并复制数据</button>
+    <view wx:if="{{lastExportAt}}" class="status">最近导出：{{lastExportAt}}</view>
+  </view>
+
+  <view class="section danger-section">
+    <view class="section-title">注销账号</view>
+    <view class="section-copy">注销后登录会话立即失效，个人资料会匿名化。为保留家庭共享记录，已产生的预约、采购、库存和审计历史不会被直接删除。</view>
+    <button class="danger-action" loading="{{deleting}}" disabled="{{deleting}}" bindtap="deleteAccount">注销当前账号</button>
+  </view>
+</view>

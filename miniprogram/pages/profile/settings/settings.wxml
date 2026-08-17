@@ -33,6 +33,16 @@
   <!-- 其他设置 -->
   <view class="settings-section">
     <view class="settings-header">其他设置</view>
+
+    <view class="settings-item" bindtap="navigateTo" data-url="/pages/privacy/privacy">
+      <view class="settings-label">隐私政策</view>
+      <view class="settings-arrow">></view>
+    </view>
+
+    <view class="settings-item" bindtap="navigateTo" data-url="/pages/profile/account/account">
+      <view class="settings-label">数据导出与账号注销</view>
+      <view class="settings-arrow">></view>
+    </view>
     
     <!-- 清除缓存 -->
     <view class="settings-item" bindtap="clearCache">
@@ -40,10 +50,5 @@
       <view class="settings-arrow">></view>
     </view>
     
-    <!-- 关于我们 -->
-    <view class="settings-item" bindtap="navigateTo" data-url="/pages/about/about">
-      <view class="settings-label">关于我们</view>
-      <view class="settings-arrow">></view>
-    </view>
   </view>
 </view>

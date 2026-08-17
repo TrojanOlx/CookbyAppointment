@@ -1,0 +1,20 @@
+page { background: #f4f1e6; }
+.recommend-page { min-height: 100vh; padding-bottom: 40rpx; color: #3e392f; }
+.diner-band { padding: 24rpx 28rpx 20rpx; background: #fff; border-bottom: 1rpx solid #ddd5c2; }
+.band-title { display: block; margin-bottom: 16rpx; font-size: 28rpx; font-weight: 700; }
+.diner-scroll { width: 100%; white-space: nowrap; }
+.diner-row { display: inline-flex; gap: 14rpx; }
+.diner { min-width: 132rpx; height: 68rpx; padding: 0 18rpx; display: flex; align-items: center; gap: 10rpx; background: #f3f0e7; border: 2rpx solid transparent; border-radius: 8rpx; font-size: 24rpx; box-sizing: border-box; }
+.diner.selected { background: #e6f9f6; border-color: #19c8b9; color: #0f8f85; }
+.diner image { width: 42rpx; height: 42rpx; border-radius: 50%; }
+.recommend-list { padding: 22rpx 24rpx; }
+.recommend-item { display: flex; min-height: 190rpx; margin-bottom: 18rpx; overflow: hidden; background: #fff; border: 1rpx solid #ddd5c2; border-radius: 8rpx; }
+.dish-image { width: 190rpx; min-height: 190rpx; flex-shrink: 0; background: #e7e1d1; }
+.dish-content { flex: 1; min-width: 0; padding: 18rpx 20rpx; }
+.dish-head { display: flex; align-items: center; justify-content: space-between; gap: 14rpx; }
+.dish-name { font-size: 31rpx; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.coverage { color: #0f8f85; font-weight: 800; font-size: 28rpx; }
+.reason, .missing { display: block; margin-top: 8rpx; color: #6f6758; font-size: 24rpx; line-height: 1.45; }
+.expiring { color: #8a641a; }
+.warning { color: #b04b37; }
+.missing { color: #6f5148; }

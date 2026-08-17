@@ -9,6 +9,8 @@ import { handleUploadFile, handleGetFileInfo, handleDownloadFile, handleDeleteFi
 import { handleGetUserReviews, handleGetDishReviews, handleGetAppointmentReviews, handleAddReview, handleUpdateReview, handleDeleteReview, handleGetAdminReviews } from './handlers/reviewHandler.js';
 import { handleGetStatistics } from './handlers/statisticsHandler.js';
 import { sendDailyReminders } from './handlers/notificationHandler.js';
+import { sendFamilyDailyReminders } from './handlers/notificationV2Handler.ts';
+import { tryHandleV2 } from './routerV2.ts';
 
 // 获取access_token
 export async function getAccessToken(env) {
@@ -131,7 +133,7 @@ const routes = {
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Family-Id, X-App-Version, Idempotency-Key'
 };
 
 // 处理请求
@@ -147,6 +149,13 @@ async function handleRequest(request, env) {
       status: 204,
       headers: corsHeaders
     });
+  }
+
+  // The multi-family router is isolated from legacy authentication so domains
+  // can migrate independently behind FAMILY_MODE.
+  const v2Response = await tryHandleV2(request, env);
+  if (v2Response) {
+    return addCorsHeaders(v2Response);
   }
 
   // 查找路由处理程序
@@ -196,6 +205,7 @@ export default {
 
   // Cron Trigger 定时任务：每天北京时间 08:00 发送当日预约提醒
   async scheduled(event, env, ctx) {
-    ctx.waitUntil(sendDailyReminders(env));
+    const familyMode = !['off', 'false', '0'].includes(String(env.FAMILY_MODE || 'on').toLowerCase());
+    ctx.waitUntil(familyMode ? sendFamilyDailyReminders(env) : sendDailyReminders(env));
   }
 };

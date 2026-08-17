@@ -4,6 +4,8 @@ import { User } from '../../models/user';
 import { showToast, showLoading, hideLoading } from '../../utils/util';
 import { FileService } from '../../services/fileService';
 import { ImageCacheService } from '../../utils/imageCache';
+const { FamilyService } = require('../../services/family');
+const { canManageFamily } = require('../../services/familyRole');
 
 // 页面数据接口
 interface IPageData {
@@ -15,6 +17,12 @@ interface IPageData {
   isLoggingIn: boolean;
   editingNickName?: boolean;
   version: string;
+  currentFamilyName: string;
+  currentFamilyRole: string;
+  hasFamily: boolean;
+  familySelectionRequired: boolean;
+  familyLoading: boolean;
+  canManageFamily: boolean;
 }
 
 // 页面方法接口
@@ -33,6 +41,9 @@ interface IPageMethods {
   saveNickName: (nickName: string) => void;
   saveAvatar: (filePath: string) => Promise<void>;
   clearCache: () => void;
+  syncFamilyContext: () => Promise<void>;
+  openCreateFamily: () => void;
+  openJoinFamily: () => void;
 }
 
 Page<IPageData, IPageMethods & {
@@ -51,7 +62,13 @@ Page<IPageData, IPageMethods & {
     openid: null,
     isLoggingIn: false,
     editingNickName: false,
-    version: ''
+    version: '',
+    currentFamilyName: '',
+    currentFamilyRole: '',
+    hasFamily: false,
+    familySelectionRequired: false,
+    familyLoading: false,
+    canManageFamily: false
   },
 
   onLoad() {
@@ -106,7 +123,13 @@ Page<IPageData, IPageMethods & {
         hasUserInfo: false,
         isAdmin: false,
         openid: null,
-        isLoggingIn: false
+        isLoggingIn: false,
+        currentFamilyName: '',
+        currentFamilyRole: '',
+        hasFamily: false,
+        familySelectionRequired: false,
+        familyLoading: false,
+        canManageFamily: false
       });
       // 清除本地存储的登录信息
       this.doLogout();
@@ -129,16 +152,57 @@ Page<IPageData, IPageMethods & {
       const tabBar = this.getTabBar();
       if (tabBar) {
         tabBar.setData({
-          selected: 3
+          selected: 4
         });
       }
     }
-    // 自动弹出头像上传弹窗
-    if (this.data.userInfo && !this.data.userInfo.avatarUrl) {
-      wx.showToast({ title: '请上传头像', icon: 'none' });
-      setTimeout(() => {
-        this.onChooseAvatar({});
-      }, 500);
+    void this.syncFamilyContext().then(() => {
+      // 头像文件存储在家庭空间；零家庭状态下先完成创建或加入，再提示上传。
+      if (this.data.userInfo && !this.data.userInfo.avatarUrl && this.data.hasFamily) {
+        wx.showToast({ title: '请上传头像', icon: 'none' });
+        setTimeout(() => {
+          this.onChooseAvatar({});
+        }, 500);
+      }
+    });
+  },
+
+  async syncFamilyContext() {
+    if (!wx.getStorageSync('token')) {
+      this.setData({
+        isAdmin: false,
+        currentFamilyName: '',
+        currentFamilyRole: '',
+        hasFamily: false,
+        familySelectionRequired: false,
+        canManageFamily: false
+      });
+      return;
+    }
+    this.setData({ familyLoading: true });
+    try {
+      const families = await FamilyService.list();
+      let activeId = FamilyService.getActiveFamilyId();
+      let active = families.find((family: any) => family.id === activeId);
+      if (!active && families.length === 1) {
+        active = families[0];
+        activeId = FamilyService.setActiveFamilyId(active.id);
+      }
+      if (!active && activeId) FamilyService.clearActiveFamilyId();
+      const role = active ? active.role : '';
+      const familySelectionRequired = !active && families.length > 1;
+      this.setData({
+        isAdmin: role === 'owner' || role === 'admin',
+        currentFamilyName: active ? active.name : '',
+        currentFamilyRole: role,
+        hasFamily: !!active,
+        familySelectionRequired,
+        canManageFamily: canManageFamily(role)
+      });
+    } catch (error) {
+      console.warn('同步家庭上下文失败:', error);
+    } finally {
+      this.setData({ familyLoading: false });
     }
   },
 
@@ -260,6 +324,9 @@ Page<IPageData, IPageMethods & {
       // 获取用户信息
       await this.fetchUserInfo();
 
+      // 登录后立即同步家庭上下文，使零家庭入口无需重新进入“我的”页才出现。
+      await this.syncFamilyContext();
+
       // 检查用户信息是否完整
       const isUserInfoComplete = this.isUserInfoComplete();
 
@@ -301,7 +368,10 @@ Page<IPageData, IPageMethods & {
 
   // 检查并执行重定向
   checkAndRedirect(redirectUrl: string) {
-    if (redirectUrl) {
+    const normalizedRedirect = redirectUrl
+      ? (redirectUrl.startsWith('/') ? redirectUrl : `/${redirectUrl}`).split('?')[0]
+      : '';
+    if (redirectUrl && normalizedRedirect !== '/pages/profile/profile') {
       // 清除存储的重定向URL
       wx.removeStorageSync('redirectUrl');
 
@@ -310,6 +380,7 @@ Page<IPageData, IPageMethods & {
         '/pages/index/index',
         '/pages/menu/menu',
         '/pages/appointment/appointment',
+        '/pages/shopping/index',
         '/pages/profile/profile'
       ];
 
@@ -325,6 +396,9 @@ Page<IPageData, IPageMethods & {
           url: redirectUrl
         });
       }
+    } else if (redirectUrl) {
+      // 登录页本身不需要再次跳转，避免登录后在 profile 与 profile 之间循环。
+      wx.removeStorageSync('redirectUrl');
     }
   },
 
@@ -344,15 +418,27 @@ Page<IPageData, IPageMethods & {
 
   // 退出登录
   doLogout() {
+    if (wx.getStorageSync('token')) {
+      void UserService.logout().catch(error => console.warn('服务端注销失败:', error));
+    }
     wx.removeStorageSync('token');
+    wx.removeStorageSync('user_token');
+    wx.removeStorageSync('session_key');
     wx.removeStorageSync('openid');
     wx.removeStorageSync('userInfo');
+    wx.removeStorageSync('active_family_id');
+    wx.removeStorageSync('active_family');
 
     this.setData({
       userInfo: null,
       hasUserInfo: false,
       isAdmin: false,
-      openid: null
+      openid: null,
+      currentFamilyName: '',
+      currentFamilyRole: '',
+      hasFamily: false,
+      familyLoading: false,
+      canManageFamily: false
     });
 
     showToast('已退出登录');
@@ -507,6 +593,7 @@ Page<IPageData, IPageMethods & {
       '/pages/index/index',
       '/pages/menu/menu',
       '/pages/appointment/appointment',
+      '/pages/shopping/index',
       '/pages/profile/profile'
     ];
     const isTabPage = tabPages.includes(url);
@@ -515,6 +602,33 @@ Page<IPageData, IPageMethods & {
     } else {
       wx.navigateTo({ url });
     }
+  },
+
+  openCreateFamily() {
+    wx.navigateTo({ url: '/pages/family/create/create' });
+  },
+
+  openJoinFamily() {
+    wx.scanCode({
+      onlyFromCamera: false,
+      success: (result) => {
+        const raw = String(result.result || result.path || '').trim();
+        const tokenMatch = raw.match(/[?&](?:token|scene)=([^&#]+)/i);
+        const token = tokenMatch ? tokenMatch[1] : raw;
+        if (!token) {
+          wx.showToast({ title: '未识别到家庭邀请', icon: 'none' });
+          return;
+        }
+        wx.navigateTo({
+          url: `/pages/family/invite/invite?token=${encodeURIComponent(token)}`
+        });
+      },
+      fail: (error) => {
+        if (!error || !String(error.errMsg || '').toLowerCase().includes('cancel')) {
+          wx.showToast({ title: '扫码未完成', icon: 'none' });
+        }
+      }
+    });
   },
 
   /**
@@ -550,12 +664,7 @@ Page<IPageData, IPageMethods & {
     const fileInfo = await FileService.uploadSingleImage('avatars');
     if (fileInfo && fileInfo.filePath) {
       try {
-        const uploadRes = await UserService.updateAvatar(fileInfo.filePath);
-        if (uploadRes && uploadRes.filePath) {
-          await (this as any).saveAvatar(uploadRes.filePath);
-        } else {
-          showToast('头像上传失败');
-        }
+        await (this as any).saveAvatar(fileInfo.filePath);
       } catch {
         showToast('头像上传失败');
       }

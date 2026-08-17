@@ -5,6 +5,9 @@
     <view class="type-item fixed {{selectedType === '' ? 'active' : ''}}" bindtap="selectType" data-type="">
       <text>全部</text>
     </view>
+    <view class="recommend-entry" bindtap="goToRecommend">
+      <text>冰箱推荐</text>
+    </view>
 
     <!-- 可滚动的其他选项 -->
     <view class="scroll-types-wrap">

@@ -1,0 +1,163 @@
+<view class="shopping-page">
+  <view class="shopping-header">
+    <view class="header-title-row">
+      <view>
+        <view class="page-kicker">FAMILY PANTRY</view>
+        <view class="page-title">家庭采购清单</view>
+        <view class="page-subtitle">一起记下要买的食材，买完就入库</view>
+      </view>
+      <view class="family-chip" wx:if="{{hasFamily}}">
+        <view class="family-chip-dot"></view>
+        <text>{{familyName}}</text>
+      </view>
+    </view>
+    <view class="header-actions" wx:if="{{hasFamily && hasToken}}">
+      <button class="header-action sync-action" bindtap="openRecalculate">重新计算清单</button>
+      <button class="header-action add-action" bindtap="openAdd">＋ 添加食材</button>
+    </view>
+  </view>
+
+  <scroll-view class="shopping-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onPullDownRefresh">
+    <view class="notice-card" wx:if="{{!hasToken}}">
+      <view class="notice-icon">♡</view>
+      <view class="notice-copy">
+        <view class="notice-title">登录后开始共享采购</view>
+        <view class="notice-subtitle">家庭成员可以一起添加、分配和确认入库</view>
+      </view>
+    </view>
+
+    <view class="notice-card" wx:elif="{{!hasFamily}}">
+      <view class="notice-icon">⌂</view>
+      <view class="notice-copy">
+        <view class="notice-title">请先选择一个家庭</view>
+        <view class="notice-subtitle">选择家庭后，采购清单会在成员之间实时共享</view>
+      </view>
+    </view>
+
+    <block wx:else>
+      <view class="summary-card">
+        <view class="summary-figure">
+          <view class="summary-number">{{activeCount}}</view>
+          <view class="summary-label">待采购</view>
+        </view>
+        <view class="summary-divider"></view>
+        <view class="summary-figure summary-figure--warm">
+          <view class="summary-number">{{purchasedCount}}</view>
+          <view class="summary-label">已购清单</view>
+        </view>
+        <image class="summary-ornament" src="/images/island/icon-basket.svg" mode="aspectFit"></image>
+      </view>
+
+      <view class="tab-strip">
+        <view class="tab {{activeTab === 'active' ? 'tab--active' : ''}}" data-tab="active" bindtap="setTab">
+          <text>待采购</text><text class="tab-count">{{activeCount}}</text>
+        </view>
+        <view class="tab {{activeTab === 'purchased' ? 'tab--active' : ''}}" data-tab="purchased" bindtap="setTab">
+          <text>已购清单</text><text class="tab-count">{{purchasedCount}}</text>
+        </view>
+      </view>
+
+      <view class="list-card" wx:if="{{activeTab === 'active'}}">
+        <view class="list-card-heading">
+          <view class="heading-ribbon">还要买这些</view>
+          <text class="heading-hint">点圆圈标记已购</text>
+        </view>
+        <view class="loading-state" wx:if="{{loading}}">加载清单中...</view>
+        <view class="empty-state" wx:elif="{{activeItems.length === 0}}">
+          <view class="empty-state-icon">✦</view>
+          <view class="empty-state-title">清单空空的</view>
+          <view class="empty-state-subtitle">添加一项食材，和家人一起准备下一餐</view>
+          <button class="empty-add-button" bindtap="openAdd">＋ 添加食材</button>
+        </view>
+        <view class="shopping-item" wx:for="{{activeItems}}" wx:key="id">
+          <view class="item-check" catchtap="toggleChecked" data-id="{{item.id}}"><text>✓</text></view>
+          <view class="item-content">
+            <view class="item-main-row">
+              <text class="item-name">{{item.name}}</text>
+              <text class="item-quantity">{{item.quantityLabel}}</text>
+            </view>
+            <view class="item-meta-row">
+              <text class="item-source">{{item.sourceLabel}}</text>
+              <text class="item-note" wx:if="{{item.note}}">{{item.note}}</text>
+            </view>
+            <view class="item-bottom-row">
+              <view class="assignee-control" catchtap="assignItem" data-id="{{item.id}}">
+                <view class="assignee-avatar">{{item.assigneeInitial}}</view>
+                <text>{{item.assigneeLabel}}</text>
+                <text class="assignee-arrow">›</text>
+              </view>
+              <view wx:if="{{item.sourceType === 'manual' && !item.checked}}" class="item-delete" catchtap="deleteItem" data-id="{{item.id}}">删除</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="list-card" wx:else>
+        <view class="list-card-heading">
+          <view class="heading-ribbon heading-ribbon--yellow">买到了什么</view>
+          <text class="heading-hint">选择后确认入库</text>
+        </view>
+        <view class="loading-state" wx:if="{{loading}}">加载清单中...</view>
+        <view class="empty-state" wx:elif="{{purchasedItems.length === 0}}">
+          <view class="empty-state-icon">♡</view>
+          <view class="empty-state-title">还没有已购食材</view>
+          <view class="empty-state-subtitle">买到食材后，在待采购中点圆圈即可移动到这里</view>
+        </view>
+        <view class="shopping-item shopping-item--purchased {{item.stockedAt ? 'shopping-item--stocked' : ''}}" wx:for="{{purchasedItems}}" wx:key="id">
+          <view class="item-check item-check--purchased {{item.selectedForStock ? 'item-check--selected' : ''}}" catchtap="toggleStockSelection" data-id="{{item.id}}">
+            <text wx:if="{{item.selectedForStock}}">✓</text>
+            <text wx:elif="{{item.stockedAt}}">✓</text>
+          </view>
+          <view class="item-content">
+            <view class="item-main-row">
+              <text class="item-name">{{item.name}}</text>
+              <text class="item-quantity">{{item.quantityLabel}}</text>
+            </view>
+            <view class="item-meta-row">
+              <text class="item-source item-source--purchased">{{item.statusLabel}}</text>
+              <text class="item-note" wx:if="{{item.note}}">{{item.note}}</text>
+            </view>
+            <view class="item-bottom-row">
+              <view class="assignee-control" catchtap="assignItem" data-id="{{item.id}}">
+                <view class="assignee-avatar">{{item.assigneeInitial}}</view>
+                <text>{{item.assigneeLabel}}</text>
+              </view>
+              <view wx:if="{{item.sourceType === 'manual' && !item.checked}}" class="item-delete" catchtap="deleteItem" data-id="{{item.id}}">删除</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="stock-bar" wx:if="{{activeTab === 'purchased' && selectedStockIds.length > 0}}">
+        <view class="stock-copy"><text class="stock-count">{{selectedStockIds.length}}</text><text>项食材准备入库</text></view>
+        <button class="stock-button" bindtap="confirmStockIn">确认入库</button>
+      </view>
+      <view class="list-footnote">清单会跟随当前家庭同步，家人都能看到最新状态</view>
+    </block>
+  </scroll-view>
+
+  <view class="floating-add" wx:if="{{hasFamily && hasToken && !(activeTab === 'purchased' && selectedStockIds.length > 0)}}" bindtap="openAdd"><text>＋</text></view>
+
+  <view class="modal-mask" wx:if="{{showAdd}}" catchtap="closeAdd">
+    <view class="modal-card" catchtap="stopPropagation">
+      <view class="modal-header"><view class="modal-title">添加采购食材</view><view class="modal-close" catchtap="closeAdd">×</view></view>
+      <view class="form-label">食材名称 <text>*</text></view>
+      <input class="form-input" value="{{form.name}}" data-field="name" bindinput="onFormInput" placeholder="例如：西红柿" maxlength="30" confirm-type="next" />
+      <view class="form-inline">
+        <view class="form-half"><view class="form-label">数量</view><input class="form-input" value="{{form.quantity}}" data-field="quantity" bindinput="onFormInput" placeholder="例如：3" type="digit" /></view>
+        <view class="form-half"><view class="form-label">单位</view><input class="form-input" value="{{form.unit}}" data-field="unit" bindinput="onFormInput" placeholder="个 / 斤 / 袋" maxlength="8" /></view>
+      </view>
+      <view class="form-label">备注</view>
+      <input class="form-input" value="{{form.note}}" data-field="note" bindinput="onFormInput" placeholder="品牌、规格或口味（选填）" maxlength="60" />
+      <button class="modal-submit" loading="{{adding}}" disabled="{{adding}}" bindtap="submitAdd">加入家庭清单</button>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showRecalculate}}" catchtap="closeRecalculate">
+    <view class="modal-card" catchtap="stopPropagation">
+      <view class="modal-header"><view class="modal-title">重新计算采购清单</view><view class="modal-close" catchtap="closeRecalculate">×</view></view>
+      <view class="sync-intro">根据当前家庭所有已确认预约重新计算采购项，已存在的项目会合并数量。</view>
+      <button class="modal-submit" loading="{{recalculating}}" disabled="{{recalculating}}" bindtap="submitRecalculate">重新计算采购清单</button>
+    </view>
+  </view>
+</view>

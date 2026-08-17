@@ -12,12 +12,23 @@ const needLoginPages = [
   "pages/menu/add/add",
   "pages/appointment/appointment",
   "pages/appointment/select/select",
+  "pages/appointment/booking/booking",
   "pages/inventory/inventory",
   "pages/inventory/add/add",
   "pages/profile/settings/settings",
+  "pages/profile/account/account",
+  "pages/profile/preferences/preferences",
+  "pages/family/index/index",
+  "pages/family/create/create",
+  "pages/family/invite/invite",
+  "pages/family/members/members",
+  "pages/menu/recommend/recommend",
+  "pages/shopping/index",
   "pages/profile/admin/appointments/appointments",
   "pages/profile/admin/reviews/reviews",
   "pages/profile/admin/statistics/statistics",
+  "pages/profile/admin/files/files",
+  "pages/profile/reviews/reviews",
   "pages/review/review"
 ];
 

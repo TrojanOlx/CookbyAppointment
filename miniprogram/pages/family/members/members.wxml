@@ -1,0 +1,60 @@
+<view class="members-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="members-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onPullDownRefresh">
+    <block wx:if="{{!hasActiveFamily}}">
+      <view class="members-heading">
+        <view class="members-kicker">MEMBERS</view>
+        <view class="members-title">家庭成员</view>
+      </view>
+      <view class="members-empty">
+        <image src="/images/island/icon-user.svg" mode="aspectFit"></image>
+        <view class="member-card-title">还没有选中的家庭</view>
+        <view class="member-card-subtitle">先从家庭列表选择一个小岛。</view>
+        <button class="member-primary-btn" bindtap="openFamilyList">打开家庭列表</button>
+      </view>
+    </block>
+
+    <block wx:elif="{{hasActiveFamily}}">
+      <view class="members-heading">
+        <view class="members-kicker">MEMBERS</view>
+        <view class="members-title">{{family.name || '家庭成员'}}</view>
+        <view class="members-subtitle">{{members.length}} 位成员 · {{family.roleLabel || '成员'}}</view>
+      </view>
+
+      <view class="members-actions">
+        <button class="member-invite-btn" bindtap="openInvite" disabled="{{!canManage}}">＋ 邀请成员</button>
+        <button class="member-leave-btn" bindtap="leaveFamily">退出家庭</button>
+      </view>
+
+      <view wx:if="{{loading && members.length === 0}}" class="members-loading">正在读取成员...</view>
+      <view wx:elif="{{members.length === 0}}" class="members-empty">
+        <image src="/images/island/icon-user.svg" mode="aspectFit"></image>
+        <view class="member-card-title">还没有成员</view>
+        <view class="member-card-subtitle">邀请家人，一起把每一餐安排得更从容。</view>
+        <button class="member-primary-btn" bindtap="openInvite" disabled="{{!canManage}}">邀请第一位成员</button>
+      </view>
+
+      <view wx:else class="member-list">
+        <view wx:for="{{members}}" wx:key="userId" class="member-item">
+          <view class="member-avatar">
+            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+            <text wx:else>{{item.initial}}</text>
+          </view>
+          <view class="member-copy">
+            <view class="member-name">{{item.nickName}}<text wx:if="{{item.isCurrent}}" class="member-you">我</text></view>
+            <view class="member-meta">{{item.roleLabel}}</view>
+          </view>
+          <view class="member-item-actions">
+            <button wx:if="{{item.canTransfer}}" class="member-transfer-btn" catchtap="transferOwnership" data-id="{{item.userId}}">转让</button>
+            <button wx:elif="{{item.canEdit}}" class="member-more-btn" catchtap="openMemberActions" data-id="{{item.userId}}" data-role="{{item.role}}">管理</button>
+          </view>
+        </view>
+      </view>
+
+      <view class="members-note">
+        <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+        <text>创建者可以转让家庭，管理员可以协助维护成员。</text>
+      </view>
+    </block>
+  </scroll-view>
+</view>

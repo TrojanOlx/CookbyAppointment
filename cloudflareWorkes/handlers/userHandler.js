@@ -140,10 +140,18 @@ export async function handleUpdateUserInfo(request, env) {
       return createErrorResponse('用户不存在', 404);
     }
     
-    // 更新用户信息
+    const allowedFields = ['nickName', 'avatarUrl', 'gender', 'country', 'province', 'city', 'language'];
+    const rejectedFields = Object.keys(data).filter(key => !allowedFields.includes(key));
+    if (rejectedFields.length > 0) {
+      return createErrorResponse(`包含不可修改字段: ${rejectedFields.join(', ')}`, 400);
+    }
+
+    // 仅合并资料白名单。家庭角色和 isAdmin 不能通过资料接口修改。
     const updatedUser = {
       ...currentUser,
-      ...data,
+      ...Object.fromEntries(allowedFields
+        .filter(key => Object.prototype.hasOwnProperty.call(data, key))
+        .map(key => [key, data[key]])),
       updateTime: Date.now()
     };
     

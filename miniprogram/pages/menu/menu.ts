@@ -3,6 +3,7 @@ import { DishService } from '../../services/dishService';
 import { showLoading, hideLoading, showToast } from '../../utils/util';
 import { UserService } from '../../services/userService';
 import { ImageCacheService } from '../../utils/imageCache';
+const { getFamilyRoleContext } = require('../../services/familyRole');
 
 interface DisplayDish extends Dish {
   cachedImage?: string;
@@ -23,6 +24,8 @@ Page({
     safeAreaBottom: 0,
     total: 0,
     isAdmin: false, // 是否为管理员
+    canManageMenu: false,
+    familyRole: '',
     refresherTriggered: false // 下拉刷新状态
   },
 
@@ -43,11 +46,7 @@ Page({
   onShow() {
     // 每次显示页面时重新加载数据，以获取最新数据
     this.loadDishes(true);
-    if (wx.getStorageSync('token')) {
-      this.checkAdminStatus();
-    } else {
-      this.setData({ isAdmin: false });
-    }
+    this.syncRoleVisibility();
     
     // 更新TabBar选中状态
     if (typeof this.getTabBar === 'function') {
@@ -73,6 +72,29 @@ Page({
       console.error('检查管理员状态失败:', error);
       this.setData({ isAdmin: false });
     }
+  },
+
+  async syncRoleVisibility() {
+    if (!wx.getStorageSync('token')) {
+      this.setData({ isAdmin: false, canManageMenu: false, familyRole: '' });
+      return;
+    }
+
+    let legacyAdmin = false;
+    try {
+      const result = await UserService.checkAdmin();
+      legacyAdmin = !!result.isAdmin;
+    } catch (error) {
+      console.warn('检查旧版管理员状态失败:', error);
+    }
+
+    const context = await getFamilyRoleContext();
+    const canManageMenu = legacyAdmin || context.canManageMenu;
+    this.setData({
+      isAdmin: canManageMenu,
+      canManageMenu,
+      familyRole: context.role
+    });
   },
 
   /**
@@ -224,6 +246,10 @@ Page({
     wx.navigateTo({
       url: './add/add'
     });
+  },
+
+  goToRecommend() {
+    wx.navigateTo({ url: '/pages/menu/recommend/recommend' });
   },
 
   /**

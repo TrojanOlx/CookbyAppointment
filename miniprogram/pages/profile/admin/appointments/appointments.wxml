@@ -57,7 +57,7 @@
               </view>
               
               <!-- 根据状态显示不同按钮 -->
-              <view class="action-buttons" wx:if="{{meal.status !== '已取消'}}">
+              <view class="action-buttons" wx:if="{{canManageAppointments && meal.status !== '已取消'}}">
                 <!-- 待确认状态按钮 -->
                 <block wx:if="{{meal.status === '待确认'}}">
                   <view class="action-btn confirm-btn" bindtap="confirmAppointment" data-appointment-id="{{meal.id}}">确认预约</view>
@@ -77,7 +77,7 @@
               </view>
               
               <!-- 已取消状态按钮 -->
-              <view class="action-buttons" wx:elif="{{meal.status === '已取消'}}">
+              <view class="action-buttons" wx:elif="{{canManageAppointments && meal.status === '已取消'}}">
                 <view class="action-btn reactivate-btn" bindtap="reactivateAppointment" data-appointment-id="{{meal.id}}">重新预约</view>
               </view>
             </view>
@@ -88,6 +88,43 @@
       <!-- 空状态 -->
       <view class="empty-state" wx:else>
         <text class="empty-text">暂无预约安排</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 完成预约前的库存扣减预览 -->
+  <view class="completion-overlay" wx:if="{{completionPreview}}">
+    <view class="completion-modal">
+      <view class="completion-modal-header">
+        <view>
+          <text class="completion-modal-title">确认完成预约</text>
+          <text class="completion-modal-subtitle">以下是本次预计扣减的库存</text>
+        </view>
+        <view class="completion-alert">提醒</view>
+      </view>
+
+      <scroll-view class="completion-preview-scroll" scroll-y="true" show-scrollbar="false">
+        <view class="preview-section">
+          <view class="preview-section-title">预计扣减</view>
+          <view wx:if="{{completionPreview.deductions.length > 0}}">
+            <view class="deduction-row" wx:for="{{completionPreview.deductions}}" wx:key="id" wx:for-item="deduction">
+              <text class="deduction-name">{{deduction.name}}</text>
+              <text class="deduction-quantity">-{{deduction.quantity}}{{deduction.unit || ''}}</text>
+            </view>
+          </view>
+          <view class="preview-empty" wx:else>暂无可自动扣减的库存</view>
+        </view>
+
+        <view class="preview-section preview-warning" wx:if="{{completionPreview.unresolved.length > 0}}">
+          <view class="preview-section-title">需要留意</view>
+          <text class="unresolved-row" wx:for="{{completionPreview.unresolved}}" wx:key="label" wx:for-item="unresolved">{{unresolved.label}}</text>
+          <text class="unresolved-hint">未解决项目不会阻止完成，但请在备菜时留意。</text>
+        </view>
+      </scroll-view>
+
+      <view class="completion-modal-actions">
+        <button class="completion-cancel" disabled="{{isCompleting}}" bindtap="cancelCompletion">稍后确认</button>
+        <button class="completion-confirm" loading="{{isCompleting}}" disabled="{{isCompleting}}" bindtap="confirmCompletion">确认完成并扣减</button>
       </view>
     </view>
   </view>

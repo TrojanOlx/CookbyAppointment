@@ -45,9 +45,11 @@ Page({
         images = images.map((img: string) =>
           img.startsWith('http') ? img : `${BASE_URL}/${img}`
         ).filter(Boolean);
-        const dishImages = ((item.dish && item.dish.images) || []).map((img: string) =>
-          img.startsWith('http') ? img : `${BASE_URL}/${img}`
-        );
+        const nestedDishImages = (item.dish && Array.isArray(item.dish.images)) ? item.dish.images : [];
+        const rawDishImage = item.dishImage || nestedDishImages[0] || '';
+        const dishImage = rawDishImage
+          ? (rawDishImage.startsWith('http') ? rawDishImage : `${BASE_URL}/${rawDishImage.replace(/^\/+/, '')}`)
+          : '/images/default-dish.png';
         const stars = Array.from({ length: 5 }, (_, i) => i < item.rating);
         const createTimeStr = item.createTime
           ? new Date(item.createTime).toLocaleDateString('zh-CN')
@@ -55,8 +57,8 @@ Page({
         return {
           ...item,
           images,
-          dishName: item.dish ? item.dish.name : '未知菜品',
-          dishImage: dishImages[0] || '/images/default-dish.png',
+          dishName: item.dishName || (item.dish && item.dish.name) || '未知菜品',
+          dishImage,
           stars,
           createTimeStr
         };
