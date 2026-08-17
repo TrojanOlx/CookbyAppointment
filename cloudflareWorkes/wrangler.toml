@@ -27,7 +27,7 @@ binding = "FILE_BUCKET"
 bucket_name = "cookby-appointment"
 
 [vars]
-FAMILY_MODE = "off"
+FAMILY_MODE = "on"
 DEFAULT_TIMEZONE = "Asia/Shanghai"
 FAMILY_MEMBER_LIMIT = "20"
 INVITE_TTL_HOURS = "72"
