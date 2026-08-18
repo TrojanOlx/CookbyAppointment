@@ -17,23 +17,31 @@
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-2e2bd5cc-9544-4a78-86f3-a42d9d808679.png` (692 x 1366 px, dish detail)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-5a4a5c11-0159-4c81-a696-9dddbe5dcb1f.png` (770 x 1396 px, profile)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-bfc6e5f2-a110-4825-bb09-fe0a540b2002.png` (674 x 1374 px, booking reference)
-- Implementation screenshot: unavailable.
-- Intended CSS viewports: 320 px, 375 px, and 430 px wide; device scale and density could not be measured without a rendered capture.
+- Implementation screenshots:
+  - `.tmp-visual-qa/01-fridge-recommend.png`
+  - `.tmp-visual-qa/02-inventory.png`
+  - `.tmp-visual-qa/03-shopping.png`
+  - `.tmp-visual-qa/04-shopping-add-modal.png`
+- Captured viewport: iPhone 12/13 Pro simulator, 390 x 844 logical px, 3x pixel ratio; screenshot output 624 x 1352 px.
+- Additional intended CSS viewports: 320 px, 375 px, and 430 px wide.
 - State: authenticated family member viewing family, booking, recommendation, preference, and shopping flows.
 
 ## Full-View Comparison Evidence
 
-The source screenshots were opened and inspected. They establish the visual system used by the implementation: mint dotted background, warm cream surfaces, teal highlights, brown text, compact rounded controls, and safe-area-aware floating or docked actions. The current pass targets owner-only family dissolution, the invitation page composition, and shopping header vertical density. No valid implementation screenshot could be captured, so a same-viewport comparison was not possible.
+The source screenshots and current implementation captures were opened and inspected side by side. The implementation preserves the established mint dotted background, warm cream surfaces, teal highlights, brown text, compact rounded controls, and safe-area-aware floating actions. At the captured 390 px viewport, fridge recommendation now has a compact header and menu-style result rhythm; inventory content continues behind a true floating add control; and shopping has balanced header-to-summary spacing with one floating add entry. No horizontal overflow, clipped content, or incoherent overlap was observed.
 
 ## Focused Region Evidence
 
-Focused comparison is blocked for the same reason. The intended regions were the family danger action, invitation role selector and fixed dock, and the shopping title/tag/subtitle alignment.
+Focused comparisons were completed for the fridge recommendation header/cards, inventory bottom edge and floating add control, shopping header/summary/action placement, and shopping add modal. The modal close control, labels, fields, and submit action remain readable and fully visible above the safe area in the captured state.
 
 ## Findings
 
-- P1: Runtime visual evidence is missing. The WeChat Developer Tools CLI still reports that the IDE service port is disabled, including after launching the installed IDE and retrying its detected port.
-- P2: Responsive overflow, keyboard/modal placement, and safe-area behavior cannot be confirmed from source code alone at 320 px, 375 px, and 430 px widths.
-- P2: Fonts, actual rendered line wrapping, icon baselines, image sharpness, and final color appearance cannot be compared without implementation captures.
+- Pass: Fridge recommendation renders 37 results with consistent card padding, readable availability/expiry explanations, and no clipping or image failures.
+- Pass: Inventory list reaches the bottom viewport edge while its menu-style add control remains independently floating above the safe area.
+- Pass: Shopping keeps clear separation between the page header and weekly summary, exposes only one floating add control, and presents a readable empty state.
+- Pass: Shopping add modal has a legible circular close control, high-contrast fields, and a fully visible submit action at the captured 390 px viewport.
+- Evidence limit: The simulator did not display the software keyboard after focusing an input, so keyboard occlusion remains unverified.
+- Evidence limit: This runtime pass captured the 390 px iPhone 12/13 Pro viewport only; 320 px and 430 px remain covered by static responsive review rather than screenshots.
 - Static review completed for inventory, shopping, and booking. Inventory now uses a bounded flex scroll region, compact two-level item metadata, real WeUI icons, and a safe-area-aware FAB. Shopping places its heading, family context, and actions on a high-contrast cream surface and constrains the modal close control to a circle. Booking adds a horizontally scrollable type filter combined with keyword search without clearing hidden selections.
 - Static review completed for the current family pass. Owners now see a distinct destructive dissolve action with two confirmations; the invitation primary action is in a safe-area dock; and the shopping header uses a compact two-column title/meta layout with the subtitle below the right-side tag.
 - Static review completed for the recommendation and floating-action pass. Fridge recommendations now use a compact cream header, an integrated diner selector, menu-style padded dish cards, real WeUI icons, and an independently scrolling safe-area-aware result list. Inventory and shopping no longer reserve a full FAB-height blank strip at the bottom. Shopping exposes one menu-style floating add control and adds explicit separation between its header and weekly summary.
@@ -45,6 +53,7 @@ Focused comparison is blocked for the same reason. The intended regions were the
 - Pass 3: The four current issue screenshots were inspected and the three target pages were reviewed at source level. The installed IDE was launched and CLI retried on the detected port, but service-port access remained disabled.
 - Pass 4: The owner, invitation, and shopping screenshots were inspected. Source-level responsive constraints and destructive states were reviewed; CLI capture remained blocked because the IDE service port is disabled.
 - Pass 5: The recommendation, inventory-bottom, and shopping-spacing screenshots were inspected. Source-level responsive constraints were reviewed at the 320 px breakpoint; the Developer Tools CLI was retried while the IDE was open and again reported that the service port is disabled.
+- Pass 6: Service-port authorization succeeded. Fridge recommendation, inventory, shopping, and the shopping add modal were captured at a 390 x 844 logical viewport and compared side by side with their source screenshots. Visual checks passed; simulator console and network error filters returned no errors.
 
 ## Automated Evidence
 
@@ -53,8 +62,8 @@ Focused comparison is blocked for the same reason. The intended regions were the
 - JavaScript syntax, JSON parsing, WXML tag balance, WXSS brace balance, local image reference validation, and `git diff --check`: passed.
 - Family cache cleanup and the owner dissolve confirmation flow were exercised with isolated behavior checks: passed.
 
-## Blocker
+## Evidence Limits
 
-Open WeChat Developer Tools, then enable `Tools -> Settings -> Security Settings -> Service Port`. After the IDE exposes its port, capture the same states at 320 px, 375 px, and 430 px and repeat the comparison.
+The implementation is no longer blocked by Developer Tools access. Keyboard-open modal behavior and additional 320 px/430 px runtime captures remain manual follow-up checks; they do not invalidate the captured 390 px result.
 
-final result: blocked
+final result: pass
