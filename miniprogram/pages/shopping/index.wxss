@@ -504,9 +504,9 @@ page {
 
 .shopping-item {
   display: flex;
-  align-items: flex-start;
-  min-height: 142rpx;
-  padding: 20rpx 4rpx 18rpx;
+  align-items: center;
+  min-height: 132rpx;
+  padding: 18rpx 4rpx;
   border-top: 2rpx solid rgba(121,79,39,0.10);
 }
 
@@ -525,7 +525,7 @@ page {
   flex-shrink: 0;
   width: 48rpx;
   height: 48rpx;
-  margin: 2rpx 18rpx 0 0;
+  margin: 0 18rpx 0 0;
   color: transparent;
   background: #fffdf4;
   border: 3rpx solid var(--border-color);
@@ -558,6 +558,7 @@ page {
 .item-main-row {
   justify-content: space-between;
   gap: 16rpx;
+  min-height: 42rpx;
 }
 
 .item-name {
@@ -571,14 +572,25 @@ page {
 }
 
 .item-quantity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  min-width: 58rpx;
+  min-height: 40rpx;
+  padding: 0 14rpx;
+  box-sizing: border-box;
   color: var(--primary-dark);
-  font-size: 25rpx;
+  font-size: 23rpx;
   font-weight: 900;
+  line-height: 1;
+  background: var(--primary-light);
+  border: 2rpx solid rgba(25,200,185,0.22);
+  border-radius: var(--radius-full);
 }
 
 .item-meta-row {
-  margin-top: 9rpx;
+  margin-top: 7rpx;
   gap: 12rpx;
 }
 
@@ -608,7 +620,8 @@ page {
 
 .item-bottom-row {
   justify-content: space-between;
-  margin-top: 14rpx;
+  gap: 14rpx;
+  margin-top: 10rpx;
 }
 
 .assignee-control {
@@ -616,8 +629,14 @@ page {
   align-items: center;
   min-width: 0;
   max-width: 72%;
+  min-height: 44rpx;
+  padding: 3rpx 12rpx 3rpx 5rpx;
+  box-sizing: border-box;
   color: var(--text-secondary);
-  font-size: 22rpx;
+  font-size: 21rpx;
+  background: #fffdf4;
+  border: 2rpx solid rgba(159,146,125,0.24);
+  border-radius: var(--radius-full);
 }
 
 .assignee-control text {
@@ -633,7 +652,7 @@ page {
   flex-shrink: 0;
   width: 34rpx;
   height: 34rpx;
-  margin-right: 8rpx;
+  margin-right: 7rpx;
   color: var(--primary-dark);
   font-size: 19rpx;
   font-weight: 900;
@@ -642,16 +661,30 @@ page {
 }
 
 .assignee-arrow {
-  margin-left: 6rpx;
+  flex-shrink: 0;
+  margin-left: 5rpx;
   color: var(--text-light);
   font-size: 28rpx;
 }
 
 .item-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  padding: 4rpx 0 4rpx 20rpx;
+  width: 48rpx;
+  height: 48rpx;
+  box-sizing: border-box;
   color: var(--danger-color);
-  font-size: 22rpx;
+  background: var(--danger-light);
+  border: 2rpx solid rgba(224,90,90,0.18);
+  border-radius: 50%;
+}
+
+.item-delete:active,
+.assignee-control:active {
+  transform: translateY(2rpx);
+  opacity: 0.78;
 }
 
 .stock-bar {

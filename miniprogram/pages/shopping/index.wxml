@@ -97,7 +97,9 @@
                 <text>{{item.assigneeLabel}}</text>
                 <mp-icon ext-class="assignee-arrow" icon="arrow" size="10" color="#9f927d"></mp-icon>
               </view>
-              <view wx:if="{{item.sourceType === 'manual' && !item.checked}}" class="item-delete" catchtap="deleteItem" data-id="{{item.id}}">删除</view>
+              <view wx:if="{{item.sourceType === 'manual' && !item.checked}}" class="item-delete" catchtap="deleteItem" data-id="{{item.id}}" aria-label="删除{{item.name}}">
+                <mp-icon icon="delete" size="16" color="#e05a5a"></mp-icon>
+              </view>
             </view>
           </view>
         </view>
@@ -135,8 +137,11 @@
               <view class="assignee-control" catchtap="assignItem" data-id="{{item.id}}">
                 <view class="assignee-avatar">{{item.assigneeInitial}}</view>
                 <text>{{item.assigneeLabel}}</text>
+                <mp-icon ext-class="assignee-arrow" icon="arrow" size="10" color="#9f927d"></mp-icon>
               </view>
-              <view wx:if="{{item.sourceType === 'manual' && !item.checked}}" class="item-delete" catchtap="deleteItem" data-id="{{item.id}}">删除</view>
+              <view wx:if="{{item.sourceType === 'manual' && !item.checked}}" class="item-delete" catchtap="deleteItem" data-id="{{item.id}}" aria-label="删除{{item.name}}">
+                <mp-icon icon="delete" size="16" color="#e05a5a"></mp-icon>
+              </view>
             </view>
           </view>
         </view>
