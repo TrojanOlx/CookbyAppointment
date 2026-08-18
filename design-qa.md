@@ -3,6 +3,7 @@
 ## Comparison Target
 
 - Source visual truth:
+  - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-6be9ce2d-1100-4e9d-8bed-5e24edcb7caa.png` (shopping list tail clipped by the floating add control and bottom safe area)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-ee77d101-1688-4a2a-a5db-cb7c568eb88c.png` (fridge recommendation hierarchy and card rhythm before the current pass)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-674a0aa0-4b4a-45e1-b3e8-5ef5a7b246de.png` (inventory bottom whitespace around the floating add control)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-7b5011a7-b924-4572-9cb8-5dc1c17a37d9.png` (shopping header-to-summary spacing and duplicated add controls)
@@ -22,6 +23,9 @@
   - `.tmp-visual-qa/02-inventory.png`
   - `.tmp-visual-qa/03-shopping.png`
   - `.tmp-visual-qa/04-shopping-add-modal.png`
+  - `.tmp-visual-qa/06-shopping-bottom-before-scroll.png`
+  - `.tmp-visual-qa/07-shopping-bottom-after-scroll.png`
+  - `.tmp-visual-qa/09-inventory-bottom-after-scroll.png`
 - Captured viewport: iPhone 12/13 Pro simulator, 390 x 844 logical px, 3x pixel ratio; screenshot output 624 x 1352 px.
 - Additional intended CSS viewports: 320 px, 375 px, and 430 px wide.
 - State: authenticated family member viewing family, booking, recommendation, preference, and shopping flows.
@@ -40,6 +44,8 @@ Focused comparisons were completed for the fridge recommendation header/cards, i
 - Pass: Inventory list reaches the bottom viewport edge while its menu-style add control remains independently floating above the safe area.
 - Pass: Shopping keeps clear separation between the page header and weekly summary, exposes only one floating add control, and presents a readable empty state.
 - Pass: Shopping add modal has a legible circular close control, high-contrast fields, and a fully visible submit action at the captured 390 px viewport.
+- Pass: Shopping with four active items keeps the final assignee/delete row and synchronization footnote visible; after scrolling to the end, the list clears the floating add control and bottom safe area.
+- Pass: Inventory scrolls its final card fully above the floating add control with a stable safe-area gap.
 - Evidence limit: The simulator did not display the software keyboard after focusing an input, so keyboard occlusion remains unverified.
 - Evidence limit: This runtime pass captured the 390 px iPhone 12/13 Pro viewport only; 320 px and 430 px remain covered by static responsive review rather than screenshots.
 - Static review completed for inventory, shopping, and booking. Inventory now uses a bounded flex scroll region, compact two-level item metadata, real WeUI icons, and a safe-area-aware FAB. Shopping places its heading, family context, and actions on a high-contrast cream surface and constrains the modal close control to a circle. Booking adds a horizontally scrollable type filter combined with keyword search without clearing hidden selections.
@@ -54,6 +60,7 @@ Focused comparisons were completed for the fridge recommendation header/cards, i
 - Pass 4: The owner, invitation, and shopping screenshots were inspected. Source-level responsive constraints and destructive states were reviewed; CLI capture remained blocked because the IDE service port is disabled.
 - Pass 5: The recommendation, inventory-bottom, and shopping-spacing screenshots were inspected. Source-level responsive constraints were reviewed at the 320 px breakpoint; the Developer Tools CLI was retried while the IDE was open and again reported that the service port is disabled.
 - Pass 6: Service-port authorization succeeded. Fridge recommendation, inventory, shopping, and the shopping add modal were captured at a 390 x 844 logical viewport and compared side by side with their source screenshots. Visual checks passed; simulator console and network error filters returned no errors.
+- Pass 7: The reported populated-shopping state was reproduced with four items at the same 390 x 844 logical viewport. Explicit scroll-tail spacers were verified on shopping and inventory; both final items clear their floating actions and the Home safe area. The other fixed-action pages were statically audited and already have dedicated spacers or dynamic bottom-height handling.
 
 ## Automated Evidence
 
@@ -66,4 +73,4 @@ Focused comparisons were completed for the fridge recommendation header/cards, i
 
 The implementation is no longer blocked by Developer Tools access. Keyboard-open modal behavior and additional 320 px/430 px runtime captures remain manual follow-up checks; they do not invalidate the captured 390 px result.
 
-final result: pass
+final result: passed

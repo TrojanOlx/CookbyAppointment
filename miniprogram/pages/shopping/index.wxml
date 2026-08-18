@@ -147,6 +147,7 @@
         <button class="stock-button" bindtap="confirmStockIn">确认入库</button>
       </view>
       <view class="list-footnote">清单会跟随当前家庭同步，家人都能看到最新状态</view>
+      <view class="fab-scroll-spacer" aria-hidden="true"></view>
     </block>
   </scroll-view>
 

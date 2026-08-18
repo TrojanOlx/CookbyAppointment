@@ -131,6 +131,7 @@
         <view class="empty-text">暂无库存，请添加</view>
         <view class="seed-btn" wx:if="{{!searchKeyword && totalCount === 0}}" bindtap="seedTestInventory">添加示例库存</view>
       </view>
+      <view class="fab-scroll-spacer" aria-hidden="true"></view>
     </scroll-view>
   </view>
 
