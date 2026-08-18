@@ -1,6 +1,6 @@
 <view class="invite-page">
   <view class="fixed-page-bg"></view>
-  <scroll-view class="invite-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+  <scroll-view class="invite-scroll {{!isPreview && hasActiveFamily && canCreateInvite && !contextLoading && !contextError ? 'invite-scroll--with-dock' : ''}}" scroll-y="true" enhanced="true" show-scrollbar="false">
     <block wx:if="{{isPreview}}">
       <view class="invite-heading">
         <view class="invite-kicker">FAMILY INVITATION</view>
@@ -30,12 +30,17 @@
       </view>
     </block>
 
-      <block wx:else>
-        <view class="invite-heading">
-        <view class="invite-kicker">INVITE FAMILY</view>
-        <view class="invite-title">邀请家人加入</view>
-        <view class="invite-subtitle">生成一个邀请码，发给想一起安排餐食的人</view>
-      </view>
+    <block wx:else>
+        <view class="invite-heading invite-heading--create">
+          <view class="invite-heading-copy">
+            <view class="invite-kicker">INVITE FAMILY</view>
+            <view class="invite-title">邀请家人加入</view>
+            <view class="invite-subtitle">生成邀请码，发给想一起安排餐食的人</view>
+          </view>
+          <view class="invite-heading-mark">
+            <mp-icon icon="add-friends" size="32" color="#0f8f85"></mp-icon>
+          </view>
+        </view>
 
       <view wx:if="{{contextLoading}}" class="invite-loading">正在读取家庭权限...</view>
 
@@ -62,10 +67,12 @@
 
       <block wx:else>
         <view class="invite-create-card">
-          <view class="create-label">成员权限</view>
+          <view class="create-card-heading">
+            <view class="create-label">成员权限</view>
+            <view class="create-current">{{role === 'admin' ? '管理员' : role === 'chef' ? '厨师' : '普通成员'}}</view>
+          </view>
           <island-tabs items="{{roleOptions}}" active="{{role}}" bind:change="onRoleChange"></island-tabs>
-          <view class="create-hint">管理员可以协助管理家庭成员，厨师可以共同维护菜单和餐食。</view>
-          <button class="invite-primary-btn" loading="{{creating}}" disabled="{{creating}}" bindtap="createInvite">生成邀请码</button>
+          <view class="create-hint">{{role === 'admin' ? '管理员可以邀请成员、调整厨师和成员角色。' : role === 'chef' ? '厨师可以维护菜单，并确认和完成家庭预约。' : '普通成员可以查看家庭内容、添加库存和创建预约。'}}</view>
         </view>
 
         <view wx:if="{{invite}}" class="invite-token-card">
@@ -75,9 +82,15 @@
           <button class="invite-secondary-btn" bindtap="copyToken">复制邀请码</button>
           <button class="invite-share-btn" open-type="share">转发邀请</button>
         </view>
-
-        <button class="invite-text-btn" bindtap="openMembers">返回成员管理</button>
-        </block>
+      </block>
     </block>
   </scroll-view>
+
+  <view class="invite-bottom-fixed" wx:if="{{!isPreview && hasActiveFamily && canCreateInvite && !contextLoading && !contextError}}">
+    <view class="invite-bottom-panel">
+      <button class="invite-dock-secondary" bindtap="openMembers">成员管理</button>
+      <button class="invite-dock-primary" loading="{{creating}}" disabled="{{creating}}" bindtap="createInvite"><mp-icon ext-class="invite-dock-icon" icon="add-friends" size="17" color="#fff9e8"></mp-icon>{{invite ? '重新生成' : '生成邀请码'}}</button>
+    </view>
+    <view class="invite-safe-area"></view>
+  </view>
 </view>

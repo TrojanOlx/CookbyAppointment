@@ -23,7 +23,7 @@ page {
   z-index: 2;
   flex-shrink: 0;
   box-sizing: border-box;
-  padding: 38rpx 32rpx 24rpx;
+  padding: 24rpx 32rpx 20rpx;
   background:
     radial-gradient(circle, rgba(247,205,103,0.12) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
     rgba(247,243,223,0.96);
@@ -34,14 +34,24 @@ page {
 
 .header-title-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
 .header-copy {
   min-width: 0;
+  flex: 0 1 260rpx;
+}
+
+.header-meta {
+  display: flex;
   flex: 1;
+  min-width: 0;
+  max-width: 330rpx;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
 }
 
 .page-kicker {
@@ -66,41 +76,34 @@ page {
 }
 
 .page-title {
-  margin-top: 6rpx;
   color: var(--text-color);
-  font-size: 46rpx;
+  font-size: 42rpx;
   font-weight: 900;
   line-height: 1.2;
 }
 
 .page-subtitle {
-  margin-top: 10rpx;
+  margin-top: 7rpx;
   color: var(--text-secondary);
-  font-size: 25rpx;
-  line-height: 1.45;
+  font-size: 22rpx;
+  line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
-.header-family-row {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 12rpx;
-  margin-top: 20rpx;
-}
+.page-subtitle text { display: block; }
 
 .family-chip {
   display: flex;
   align-items: center;
   min-width: 0;
-  flex: 1;
-  max-width: 100%;
-  min-height: 48rpx;
+  max-width: 240rpx;
+  min-height: 42rpx;
+  margin-top: 10rpx;
   box-sizing: border-box;
   gap: 8rpx;
-  padding: 0 16rpx;
+  padding: 0 13rpx;
   color: var(--text-color);
-  font-size: 22rpx;
+  font-size: 20rpx;
   font-weight: 800;
   background: var(--card-bg-light);
   border: 2rpx dashed rgba(25,200,185,0.46);
@@ -116,18 +119,10 @@ page {
   white-space: nowrap;
 }
 
-.family-chip-label {
-  flex-shrink: 0;
-  color: var(--text-light);
-  font-size: 21rpx;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
 .header-actions {
   display: flex;
   gap: 16rpx;
-  margin-top: 18rpx;
+  margin-top: 14rpx;
 }
 
 .header-action {
@@ -136,14 +131,14 @@ page {
   justify-content: center;
   flex: 1;
   min-width: 0;
-  height: 70rpx;
+  height: 64rpx;
   margin: 0;
   padding: 0 14rpx;
   box-sizing: border-box;
   color: var(--text-color);
   font-size: 24rpx;
   font-weight: 900;
-  line-height: 70rpx;
+  line-height: 64rpx;
   border: 0;
   border-radius: var(--radius-full);
 }
@@ -911,12 +906,12 @@ page {
 
 @media (max-height: 680px) {
   .shopping-header {
-    padding-top: 24rpx;
-    padding-bottom: 18rpx;
+    padding-top: 18rpx;
+    padding-bottom: 16rpx;
   }
 
   .page-title {
-    font-size: 40rpx;
+    font-size: 38rpx;
   }
 
   .page-subtitle {

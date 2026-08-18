@@ -23,7 +23,7 @@
 
       <view class="members-actions">
         <button class="member-invite-btn" bindtap="openInvite" disabled="{{!canManage}}"><mp-icon ext-class="member-button-icon" icon="add-friends" size="16" color="#fff9e8"></mp-icon>邀请成员</button>
-        <button class="member-leave-btn" bindtap="leaveFamily">退出家庭</button>
+        <button class="member-leave-btn {{isOwner ? 'is-dissolve' : ''}}" bindtap="leaveFamily" loading="{{leaving}}" disabled="{{loading || leaving}}">{{isOwner ? '解散家庭' : '退出家庭'}}</button>
       </view>
 
       <view wx:if="{{loadError}}" class="members-error">
@@ -59,7 +59,7 @@
 
       <view class="members-note">
         <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
-        <text>家庭主可以转让家庭，管理员可以协助维护成员。</text>
+        <text>{{isOwner ? '家庭主可以转让家庭主身份，或在不再使用时解散家庭。' : '家庭主可以转让家庭，管理员可以协助维护成员。'}}</text>
       </view>
     </block>
   </scroll-view>

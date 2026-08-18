@@ -18,7 +18,8 @@ Page({
     actorRole: FamilyRole.MEMBER,
     canManage: false,
     isOwner: false,
-    refreshing: false
+    refreshing: false,
+    leaving: false
   },
 
   onLoad() {
@@ -266,9 +267,41 @@ Page({
   leaveFamily() {
     if (this.data.isOwner) {
       wx.showModal({
-        title: '暂不能退出',
-        content: '你是家庭主，请先把家庭主身份转让给其他成员。',
-        showCancel: false
+        title: '解散家庭',
+        content: '解散后，所有成员将立即失去这个家庭的访问权限，未使用的邀请会失效，采购清单会归档。家庭历史和审计记录仍会保留。',
+        confirmText: '继续解散',
+        confirmColor: '#e05a5a',
+        success: (result) => {
+          if (!result.confirm) return;
+          const familyName = (this.data.family && this.data.family.name) || '当前家庭';
+          wx.showModal({
+            title: '最后确认',
+            content: `确定解散“${familyName}”吗？此操作不可撤销。`,
+            confirmText: '确认解散',
+            confirmColor: '#e05a5a',
+            success: async (finalResult) => {
+              if (!finalResult.confirm || this.data.leaving) return;
+              const familyId = activeFamilyId();
+              if (!familyId || familyId !== this.data.familyId) {
+                wx.showToast({ title: '家庭已切换，请重新操作', icon: 'none' });
+                return;
+              }
+              this.setData({ leaving: true });
+              try {
+                await FamilyService.remove();
+                membersRequestId += 1;
+                FamilyService.clearActiveFamilyId();
+                wx.showToast({ title: '家庭已解散', icon: 'success', duration: 1000 });
+                setTimeout(() => this.openFamilyList(), 450);
+              } catch (error) {
+                console.error('解散家庭失败:', error);
+                wx.showToast({ title: error && error.message ? error.message : '解散失败', icon: 'none' });
+              } finally {
+                this.setData({ leaving: false });
+              }
+            }
+          });
+        }
       });
       return;
     }
@@ -278,15 +311,19 @@ Page({
       confirmText: '确认退出',
       confirmColor: '#e05a5a',
       success: async (result) => {
-        if (!result.confirm) return;
+        if (!result.confirm || this.data.leaving) return;
+        this.setData({ leaving: true });
         try {
           await FamilyService.leave();
+          membersRequestId += 1;
           FamilyService.clearActiveFamilyId();
           wx.showToast({ title: '已退出家庭', icon: 'success', duration: 1000 });
           setTimeout(() => this.openFamilyList(), 450);
         } catch (error) {
           console.error('退出家庭失败:', error);
           wx.showToast({ title: error && error.message ? error.message : '退出失败', icon: 'none' });
+        } finally {
+          this.setData({ leaving: false });
         }
       }
     });

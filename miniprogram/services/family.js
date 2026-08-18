@@ -33,6 +33,10 @@ const setActiveFamilyId = (familyId) => {
 
 const clearActiveFamilyId = () => {
   wx.removeStorageSync(ACTIVE_FAMILY_KEY);
+  wx.removeStorageSync('active_family');
+  ['dish_list_cache', 'inventory_cache', 'appointment_cache', 'shopping_cache'].forEach((key) => {
+    wx.removeStorageSync(key);
+  });
 };
 
 const familyRequest = (url, method, data, includeFamily) => {
