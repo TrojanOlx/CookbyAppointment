@@ -1,6 +1,8 @@
 {
   "navigationBarTitleText": "文件管理",
-  "usingComponents": {},
+  "usingComponents": {
+    "mp-icon": "/miniprogram_npm/weui-miniprogram/icon/icon"
+  },
   "backgroundColor": "#a8d8b9",
   "backgroundTextStyle": "dark"
 }

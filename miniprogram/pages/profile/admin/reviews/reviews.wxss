@@ -104,7 +104,15 @@ page {
   border-radius: 50%;
   background: var(--input-bg);
 }
-.user-name { font-size: 22rpx; color: var(--text-secondary); }
+.user-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 22rpx;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .bottom-row {
   display: flex;

@@ -561,6 +561,14 @@ page {
   min-height: 42rpx;
 }
 
+.item-title-group {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  gap: 10rpx;
+}
+
 .item-name {
   min-width: 0;
   overflow: hidden;
@@ -591,7 +599,6 @@ page {
 
 .item-meta-row {
   margin-top: 7rpx;
-  gap: 12rpx;
 }
 
 .item-source {
@@ -777,15 +784,16 @@ page {
   align-items: flex-end;
   justify-content: center;
   box-sizing: border-box;
-  padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
+  padding: calc(24rpx + env(safe-area-inset-top)) 24rpx calc(24rpx + env(safe-area-inset-bottom));
   background: rgba(61,52,40,0.42);
 }
 
 .modal-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-height: calc(100vh - 48rpx - env(safe-area-inset-bottom));
+  max-height: calc(100vh - 48rpx - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   box-sizing: border-box;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -801,34 +809,38 @@ page {
 .modal-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-shrink: 0;
   margin-bottom: 20rpx;
 }
 
 .modal-title {
+  min-width: 0;
+  padding-right: 96rpx;
   color: var(--text-color);
   font-size: 34rpx;
   font-weight: 900;
 }
 
 .modal-close {
+  position: absolute;
+  top: 10rpx;
+  right: 10rpx;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 52rpx;
-  width: 52rpx !important;
-  min-width: 52rpx !important;
-  max-width: 52rpx !important;
-  height: 52rpx !important;
-  min-height: 52rpx;
-  max-height: 52rpx;
-  flex-shrink: 0;
+  flex: 0 0 80rpx;
+  width: 80rpx !important;
+  min-width: 80rpx !important;
+  max-width: 80rpx !important;
+  height: 80rpx !important;
+  min-height: 80rpx;
+  max-height: 80rpx;
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   overflow: hidden;
-  line-height: 52rpx;
+  line-height: 80rpx;
   background: rgba(121,79,39,0.08);
   border: 0;
   border-radius: 50%;

@@ -131,10 +131,19 @@ page {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 14rpx 18rpx;
   margin-bottom: 20rpx;
 }
 
-.meal-info { display: flex; align-items: center; gap: 12rpx; }
+.meal-info {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+  gap: 10rpx 12rpx;
+}
 
 .meal-type {
   font-size: 32rpx;
@@ -150,7 +159,12 @@ page {
   border-radius: var(--radius-full);
 }
 
-.meal-actions { display: flex; gap: 12rpx; }
+.meal-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 12rpx;
+  margin-left: auto;
+}
 
 .action-btn {
   padding: 8rpx 20rpx;
@@ -268,10 +282,11 @@ page {
 
 /* ── 状态 Badge ── */
 .appointment-status {
+  flex-shrink: 0;
   font-size: 22rpx;
   padding: 4rpx 14rpx;
   border-radius: var(--radius-full);
-  margin-left: 16rpx;
+  margin-left: 0;
   font-weight: 500;
 }
 .appointment-status.status-pending {

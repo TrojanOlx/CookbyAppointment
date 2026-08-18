@@ -76,6 +76,7 @@ page {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12rpx;
   width: 100%;
 }
 
@@ -135,8 +136,6 @@ page {
 
 .review-status {
   font-size: 24rpx;
-  padding: 4rpx 16rpx;
-  border-radius: var(--radius-full);
   flex-shrink: 0;
 }
 

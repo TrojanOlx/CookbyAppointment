@@ -335,7 +335,11 @@ page {
   color: var(--text-color);
 }
 .dish-item.selected .dish-name { color: var(--primary-dark) !important; font-weight: 600; }
-.dish-item.selected .dish-info { color: var(--primary-dark); }
+.dish-item.selected .dish-info {
+  padding-right: 56rpx;
+  box-sizing: border-box;
+  color: var(--primary-dark);
+}
 
 .dish-item .check-icon {
   position: absolute;

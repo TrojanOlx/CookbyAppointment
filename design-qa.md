@@ -3,6 +3,7 @@
 ## Comparison Target
 
 - Source visual truth:
+  - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-a55d23ed-0365-46af-9446-52fea73c9703.png` (shopping source tag separated from the ingredient name and modal close alignment)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-15f842ec-436a-4d87-9b3f-3370490c9fc9.png` (shopping item hierarchy, alignment, and action density before the item-layout pass)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-6be9ce2d-1100-4e9d-8bed-5e24edcb7caa.png` (shopping list tail clipped by the floating add control and bottom safe area)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-ee77d101-1688-4a2a-a5db-cb7c568eb88c.png` (fridge recommendation hierarchy and card rhythm before the current pass)
@@ -20,6 +21,8 @@
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-5a4a5c11-0159-4c81-a696-9dddbe5dcb1f.png` (770 x 1396 px, profile)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-bfc6e5f2-a110-4825-bb09-fe0a540b2002.png` (674 x 1374 px, booking reference)
 - Implementation screenshots:
+  - `.tmp-visual-qa/11-shopping-tag-inline.png`
+  - `.tmp-visual-qa/12-shopping-modal-close.png`
   - `.tmp-visual-qa/01-fridge-recommend.png`
   - `.tmp-visual-qa/02-inventory.png`
   - `.tmp-visual-qa/03-shopping.png`
@@ -49,6 +52,9 @@ Focused comparisons were completed for the fridge recommendation header/cards, i
 - Pass: Shopping with four active items keeps the final assignee/delete row and synchronization footnote visible; after scrolling to the end, the list clears the floating add control and bottom safe area.
 - Pass: Inventory scrolls its final card fully above the floating add control with a stable safe-area gap.
 - Pass: Shopping items now align the completion control independently, present name and quantity as the primary row, group source/note as supporting metadata, and expose assignee/delete as compact, visually distinct actions.
+- Pass: Shopping source tags now sit directly after ingredient names while quantity pills remain right aligned; long names keep a bounded ellipsis region and notes only occupy a row when present.
+- Pass: Shopping and admin file-detail close controls use the same icon button pattern, sit at the modal upper-right, provide an 80rpx touch target, and preserve title clearance. All three custom modal surfaces now account for top and bottom safe areas.
+- Pass: The page-wide static audit corrected five related narrow-screen risks: appointment header wrapping, selected-dish checkmark clearance, long admin appointment/review name truncation, and duplicate review-status padding.
 - Evidence limit: The simulator did not display the software keyboard after focusing an input, so keyboard occlusion remains unverified.
 - Evidence limit: This runtime pass captured the 390 px iPhone 12/13 Pro viewport only; 320 px and 430 px remain covered by static responsive review rather than screenshots.
 - Static review completed for inventory, shopping, and booking. Inventory now uses a bounded flex scroll region, compact two-level item metadata, real WeUI icons, and a safe-area-aware FAB. Shopping places its heading, family context, and actions on a high-contrast cream surface and constrains the modal close control to a circle. Booking adds a horizontally scrollable type filter combined with keyword search without clearing hidden selections.
@@ -65,12 +71,14 @@ Focused comparisons were completed for the fridge recommendation header/cards, i
 - Pass 6: Service-port authorization succeeded. Fridge recommendation, inventory, shopping, and the shopping add modal were captured at a 390 x 844 logical viewport and compared side by side with their source screenshots. Visual checks passed; simulator console and network error filters returned no errors.
 - Pass 7: The reported populated-shopping state was reproduced with four items at the same 390 x 844 logical viewport. Explicit scroll-tail spacers were verified on shopping and inventory; both final items clear their floating actions and the Home safe area. The other fixed-action pages were statically audited and already have dedicated spacers or dynamic bottom-height handling.
 - Pass 8: The four-item shopping state was captured again after the item-layout pass and compared side by side with the reported screenshot. Quantity pills, assignee controls, and delete icon buttons remain aligned without clipping; tapping delete still opens the destructive confirmation dialog before any mutation.
+- Pass 9: The reported shopping state was captured after moving source tags beside ingredient names. The populated list and add modal compile and render at 390 x 844 logical px with no overlap; the close control is visibly anchored to the upper-right and the console/network error filters are empty.
 
 ## Automated Evidence
 
 - `npm run check`: passed (22 unit tests and 7 migration assertions).
 - `npm run test:integration`: passed (48 Worker+D1 assertions).
 - JavaScript syntax, JSON parsing, WXML tag balance, WXSS brace balance, local image reference validation, and `git diff --check`: passed.
+- WeChat Developer Tools compilation: both changed WXML files and all seven changed WXSS files passed individual compilation.
 - Family cache cleanup and the owner dissolve confirmation flow were exercised with isolated behavior checks: passed.
 
 ## Evidence Limits

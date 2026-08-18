@@ -142,7 +142,9 @@
     <view class="modal-content">
       <view class="modal-header">
         <text class="modal-title">文件详情</text>
-        <text class="modal-close" bindtap="closeFileInfo">×</text>
+        <button class="modal-close" bindtap="closeFileInfo" aria-label="关闭">
+          <mp-icon icon="close" size="20" color="#725d42"></mp-icon>
+        </button>
       </view>
       <view class="modal-body">
         <view class="info-item">

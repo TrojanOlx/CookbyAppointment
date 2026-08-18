@@ -84,13 +84,13 @@
           <view class="item-check" catchtap="toggleChecked" data-id="{{item.id}}"><mp-icon icon="done" size="16" color="transparent"></mp-icon></view>
           <view class="item-content">
             <view class="item-main-row">
-              <text class="item-name">{{item.name}}</text>
+              <view class="item-title-group">
+                <text class="item-name">{{item.name}}</text>
+                <text class="item-source">{{item.sourceLabel}}</text>
+              </view>
               <text class="item-quantity">{{item.quantityLabel}}</text>
             </view>
-            <view class="item-meta-row">
-              <text class="item-source">{{item.sourceLabel}}</text>
-              <text class="item-note" wx:if="{{item.note}}">{{item.note}}</text>
-            </view>
+            <view class="item-meta-row" wx:if="{{item.note}}"><text class="item-note">{{item.note}}</text></view>
             <view class="item-bottom-row">
               <view class="assignee-control" catchtap="assignItem" data-id="{{item.id}}">
                 <view class="assignee-avatar">{{item.assigneeInitial}}</view>
@@ -126,13 +126,13 @@
           </view>
           <view class="item-content">
             <view class="item-main-row">
-              <text class="item-name">{{item.name}}</text>
+              <view class="item-title-group">
+                <text class="item-name">{{item.name}}</text>
+                <text class="item-source item-source--purchased">{{item.statusLabel}}</text>
+              </view>
               <text class="item-quantity">{{item.quantityLabel}}</text>
             </view>
-            <view class="item-meta-row">
-              <text class="item-source item-source--purchased">{{item.statusLabel}}</text>
-              <text class="item-note" wx:if="{{item.note}}">{{item.note}}</text>
-            </view>
+            <view class="item-meta-row" wx:if="{{item.note}}"><text class="item-note">{{item.note}}</text></view>
             <view class="item-bottom-row">
               <view class="assignee-control" catchtap="assignItem" data-id="{{item.id}}">
                 <view class="assignee-avatar">{{item.assigneeInitial}}</view>
