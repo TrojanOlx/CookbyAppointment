@@ -282,6 +282,111 @@ page {
   pointer-events: none;
 }
 
+.dish-type-selector {
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  height: 72rpx;
+  margin-top: 14rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+  background: #fffdf4;
+  border: 3rpx solid var(--border-color);
+  border-radius: var(--radius-full);
+}
+
+.dish-type-fixed {
+  position: relative;
+  flex-shrink: 0;
+  min-width: 112rpx;
+  padding: 0 22rpx;
+}
+
+.dish-type-fixed::after {
+  position: absolute;
+  top: 16rpx;
+  right: 0;
+  bottom: 16rpx;
+  width: 2rpx;
+  content: '';
+  background: var(--border-color);
+}
+
+.dish-type-scroll-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.dish-type-scroll {
+  width: 100%;
+  height: 66rpx;
+  white-space: nowrap;
+}
+
+.dish-type-content {
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 100%;
+  height: 66rpx;
+  padding-right: 24rpx;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.dish-type-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 112rpx;
+  height: 66rpx;
+  padding: 0 16rpx;
+  box-sizing: border-box;
+  color: var(--text-light);
+  font-size: 23rpx;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.dish-type-item.is-active {
+  color: var(--primary-dark);
+  font-weight: 900;
+}
+
+.dish-type-item.is-active::after {
+  position: absolute;
+  bottom: 0;
+  width: 34rpx;
+  height: 5rpx;
+  content: '';
+  background: var(--primary-color);
+  border-radius: var(--radius-full);
+}
+
+.dish-type-scroll-hint {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 58rpx;
+  height: 66rpx;
+  padding-right: 10rpx;
+  box-sizing: border-box;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(255,253,244,0), #fffdf4 62%);
+}
+
+.dish-type-scroll-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.72;
+}
+
 .dish-check-list {
   display: flex;
   flex-direction: column;
@@ -611,5 +716,12 @@ button::after {
   .booking-cancel,
   .booking-save {
     font-size: 27rpx;
+  }
+
+  .dish-type-fixed,
+  .dish-type-item {
+    min-width: 96rpx;
+    padding-right: 12rpx;
+    padding-left: 12rpx;
   }
 }

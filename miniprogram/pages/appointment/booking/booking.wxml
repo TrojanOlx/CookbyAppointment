@@ -62,6 +62,23 @@
             <input class="dish-search" value="{{searchKeyword}}" placeholder="搜索菜品名称" placeholder-class="input-placeholder" bindinput="onSearchInput" />
             <mp-icon ext-class="search-icon" icon="search" size="18" color="#9f927d"></mp-icon>
           </view>
+          <view class="dish-type-selector">
+            <view class="dish-type-item dish-type-fixed {{selectedDishType === '' ? 'is-active' : ''}}" bindtap="selectDishType" data-type="">
+              <text>全部</text>
+            </view>
+            <view class="dish-type-scroll-wrap">
+              <scroll-view class="dish-type-scroll" scroll-x="true" enhanced="true" show-scrollbar="false" scroll-with-animation="true">
+                <view class="dish-type-content">
+                  <view wx:for="{{dishTypes}}" wx:key="*this" class="dish-type-item {{selectedDishType === item ? 'is-active' : ''}}" bindtap="selectDishType" data-type="{{item}}">
+                    <text>{{item}}</text>
+                  </view>
+                </view>
+              </scroll-view>
+              <view wx:if="{{dishTypes.length > 2}}" class="dish-type-scroll-hint" aria-hidden="true">
+                <mp-icon ext-class="dish-type-scroll-arrow" icon="arrow" size="12" color="#19c8b9"></mp-icon>
+              </view>
+            </view>
+          </view>
           <view wx:if="{{filteredDishes.length === 0}}" class="inline-empty empty-dishes">
             <image class="empty-image" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
             <view class="empty-title">没有找到可选菜品</view>

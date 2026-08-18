@@ -73,6 +73,12 @@ const extractDishIds = appointment => {
   return uniqueIds(values.map(item => (item && typeof item === 'object' ? item.id || item.dishId : item)));
 };
 
+const extractDishTypes = dishes => Array.from(new Set(
+  (dishes || [])
+    .map(item => String(item && item.type || '').trim())
+    .filter(Boolean)
+));
+
 Page({
   data: {
     familyId: '',
@@ -86,6 +92,8 @@ Page({
     selectedDinerMap: {},
     dishes: [],
     filteredDishes: [],
+    dishTypes: [],
+    selectedDishType: '',
     selectedDishIds: [],
     selectedDishMap: {},
     searchKeyword: '',
@@ -128,11 +136,23 @@ Page({
       members: [],
       dishes: [],
       filteredDishes: [],
+      dishTypes: [],
+      selectedDishType: '',
       selectedDinerIds: [],
       selectedDinerMap: {},
       selectedDishIds: [],
       selectedDishMap: {},
+      searchKeyword: '',
       loading: true,
+      loadingMembers: true,
+      loadingDishes: true,
+      preview: null,
+      warnings: [],
+      previewReady: false,
+      previewSignature: '',
+      previewError: '',
+      isPreviewing: false,
+      confirmed: false,
       loadError: ''
     });
     this.loadBookingData(this.data.appointmentId);
@@ -177,6 +197,7 @@ Page({
       const mealType = appointment && MEAL_TYPES.indexOf(appointment.mealType) >= 0
         ? appointment.mealType
         : this.data.selectedMealType;
+      const dishTypes = extractDishTypes(dishes);
 
       this.setData({
         date: appointment && appointment.date ? appointment.date : this.data.date,
@@ -187,6 +208,9 @@ Page({
         selectedDinerMap: selectionMap(selectedDinerIds),
         dishes,
         filteredDishes: dishes,
+        dishTypes,
+        selectedDishType: '',
+        searchKeyword: '',
         selectedDishIds,
         selectedDishMap: selectionMap(selectedDishIds),
         loading: false,
@@ -232,14 +256,21 @@ Page({
     this.setData({ searchKeyword }, () => this.applyDishFilter());
   },
 
+  selectDishType(event) {
+    const selectedDishType = String(event.currentTarget.dataset.type || '');
+    if (selectedDishType === this.data.selectedDishType) return;
+    this.setData({ selectedDishType }, () => this.applyDishFilter());
+  },
+
   applyDishFilter() {
     const keyword = String(this.data.searchKeyword || '').trim().toLowerCase();
-    const filteredDishes = !keyword
-      ? this.data.dishes
-      : this.data.dishes.filter(item => {
-        const text = [item.name, item.type, item.spicy].join(' ').toLowerCase();
-        return text.indexOf(keyword) >= 0;
-      });
+    const selectedDishType = String(this.data.selectedDishType || '');
+    const filteredDishes = this.data.dishes.filter(item => {
+      if (selectedDishType && String(item.type || '').trim() !== selectedDishType) return false;
+      if (!keyword) return true;
+      const text = [item.name, item.type, item.spicy].join(' ').toLowerCase();
+      return text.indexOf(keyword) >= 0;
+    });
     this.setData({ filteredDishes });
   },
 

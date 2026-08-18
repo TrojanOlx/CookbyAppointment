@@ -1,6 +1,8 @@
 {
   "navigationBarTitleText": "冰箱库存",
-  "usingComponents": {},
+  "usingComponents": {
+    "mp-icon": "/miniprogram_npm/weui-miniprogram/icon/icon"
+  },
   "backgroundColor": "#a8d8b9",
   "backgroundTextStyle": "dark",
   "disableScroll": true

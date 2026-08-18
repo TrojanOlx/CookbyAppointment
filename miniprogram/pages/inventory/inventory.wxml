@@ -1,4 +1,4 @@
-<view class="container" style="padding-bottom: {{safeAreaBottom}}px;" bindtap="onContainerTap">
+<view class="container" bindtap="onContainerTap">
   <view class="fixed-page-bg"></view>
   <view class="inventory-top-dock"></view>
   <!-- 搜索区域 -->
@@ -12,7 +12,7 @@
         confirm-type="search"
         catchtap="stopEvent"
       />
-      <view class="search-icon"></view>
+      <mp-icon ext-class="search-icon" icon="search" size="19" color="#9f927d"></mp-icon>
     </view>
   </view>
 
@@ -57,6 +57,7 @@
     <scroll-view 
       class="inventory-list" 
       scroll-y="true"
+      enable-flex="true"
       enable-back-to-top
       refresher-enabled
       refresher-threshold="50"
@@ -90,24 +91,23 @@
                   <image referrerPolicy="no-referrer" src="{{item.cachedImage || item.image || '/images/default-dish.png'}}" mode="aspectFill"></image>
                 </view>
                 
-                <!-- 中间食材信息区域 -->
-                <view class="item-info">
-                  <view class="item-name">{{item.name}}</view>
+                <view class="item-body">
+                  <view class="item-heading">
+                    <view class="item-name">{{item.name}}</view>
+                    <view class="days-left {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}" wx:if="{{item.isExpired || item.daysLeft !== null}}">
+                      {{item.isExpired ? '已过期' : '剩' + item.daysLeft + '天'}}
+                    </view>
+                  </view>
                   <view class="item-amount">{{item.amount}}</view>
-                </view>
-                
-                <!-- 右侧日期信息区域 -->
-                <view class="item-dates-container">
-                  <view class="date-row put-in-date">
-                    <text class="date-label">放入:</text>
-                    <text class="date-value">{{item.putInDate}}</text>
-                  </view>
-                  <view class="date-row expiry-date">
-                    <text class="date-label">到期:</text>
-                    <text class="date-value {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}">{{item.expiryDate}}</text>
-                  </view>
-                  <view class="days-left {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}" wx:if="{{item.daysLeft !== null}}">
-                    {{item.isExpired ? '已过期' : '剩' + item.daysLeft + '天'}}
+                  <view class="item-date-summary">
+                    <view class="item-date-pair">
+                      <text class="date-label">放入</text>
+                      <text class="date-value">{{item.putInDate}}</text>
+                    </view>
+                    <view class="item-date-pair">
+                      <text class="date-label">到期</text>
+                      <text class="date-value {{item.isExpired ? 'expired' : item.isExpiringSoon ? 'expiring-soon' : ''}}">{{item.expiryDate}}</text>
+                    </view>
                   </view>
                 </view>
               </view>
@@ -135,7 +135,7 @@
   </view>
 
   <!-- 添加按钮 -->
-  <view class="add-btn" bindtap="addItem" style="bottom: calc(40rpx + {{safeAreaBottom}}px);">
-    <view class="add-icon"></view>
+  <view class="add-btn" bindtap="addItem" style="bottom: calc(28rpx + {{safeAreaBottom}}px);">
+    <mp-icon ext-class="add-icon" icon="add" size="27" color="#0f8f85"></mp-icon>
   </view>
 </view>
