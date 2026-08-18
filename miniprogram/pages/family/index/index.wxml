@@ -19,7 +19,10 @@
     <block wx:elif="{{hasToken}}">
       <view class="family-toolbar">
         <view class="toolbar-caption">{{families.length}} 个家庭</view>
-        <button class="toolbar-add" bindtap="openCreate"><mp-icon ext-class="toolbar-add-icon" icon="add" size="15" color="#fff9e8"></mp-icon>新建家庭</button>
+        <button class="toolbar-add" bindtap="openCreate">
+          <mp-icon ext-class="toolbar-add-icon" icon="add" size="15" color="#fff9e8"></mp-icon>
+          <text>新建家庭</text>
+        </button>
       </view>
 
       <view wx:if="{{loading && families.length === 0 && !loadError}}" class="family-loading">正在读取家庭...</view>
@@ -45,14 +48,17 @@
           <view class="family-item-main">
             <view class="family-avatar">{{item.initial}}</view>
             <view class="family-item-copy">
-              <view class="family-item-name">{{item.name}}</view>
+              <view class="family-item-title-row">
+                <view class="family-item-name">{{item.name}}</view>
+                <text wx:if="{{item.id === activeFamilyId}}" class="active-mark">当前</text>
+              </view>
               <view class="family-item-meta">{{item.roleLabel}}<text wx:if="{{item.memberCount}}"> · {{item.memberCount}} 位成员</text></view>
             </view>
           </view>
-          <view class="family-item-actions">
-            <text wx:if="{{item.id === activeFamilyId}}" class="active-mark">当前</text>
-            <button class="family-manage-btn" catchtap="openMembers" data-id="{{item.id}}">成员</button>
-          </view>
+          <button class="family-manage-btn" catchtap="openMembers" data-id="{{item.id}}" aria-label="管理{{item.name}}的成员">
+            <text>成员</text>
+            <mp-icon ext-class="family-manage-arrow" icon="arrow" size="10" color="#725d42"></mp-icon>
+          </button>
         </view>
       </view>
 

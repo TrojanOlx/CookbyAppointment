@@ -3,6 +3,7 @@
 ## Comparison Target
 
 - Source visual truth:
+  - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-f4e65deb-c130-4f71-81bc-5610f58102e6.png` (family selector before the hierarchy and action-width alignment pass)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-a55d23ed-0365-46af-9446-52fea73c9703.png` (shopping source tag separated from the ingredient name and modal close alignment)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-15f842ec-436a-4d87-9b3f-3370490c9fc9.png` (shopping item hierarchy, alignment, and action density before the item-layout pass)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-6be9ce2d-1100-4e9d-8bed-5e24edcb7caa.png` (shopping list tail clipped by the floating add control and bottom safe area)
@@ -21,6 +22,8 @@
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-5a4a5c11-0159-4c81-a696-9dddbe5dcb1f.png` (770 x 1396 px, profile)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-bfc6e5f2-a110-4825-bb09-fe0a540b2002.png` (674 x 1374 px, booking reference)
 - Implementation screenshots:
+  - `.tmp-visual-qa/14-family-index-unified.png`
+  - `.tmp-visual-qa/15-family-index-comparison.png`
   - `.tmp-visual-qa/11-shopping-tag-inline.png`
   - `.tmp-visual-qa/12-shopping-modal-close.png`
   - `.tmp-visual-qa/01-fridge-recommend.png`
@@ -55,6 +58,7 @@ Focused comparisons were completed for the fridge recommendation header/cards, i
 - Pass: Shopping source tags now sit directly after ingredient names while quantity pills remain right aligned; long names keep a bounded ellipsis region and notes only occupy a row when present.
 - Pass: Shopping and admin file-detail close controls use the same icon button pattern, sit at the modal upper-right, provide an 80rpx touch target, and preserve title clearance. All three custom modal surfaces now account for top and bottom safe areas.
 - Pass: The page-wide static audit corrected five related narrow-screen risks: appointment header wrapping, selected-dish checkmark clearance, long admin appointment/review name truncation, and duplicate review-status padding.
+- Pass: The family selector now shares the family-member page's 72rpx avatar, 30rpx title, compact card rhythm, fixed-size action control, and established color/shadow tokens. Full family names remain readable, the current marker stays beside the name, and neither action expands across the card.
 - Evidence limit: The simulator did not display the software keyboard after focusing an input, so keyboard occlusion remains unverified.
 - Evidence limit: This runtime pass captured the 390 px iPhone 12/13 Pro viewport only; 320 px and 430 px remain covered by static responsive review rather than screenshots.
 - Static review completed for inventory, shopping, and booking. Inventory now uses a bounded flex scroll region, compact two-level item metadata, real WeUI icons, and a safe-area-aware FAB. Shopping places its heading, family context, and actions on a high-contrast cream surface and constrains the modal close control to a circle. Booking adds a horizontally scrollable type filter combined with keyword search without clearing hidden selections.
@@ -72,6 +76,7 @@ Focused comparisons were completed for the fridge recommendation header/cards, i
 - Pass 7: The reported populated-shopping state was reproduced with four items at the same 390 x 844 logical viewport. Explicit scroll-tail spacers were verified on shopping and inventory; both final items clear their floating actions and the Home safe area. The other fixed-action pages were statically audited and already have dedicated spacers or dynamic bottom-height handling.
 - Pass 8: The four-item shopping state was captured again after the item-layout pass and compared side by side with the reported screenshot. Quantity pills, assignee controls, and delete icon buttons remain aligned without clipping; tapping delete still opens the destructive confirmation dialog before any mutation.
 - Pass 9: The reported shopping state was captured after moving source tags beside ingredient names. The populated list and add modal compile and render at 390 x 844 logical px with no overlap; the close control is visibly anchored to the upper-right and the console/network error filters are empty.
+- Pass 10: The reported family-selector screenshot was normalized to the implementation height and combined with the revised 390 x 844 logical viewport capture. The earlier stretched create/member controls and truncated family name were corrected; the create and member-management routes were both exercised successfully with empty console/network error filters.
 
 ## Automated Evidence
 
