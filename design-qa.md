@@ -3,6 +3,9 @@
 ## Comparison Target
 
 - Source visual truth:
+  - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-ee77d101-1688-4a2a-a5db-cb7c568eb88c.png` (fridge recommendation hierarchy and card rhythm before the current pass)
+  - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-674a0aa0-4b4a-45e1-b3e8-5ef5a7b246de.png` (inventory bottom whitespace around the floating add control)
+  - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-7b5011a7-b924-4572-9cb8-5dc1c17a37d9.png` (shopping header-to-summary spacing and duplicated add controls)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-3d44f1db-33d4-44fa-877d-21eca9a6fd40.png` (owner exit state on family members)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-cad71fb8-381b-4939-a416-5e39f3bb917b.png` (family invitation composition)
   - `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-d6125c21-e49c-48a1-a770-3962802ad7a7.png` (shopping header vertical density)
@@ -33,6 +36,7 @@ Focused comparison is blocked for the same reason. The intended regions were the
 - P2: Fonts, actual rendered line wrapping, icon baselines, image sharpness, and final color appearance cannot be compared without implementation captures.
 - Static review completed for inventory, shopping, and booking. Inventory now uses a bounded flex scroll region, compact two-level item metadata, real WeUI icons, and a safe-area-aware FAB. Shopping places its heading, family context, and actions on a high-contrast cream surface and constrains the modal close control to a circle. Booking adds a horizontally scrollable type filter combined with keyword search without clearing hidden selections.
 - Static review completed for the current family pass. Owners now see a distinct destructive dissolve action with two confirmations; the invitation primary action is in a safe-area dock; and the shopping header uses a compact two-column title/meta layout with the subtitle below the right-side tag.
+- Static review completed for the recommendation and floating-action pass. Fridge recommendations now use a compact cream header, an integrated diner selector, menu-style padded dish cards, real WeUI icons, and an independently scrolling safe-area-aware result list. Inventory and shopping no longer reserve a full FAB-height blank strip at the bottom. Shopping exposes one menu-style floating add control and adds explicit separation between its header and weekly summary.
 
 ## Comparison History
 
@@ -40,6 +44,7 @@ Focused comparison is blocked for the same reason. The intended regions were the
 - Pass 2: Source-level layout and state audit completed after the fixes. A second CLI attempt accepted the service-port prompt but timed out waiting for the IDE `.ide` port file, so no implementation screenshot was produced.
 - Pass 3: The four current issue screenshots were inspected and the three target pages were reviewed at source level. The installed IDE was launched and CLI retried on the detected port, but service-port access remained disabled.
 - Pass 4: The owner, invitation, and shopping screenshots were inspected. Source-level responsive constraints and destructive states were reviewed; CLI capture remained blocked because the IDE service port is disabled.
+- Pass 5: The recommendation, inventory-bottom, and shopping-spacing screenshots were inspected. Source-level responsive constraints were reviewed at the 320 px breakpoint; the Developer Tools CLI was retried while the IDE was open and again reported that the service port is disabled.
 
 ## Automated Evidence
 

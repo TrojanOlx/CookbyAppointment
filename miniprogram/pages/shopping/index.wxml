@@ -12,7 +12,6 @@
     </view>
     <view class="header-actions" wx:if="{{hasFamily && hasToken}}">
       <button class="header-action sync-action" bindtap="openRecalculate"><mp-icon ext-class="header-action-icon" icon="refresh" size="16" color="#794f27"></mp-icon>重新计算</button>
-      <button class="header-action add-action" bindtap="openAdd"><mp-icon ext-class="header-action-icon" icon="add" size="16" color="#fff9e8"></mp-icon>添加食材</button>
     </view>
   </view>
 
@@ -80,7 +79,6 @@
           <view class="empty-state-icon"><mp-icon icon="shop" size="38" color="#e59266"></mp-icon></view>
           <view class="empty-state-title">清单空空的</view>
           <view class="empty-state-subtitle">添加一项食材，和家人一起准备下一餐</view>
-          <button class="empty-add-button" bindtap="openAdd"><mp-icon ext-class="button-icon" icon="add" size="15" color="#794f27"></mp-icon>添加食材</button>
         </view>
         <view class="shopping-item" wx:for="{{activeItems}}" wx:key="id">
           <view class="item-check" catchtap="toggleChecked" data-id="{{item.id}}"><mp-icon icon="done" size="16" color="transparent"></mp-icon></view>
@@ -152,7 +150,7 @@
     </block>
   </scroll-view>
 
-  <view class="floating-add" wx:if="{{hasFamily && hasToken && !(activeTab === 'purchased' && selectedStockIds.length > 0)}}" bindtap="openAdd"><mp-icon icon="add" size="24" color="#0f8f85"></mp-icon><text class="floating-add-label">添加</text></view>
+  <view class="floating-add" wx:if="{{hasFamily && hasToken && !(activeTab === 'purchased' && selectedStockIds.length > 0)}}" bindtap="openAdd" aria-label="添加采购食材"><mp-icon icon="add" size="27" color="#0f8f85"></mp-icon></view>
 
   <view class="modal-mask" wx:if="{{showAdd}}" catchtap="closeAdd">
     <view class="modal-card" catchtap="stopPropagation">

@@ -145,7 +145,6 @@ page {
 
 .header-action::after,
 .modal-submit::after,
-.empty-add-button::after,
 .stock-button::after,
 .floating-add::after {
   border: 0;
@@ -163,16 +162,9 @@ page {
   box-shadow: 0 4rpx 0 rgba(121,79,39,0.08);
 }
 
-.add-action {
-  color: #fff9e8;
-  background: var(--primary-color);
-  box-shadow: 0 5rpx 0 var(--primary-dark);
-}
-
 .header-action:active,
 .modal-submit:active,
-.stock-button:active,
-.empty-add-button:active {
+.stock-button:active {
   transform: translateY(3rpx);
 }
 
@@ -181,7 +173,7 @@ page {
   min-height: 0;
   height: 0;
   box-sizing: border-box;
-  padding: 0 32rpx calc(184rpx + env(safe-area-inset-bottom));
+  padding: 28rpx 32rpx calc(48rpx + env(safe-area-inset-bottom));
 }
 
 .inline-error {
@@ -504,22 +496,6 @@ page {
   line-height: 1.6;
 }
 
-.empty-add-button {
-  min-width: 260rpx;
-  height: 68rpx;
-  margin-top: 26rpx;
-  padding: 0 26rpx;
-  box-sizing: border-box;
-  color: var(--text-color);
-  font-size: 25rpx;
-  font-weight: 800;
-  line-height: 68rpx;
-  background: var(--card-bg-light);
-  border: 3rpx solid #fff7d6;
-  border-radius: var(--radius-full);
-  box-shadow: var(--shadow-fab);
-}
-
 .shopping-item {
   display: flex;
   align-items: flex-start;
@@ -731,33 +707,24 @@ page {
 
 .floating-add {
   position: fixed;
-  right: 30rpx;
-  bottom: calc(30rpx + env(safe-area-inset-bottom));
-  z-index: 15;
+  right: 32rpx;
+  bottom: calc(28rpx + env(safe-area-inset-bottom));
+  z-index: 30;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 96rpx;
-  height: 96rpx;
+  width: 112rpx;
+  height: 112rpx;
   box-sizing: border-box;
   color: var(--primary-dark);
   background: var(--card-bg-light);
   border: 4rpx solid var(--primary-color);
-  border-radius: 34rpx;
+  border-radius: 36rpx;
   box-shadow: var(--shadow-fab);
 }
 
 .floating-add:active {
   transform: translateY(3rpx) scale(0.98);
-}
-
-.floating-add-label {
-  margin-top: 4rpx;
-  color: var(--text-color);
-  font-size: 19rpx;
-  font-weight: 900;
-  line-height: 1;
 }
 
 .modal-mask {

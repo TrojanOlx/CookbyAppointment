@@ -120,7 +120,7 @@ page {
   min-height: 0;
   width: 100%;
   box-sizing: border-box;
-  padding: 16rpx 0 calc(148rpx + env(safe-area-inset-bottom));
+  padding: 16rpx 0 calc(36rpx + env(safe-area-inset-bottom));
   -webkit-overflow-scrolling: touch;
   overflow-x: hidden;
 }
