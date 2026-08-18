@@ -77,12 +77,14 @@ Focused comparisons were completed for the fridge recommendation header/cards, i
 - Pass 8: The four-item shopping state was captured again after the item-layout pass and compared side by side with the reported screenshot. Quantity pills, assignee controls, and delete icon buttons remain aligned without clipping; tapping delete still opens the destructive confirmation dialog before any mutation.
 - Pass 9: The reported shopping state was captured after moving source tags beside ingredient names. The populated list and add modal compile and render at 390 x 844 logical px with no overlap; the close control is visibly anchored to the upper-right and the console/network error filters are empty.
 - Pass 10: The reported family-selector screenshot was normalized to the implementation height and combined with the revised 390 x 844 logical viewport capture. The earlier stretched create/member controls and truncated family name were corrected; the create and member-management routes were both exercised successfully with empty console/network error filters.
+- Pass 11: The family selector received a permanent join action beside create, plus a dedicated scan/manual-code page. The invitation result keeps copy/share actions and adds a bounded Mini Program code surface with save and failure states. Static review covers 320 px through 430 px widths; the current IDE agent interface rejected single-file compile and capture because its local `agent.skills` list is empty, so no new runtime screenshot is claimed for this pass.
 
 ## Automated Evidence
 
 - `npm run check`: passed (22 unit tests and 7 migration assertions).
 - `npm run test:integration`: passed (48 Worker+D1 assertions).
 - JavaScript syntax, JSON parsing, WXML tag balance, WXSS brace balance, local image reference validation, and `git diff --check`: passed.
+- Invitation token parsing and invite-code binary/JSON-error/temporary-file cleanup behavior checks: passed.
 - WeChat Developer Tools compilation: both changed WXML files and all seven changed WXSS files passed individual compilation.
 - Family cache cleanup and the owner dissolve confirmation flow were exercised with isolated behavior checks: passed.
 

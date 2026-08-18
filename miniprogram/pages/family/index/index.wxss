@@ -126,6 +126,14 @@ button::after { border: 0; }
   margin: 0 4rpx 20rpx;
 }
 
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 12rpx;
+  margin-left: 16rpx;
+}
+
 .toolbar-caption {
   min-width: 0;
   overflow: hidden;
@@ -136,25 +144,34 @@ button::after { border: 0; }
   white-space: nowrap;
 }
 
-.toolbar-add {
+.toolbar-add,
+.toolbar-join {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   width: auto !important;
-  min-width: 174rpx;
+  min-width: 156rpx;
   height: 64rpx;
-  margin-left: auto;
   box-sizing: border-box;
-  padding: 0 20rpx;
-  color: #fff9e8;
-  background: var(--primary-color);
+  padding: 0 16rpx;
   border-radius: var(--radius-full);
-  box-shadow: 0 5rpx 0 var(--primary-dark);
   line-height: 64rpx;
 }
 
-.toolbar-add-icon { margin-right: 7rpx; }
+.toolbar-add {
+  color: #fff9e8;
+  background: var(--primary-color);
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.toolbar-join {
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border: 2rpx solid rgba(25, 200, 185, 0.32);
+}
+
+.toolbar-action-icon { margin-right: 6rpx; }
 
 .family-loading {
   padding: 100rpx 0;
@@ -330,20 +347,39 @@ button::after { border: 0; }
 
 .family-manage-arrow { margin-left: 7rpx; }
 
-.family-primary-btn {
+.family-primary-btn,
+.family-secondary-btn {
   box-sizing: border-box;
-  width: 100%;
+  width: auto !important;
   min-width: 0;
-  max-width: 420rpx;
-  margin-top: 28rpx;
+  height: 82rpx;
+  margin: 0;
   padding: 0 28rpx;
-  color: #fff9e8;
-  background: var(--primary-color);
   border-radius: var(--radius-full);
-  box-shadow: 0 7rpx 0 var(--primary-dark);
-  font-size: 29rpx;
+  font-size: 27rpx;
   font-weight: 900;
   line-height: 82rpx;
+}
+
+.family-primary-btn {
+  flex: 1;
+  color: #fff9e8;
+  background: var(--primary-color);
+  box-shadow: 0 7rpx 0 var(--primary-dark);
+}
+
+.family-secondary-btn {
+  flex: 1;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border: 3rpx solid rgba(25, 200, 185, 0.32);
+}
+
+.family-empty-actions {
+  display: flex;
+  width: 100%;
+  gap: 16rpx;
+  margin-top: 28rpx;
 }
 
 .family-empty-icon {
@@ -368,4 +404,22 @@ button::after { border: 0; }
   height: 30rpx;
   flex-shrink: 0;
   margin: 2rpx 10rpx 0 0;
+}
+
+@media (max-width: 360px) {
+  .family-toolbar {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14rpx;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .toolbar-add,
+  .toolbar-join {
+    flex: 1;
+  }
 }

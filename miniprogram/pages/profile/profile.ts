@@ -607,26 +607,7 @@ Page<IPageData, IPageMethods & {
   },
 
   openJoinFamily() {
-    wx.scanCode({
-      onlyFromCamera: false,
-      success: (result) => {
-        const raw = String(result.result || result.path || '').trim();
-        const tokenMatch = raw.match(/[?&](?:token|scene)=([^&#]+)/i);
-        const token = tokenMatch ? tokenMatch[1] : raw;
-        if (!token) {
-          wx.showToast({ title: '未识别到家庭邀请', icon: 'none' });
-          return;
-        }
-        wx.navigateTo({
-          url: `/pages/family/invite/invite?token=${encodeURIComponent(token)}`
-        });
-      },
-      fail: (error) => {
-        if (!error || !String(error.errMsg || '').toLowerCase().includes('cancel')) {
-          wx.showToast({ title: '扫码未完成', icon: 'none' });
-        }
-      }
-    });
+    wx.navigateTo({ url: '/pages/family/join/join' });
   },
 
   /**

@@ -25,6 +25,8 @@ export function getPrivacyPolicy(): string {
           <li>过敏、忌口、喜好和辣度等口味标签</li>
           <li>保障服务运行所需的请求状态、故障和关键操作审计记录</li>
         </ul>
+
+        <p>3. <strong>可选设备权限</strong>：仅在您主动使用“扫一扫加入家庭”时调用摄像头或从相册识别二维码；仅在您主动保存家庭小程序码时写入系统相册。扫码所用的图片不会由本小程序上传或保存。</p>
         
         <h2 style="font-size:16px;margin-top:20px;">二、我们如何使用这些信息</h2>
         
@@ -65,7 +67,7 @@ export function getPrivacyPolicy(): string {
         
         <p>我们可能会不时更新本隐私政策。当政策发生重大变更时，我们会通过小程序内通知的方式向您发出提醒。</p>
         
-        <p style="margin-top:30px;color:#999;">最后更新时间：2026年8月17日</p>
+        <p style="margin-top:30px;color:#999;">最后更新时间：2026年8月18日</p>
       </div>
     `;
   } catch (error) {

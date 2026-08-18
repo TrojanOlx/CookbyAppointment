@@ -59,7 +59,7 @@
       <view class="family-empty-subtitle">创建一个家庭，或扫码加入家人的邀请</view>
       <view class="family-empty-actions">
         <button class="family-action-btn family-action-create" bindtap="openCreateFamily">创建家庭</button>
-        <button class="family-action-btn family-action-join" bindtap="openJoinFamily">扫码加入</button>
+        <button class="family-action-btn family-action-join" bindtap="openJoinFamily">加入家庭</button>
       </view>
     </view>
     <view wx:elif="{{userInfo && !familyLoading && familySelectionRequired}}" class="family-empty-card">

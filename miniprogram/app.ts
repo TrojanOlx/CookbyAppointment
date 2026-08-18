@@ -20,6 +20,7 @@ const needLoginPages = [
   "pages/profile/preferences/preferences",
   "pages/family/index/index",
   "pages/family/create/create",
+  "pages/family/join/join",
   "pages/family/invite/invite",
   "pages/family/members/members",
   "pages/menu/recommend/recommend",

@@ -1,8 +1,10 @@
 const { FamilyService } = require('../../../services/family');
 const { normalizeInvitation } = require('../../../models/family');
+const { downloadInviteCode, removeLocalInviteCode } = require('../../../services/inviteCode');
 
 let invitePreviewRequestId = 0;
 let inviteContextRequestId = 0;
+let inviteCodeRequestId = 0;
 
 const activeFamilyId = () => String(FamilyService.getActiveFamilyId() || '');
 
@@ -30,7 +32,10 @@ Page({
     errorMessage: '',
     contextLoading: false,
     contextError: '',
-    hasContextLoaded: false
+    hasContextLoaded: false,
+    inviteCodePath: '',
+    inviteCodeLoading: false,
+    inviteCodeError: ''
   },
 
   onLoad(options) {
@@ -51,7 +56,12 @@ Page({
       familyId,
       hasActiveFamily: !!familyId
     });
-    if (isPreview) this.loadPreview(token);
+    if (isPreview) {
+      if (!wx.getStorageSync('token')) {
+        wx.setStorageSync('redirectUrl', `/pages/family/invite/invite?token=${encodeURIComponent(token)}`);
+      }
+      this.loadPreview(token);
+    }
     else if (familyId) this.loadInviteContext();
   },
 
@@ -61,6 +71,8 @@ Page({
     const familyChanged = familyId !== this.data.familyId;
     if (familyChanged) {
       inviteContextRequestId += 1;
+      inviteCodeRequestId += 1;
+      removeLocalInviteCode(this.data.inviteCodePath);
       this.setData({
         familyId,
         hasActiveFamily: !!familyId,
@@ -69,7 +81,10 @@ Page({
         contextLoading: false,
         contextError: '',
         hasContextLoaded: false,
-        invite: null
+        invite: null,
+        inviteCodePath: '',
+        inviteCodeLoading: false,
+        inviteCodeError: ''
       }, () => {
         if (familyId) this.loadInviteContext();
       });
@@ -151,6 +166,9 @@ Page({
     } catch (error) {
       if (requestId !== invitePreviewRequestId || this.data.token !== token) return;
       console.error('获取邀请信息失败:', error);
+      if (!wx.getStorageSync('token')) {
+        wx.setStorageSync('redirectUrl', `/pages/family/invite/invite?token=${encodeURIComponent(token)}`);
+      }
       this.setData({ errorMessage: error && error.message ? error.message : '邀请不存在或已失效' });
     } finally {
       if (requestId === invitePreviewRequestId && this.data.token === token) {
@@ -195,7 +213,15 @@ Page({
         return;
       }
       if (!invite || !invite.token) throw new Error('邀请生成失败，请稍后重试');
-      this.setData({ invite });
+      inviteCodeRequestId += 1;
+      removeLocalInviteCode(this.data.inviteCodePath);
+      this.setData({
+        invite,
+        inviteCodePath: '',
+        inviteCodeLoading: false,
+        inviteCodeError: ''
+      });
+      this.loadInviteCode(invite.token);
       wx.setClipboardData({
         data: invite.token,
         success: () => wx.showToast({ title: '邀请码已复制', icon: 'success', duration: 1400 })
@@ -206,6 +232,64 @@ Page({
     } finally {
       this.setData({ creating: false });
     }
+  },
+
+  async loadInviteCode(token) {
+    if (!token || this.data.inviteCodeLoading) return;
+    const requestId = ++inviteCodeRequestId;
+    this.setData({ inviteCodeLoading: true, inviteCodeError: '' });
+    try {
+      const filePath = await downloadInviteCode(token);
+      if (requestId !== inviteCodeRequestId || !this.data.invite || this.data.invite.token !== token) {
+        removeLocalInviteCode(filePath);
+        return;
+      }
+      this.setData({ inviteCodePath: filePath });
+    } catch (error) {
+      if (requestId !== inviteCodeRequestId) return;
+      console.error('生成小程序码失败:', error);
+      this.setData({
+        inviteCodeError: error && error.message ? error.message : '小程序码生成失败，请稍后重试'
+      });
+    } finally {
+      if (requestId === inviteCodeRequestId) {
+        this.setData({ inviteCodeLoading: false });
+      }
+    }
+  },
+
+  retryInviteCode() {
+    const token = this.data.invite && this.data.invite.token;
+    if (token) this.loadInviteCode(token);
+  },
+
+  saveInviteCode() {
+    const filePath = this.data.inviteCodePath;
+    if (!filePath) {
+      wx.showToast({ title: '小程序码还未准备好', icon: 'none' });
+      return;
+    }
+    wx.saveImageToPhotosAlbum({
+      filePath,
+      success: () => wx.showToast({ title: '已保存到相册', icon: 'success' }),
+      fail: (error) => {
+        const message = String((error && error.errMsg) || '').toLowerCase();
+        if (message.includes('auth deny') || message.includes('authorize')) {
+          wx.showModal({
+            title: '需要相册权限',
+            content: '请在设置中允许保存图片到相册。',
+            confirmText: '去设置',
+            success: (result) => {
+              if (result.confirm) wx.openSetting();
+            }
+          });
+          return;
+        }
+        if (!message.includes('cancel')) {
+          wx.showToast({ title: '保存失败，请稍后重试', icon: 'none' });
+        }
+      }
+    });
   },
 
   copyToken() {
@@ -228,6 +312,9 @@ Page({
       setTimeout(() => wx.redirectTo({ url: '/pages/family/index/index' }), 500);
     } catch (error) {
       console.error('加入家庭失败:', error);
+      if (!wx.getStorageSync('token')) {
+        wx.setStorageSync('redirectUrl', `/pages/family/invite/invite?token=${encodeURIComponent(this.data.token)}`);
+      }
       wx.showToast({ title: error && error.message ? error.message : '加入失败，请稍后重试', icon: 'none' });
     } finally {
       this.setData({ accepting: false });
@@ -240,6 +327,13 @@ Page({
 
   openList() {
     wx.redirectTo({ url: '/pages/family/index/index' });
+  },
+
+  onUnload() {
+    invitePreviewRequestId += 1;
+    inviteContextRequestId += 1;
+    inviteCodeRequestId += 1;
+    removeLocalInviteCode(this.data.inviteCodePath);
   },
 
   onShareAppMessage() {

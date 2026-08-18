@@ -1,0 +1,58 @@
+<view class="join-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="join-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <view class="join-heading">
+      <view class="join-heading-copy">
+        <view class="join-kicker">JOIN FAMILY</view>
+        <view class="join-title">加入家人的家庭</view>
+        <view class="join-subtitle">扫一扫家庭小程序码，或输入家人发来的邀请码</view>
+      </view>
+      <view class="join-heading-mark">
+        <mp-icon icon="qr-code" size="34" color="#0f8f85"></mp-icon>
+      </view>
+    </view>
+
+    <view class="join-method-card join-scan-card">
+      <view class="join-method-icon">
+        <mp-icon icon="qr-code" size="31" color="#fff9e8"></mp-icon>
+      </view>
+      <view class="join-method-copy">
+        <view class="join-method-title">扫一扫加入</view>
+        <view class="join-method-subtitle">识别家人展示或分享的家庭小程序码</view>
+      </view>
+      <button class="join-scan-btn" bindtap="scanInvite" loading="{{scanning}}" disabled="{{scanning}}">打开扫一扫</button>
+    </view>
+
+    <view class="join-divider">
+      <view class="join-divider-line"></view>
+      <text>或者使用邀请码</text>
+      <view class="join-divider-line"></view>
+    </view>
+
+    <view class="join-method-card join-code-card">
+      <view class="join-code-heading">
+        <view>
+          <view class="join-method-title">输入邀请码</view>
+          <view class="join-method-subtitle">邀请码由家庭主或管理员生成</view>
+        </view>
+        <button class="join-paste-btn" bindtap="pasteCode">粘贴</button>
+      </view>
+      <input
+        class="join-code-input"
+        value="{{invitationCode}}"
+        maxlength="128"
+        placeholder="请输入邀请码"
+        placeholder-class="join-input-placeholder"
+        confirm-type="done"
+        bindinput="onCodeInput"
+        bindconfirm="submitCode"
+      />
+      <button class="join-primary-btn" bindtap="submitCode" disabled="{{!invitationCode}}">查看家庭邀请</button>
+    </view>
+
+    <view class="join-tip">
+      <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <text>加入后可在“我的家庭”中随时切换家庭；不同家庭的菜单、库存和预约互不混用。</text>
+    </view>
+  </scroll-view>
+</view>

@@ -260,6 +260,101 @@ button::after { border: 0; }
   font-size: 24rpx;
 }
 
+.invite-code-section {
+  margin-top: 26rpx;
+  padding-top: 24rpx;
+  border-top: 2rpx dashed rgba(121, 79, 39, 0.20);
+}
+
+.invite-code-title {
+  color: var(--text-color);
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.invite-code-image,
+.invite-code-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 360rpx;
+  height: 360rpx;
+  max-width: 100%;
+  margin: 18rpx auto 0;
+  background: #fff;
+  border: 3rpx solid rgba(159, 146, 125, 0.28);
+  border-radius: var(--radius-md);
+}
+
+.invite-code-placeholder {
+  flex-direction: column;
+  gap: 18rpx;
+  color: var(--text-light);
+  font-size: 24rpx;
+}
+
+.invite-code-loading-dot {
+  width: 42rpx;
+  height: 42rpx;
+  border: 5rpx solid var(--primary-light);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: invite-code-spin 0.8s linear infinite;
+}
+
+@keyframes invite-code-spin {
+  to { transform: rotate(360deg); }
+}
+
+.invite-code-error {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 18rpx;
+  padding: 20rpx;
+  color: var(--danger-color);
+  background: var(--danger-light);
+  border: 2rpx solid rgba(224, 90, 90, 0.20);
+  border-radius: var(--radius-md);
+  font-size: 23rpx;
+  line-height: 1.5;
+}
+
+.invite-code-error button {
+  width: auto !important;
+  height: 58rpx;
+  margin: 16rpx auto 0;
+  padding: 0 24rpx;
+  color: var(--danger-color);
+  background: #fff9e8;
+  border-radius: var(--radius-full);
+  font-size: 23rpx;
+  font-weight: 900;
+  line-height: 58rpx;
+}
+
+.invite-code-hint {
+  margin-top: 12rpx;
+  color: var(--text-light);
+  font-size: 22rpx;
+}
+
+.invite-token-actions {
+  display: flex;
+  gap: 14rpx;
+  margin-top: 24rpx;
+}
+
+.invite-token-actions .invite-secondary-btn {
+  min-width: 0;
+  flex: 1;
+  margin-top: 0;
+  padding: 0 14rpx;
+  font-size: 25rpx;
+}
+
+.invite-token-actions .invite-secondary-btn[disabled] { opacity: 0.48; }
+
 .invite-bottom-fixed {
   position: fixed;
   right: 0;

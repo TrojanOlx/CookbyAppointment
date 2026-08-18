@@ -68,6 +68,10 @@ Page({
     wx.navigateTo({ url: '/pages/family/create/create' });
   },
 
+  openJoin() {
+    wx.navigateTo({ url: '/pages/family/join/join' });
+  },
+
   openInvite() {
     wx.navigateTo({ url: '/pages/family/invite/invite' });
   },

@@ -1,0 +1,221 @@
+page {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.join-page {
+  position: relative;
+  min-height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.join-scroll {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  padding: 28rpx 28rpx calc(56rpx + env(safe-area-inset-bottom));
+  overflow-x: hidden;
+}
+
+.join-heading {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  margin: 6rpx 4rpx 28rpx;
+}
+
+.join-heading-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.join-kicker {
+  display: inline-block;
+  padding: 5rpx 16rpx;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border: 2rpx solid rgba(25, 200, 185, 0.28);
+  border-radius: var(--radius-full);
+  font-size: 20rpx;
+  font-weight: 900;
+}
+
+.join-title {
+  margin-top: 12rpx;
+  color: var(--text-color);
+  font-size: 42rpx;
+  font-weight: 900;
+}
+
+.join-subtitle {
+  margin-top: 8rpx;
+  color: var(--text-light);
+  font-size: 25rpx;
+  line-height: 1.5;
+}
+
+.join-heading-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 96rpx;
+  height: 96rpx;
+  flex-shrink: 0;
+  background: var(--card-bg-light);
+  border: 3rpx solid rgba(25, 200, 185, 0.30);
+  border-radius: 30rpx;
+  box-shadow: 0 6rpx 0 rgba(15, 143, 133, 0.12);
+}
+
+.join-method-card {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 28rpx;
+  overflow: hidden;
+  background:
+    radial-gradient(circle, rgba(248,166,178,0.10) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
+    var(--card-bg-light);
+  border: 4rpx solid rgba(121, 79, 39, 0.14);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.join-scan-card {
+  display: grid;
+  grid-template-columns: 76rpx minmax(0, 1fr);
+  gap: 0 18rpx;
+  align-items: center;
+}
+
+.join-method-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 76rpx;
+  height: 76rpx;
+  color: #fff9e8;
+  background: var(--primary-color);
+  border: 3rpx solid rgba(255, 255, 255, 0.58);
+  border-radius: 24rpx;
+  box-shadow: 0 5rpx 0 var(--primary-dark);
+}
+
+.join-method-copy { min-width: 0; }
+
+.join-method-title {
+  color: var(--text-color);
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.join-method-subtitle {
+  margin-top: 6rpx;
+  color: var(--text-light);
+  font-size: 23rpx;
+  line-height: 1.5;
+}
+
+button::after { border: 0; }
+
+.join-scan-btn,
+.join-primary-btn {
+  box-sizing: border-box;
+  width: 100%;
+  height: 80rpx;
+  margin: 24rpx 0 0;
+  color: #fff9e8;
+  background: var(--primary-color);
+  border-radius: var(--radius-full);
+  box-shadow: 0 7rpx 0 var(--primary-dark);
+  font-size: 28rpx;
+  font-weight: 900;
+  line-height: 80rpx;
+}
+
+.join-scan-btn { grid-column: 1 / -1; }
+
+.join-scan-btn[disabled],
+.join-primary-btn[disabled] { opacity: 0.52; }
+
+.join-divider {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  margin: 28rpx 12rpx;
+  color: var(--text-light);
+  font-size: 22rpx;
+  font-weight: 800;
+}
+
+.join-divider-line {
+  height: 2rpx;
+  flex: 1;
+  background: rgba(121, 79, 39, 0.18);
+}
+
+.join-code-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.join-paste-btn {
+  width: auto !important;
+  height: 58rpx;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0 24rpx;
+  color: var(--primary-dark);
+  background: var(--primary-light);
+  border: 2rpx solid rgba(25, 200, 185, 0.30);
+  border-radius: var(--radius-full);
+  font-size: 23rpx;
+  font-weight: 900;
+  line-height: 58rpx;
+}
+
+.join-code-input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 88rpx;
+  margin-top: 22rpx;
+  padding: 0 24rpx;
+  color: var(--text-color);
+  background: var(--input-bg);
+  border: 3rpx solid rgba(159, 146, 125, 0.32);
+  border-radius: var(--radius-md);
+  font-size: 27rpx;
+  font-weight: 800;
+}
+
+.join-input-placeholder { color: var(--text-light); }
+
+.join-tip {
+  display: flex;
+  align-items: flex-start;
+  box-sizing: border-box;
+  margin: 26rpx 8rpx 0;
+  color: var(--text-light);
+  font-size: 23rpx;
+  line-height: 1.55;
+}
+
+.join-tip image {
+  width: 30rpx;
+  height: 30rpx;
+  flex-shrink: 0;
+  margin: 3rpx 10rpx 0 0;
+}
+
+@media (max-width: 340px) {
+  .join-heading-mark {
+    width: 82rpx;
+    height: 82rpx;
+  }
+
+  .join-title { font-size: 38rpx; }
+}

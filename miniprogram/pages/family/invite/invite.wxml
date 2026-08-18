@@ -79,7 +79,25 @@
           <view class="token-label">邀请码</view>
           <view class="token-value">{{invite.token}}</view>
           <view class="token-meta">{{invite.roleLabel}} · 可转发给家人</view>
-          <button class="invite-secondary-btn" bindtap="copyToken">复制邀请码</button>
+
+          <view class="invite-code-section">
+            <view class="invite-code-title">微信扫码加入</view>
+            <view wx:if="{{inviteCodeLoading}}" class="invite-code-placeholder">
+              <view class="invite-code-loading-dot"></view>
+              <text>正在生成小程序码...</text>
+            </view>
+            <image wx:elif="{{inviteCodePath}}" class="invite-code-image" src="{{inviteCodePath}}" mode="aspectFit" show-menu-by-longpress="true"></image>
+            <view wx:elif="{{inviteCodeError}}" class="invite-code-error">
+              <text>{{inviteCodeError}}</text>
+              <button bindtap="retryInviteCode">重新生成小程序码</button>
+            </view>
+            <view class="invite-code-hint">家人可用微信扫一扫直接打开邀请</view>
+          </view>
+
+          <view class="invite-token-actions">
+            <button class="invite-secondary-btn" bindtap="copyToken">复制邀请码</button>
+            <button class="invite-secondary-btn" bindtap="saveInviteCode" disabled="{{!inviteCodePath || inviteCodeLoading}}">保存小程序码</button>
+          </view>
           <button class="invite-share-btn" open-type="share">转发邀请</button>
         </view>
       </block>

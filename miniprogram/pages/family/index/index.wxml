@@ -19,10 +19,16 @@
     <block wx:elif="{{hasToken}}">
       <view class="family-toolbar">
         <view class="toolbar-caption">{{families.length}} 个家庭</view>
-        <button class="toolbar-add" bindtap="openCreate">
-          <mp-icon ext-class="toolbar-add-icon" icon="add" size="15" color="#fff9e8"></mp-icon>
-          <text>新建家庭</text>
-        </button>
+        <view class="toolbar-actions">
+          <button class="toolbar-join" bindtap="openJoin">
+            <mp-icon ext-class="toolbar-action-icon" icon="qr-code" size="15" color="#0f8f85"></mp-icon>
+            <text>加入家庭</text>
+          </button>
+          <button class="toolbar-add" bindtap="openCreate">
+            <mp-icon ext-class="toolbar-action-icon" icon="add" size="15" color="#fff9e8"></mp-icon>
+            <text>新建家庭</text>
+          </button>
+        </view>
       </view>
 
       <view wx:if="{{loading && families.length === 0 && !loadError}}" class="family-loading">正在读取家庭...</view>
@@ -39,8 +45,11 @@
       <view wx:if="{{!loading && !loadError && families.length === 0}}" class="family-empty">
         <image class="family-empty-icon" src="/images/island/hero-kitchen.svg" mode="aspectFit"></image>
         <view class="family-card-title">还没有家庭</view>
-        <view class="family-card-subtitle">创建一个小岛，邀请家人一起规划菜单</view>
-        <button class="family-primary-btn" bindtap="openCreate">创建第一个家庭</button>
+        <view class="family-card-subtitle">创建一个小岛，或加入家人已经创建的家庭</view>
+        <view class="family-empty-actions">
+          <button class="family-secondary-btn" bindtap="openJoin">加入家庭</button>
+          <button class="family-primary-btn" bindtap="openCreate">创建家庭</button>
+        </view>
       </view>
 
       <view wx:if="{{families.length}}" class="family-list">
