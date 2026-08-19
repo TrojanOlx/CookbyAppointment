@@ -23,7 +23,7 @@ interface PageData {
 
 interface PageInstance {
   data: PageData;
-  loadFiles: () => Promise<void>;
+  loadFiles: (folder?: string) => Promise<void>;
   getFileTypeFromName: (fileName: string) => string;
   checkAdminPermission: () => Promise<void>;
   changeFolder: (e: WechatMiniprogram.TouchEvent) => void;
@@ -44,6 +44,16 @@ interface PageInstance {
   formatFileSize: (bytes?: number) => string;
   formatDate: (dateString?: string) => string;
 }
+
+let filesRequestId = 0;
+
+const currentSessionScope = () => {
+  const storedFamily = wx.getStorageSync('active_family_id');
+  const familyId = storedFamily && typeof storedFamily === 'object'
+    ? storedFamily.id || storedFamily.familyId || storedFamily.family_id || ''
+    : storedFamily;
+  return { token: String(wx.getStorageSync('token') || ''), familyId: String(familyId || '') };
+};
 
 Page<PageData, PageInstance>({
   data: {
@@ -79,17 +89,23 @@ Page<PageData, PageInstance>({
       currentFolder: folder,
       files: [],
       selectedFiles: []
-    });
-    this.loadFiles();
+    }, () => this.loadFiles(folder));
   },
 
   // 加载文件列表
-  async loadFiles() {
-    console.log('加载文件列表开始:', this.data.currentFolder);
+  async loadFiles(folder?: string) {
+    const requestId = ++filesRequestId;
+    const requestedFolder = folder === undefined ? this.data.currentFolder : folder;
+    const scope = currentSessionScope();
+    const isCurrentRequest = () => requestId === filesRequestId
+      && requestedFolder === this.data.currentFolder
+      && JSON.stringify(currentSessionScope()) === JSON.stringify(scope);
+    console.log('加载文件列表开始:', requestedFolder);
     this.setData({ isLoading: true });
 
     try {
-      const fileList = await FileService.listFiles(this.data.currentFolder, 100);
+      const fileList = await FileService.listFiles(requestedFolder, 100);
+      if (!isCurrentRequest()) return;
       console.log('获取到文件列表:', fileList);
       
       if (fileList && fileList.files) {
@@ -115,6 +131,7 @@ Page<PageData, PageInstance>({
         });
       }
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('获取文件列表失败:', error);
       this.setData({ isLoading: false });
       wx.showToast({
@@ -122,6 +139,10 @@ Page<PageData, PageInstance>({
         icon: 'error'
       });
     }
+  },
+
+  onUnload() {
+    filesRequestId += 1;
   },
 
   // 上传文件（从本地选择）
@@ -166,8 +187,7 @@ Page<PageData, PageInstance>({
             // 切换到上传的文件夹
             this.setData({
               currentFolder: folder
-            });
-            this.loadFiles();
+            }, () => this.loadFiles(folder));
           }
         } else {
           wx.showToast({

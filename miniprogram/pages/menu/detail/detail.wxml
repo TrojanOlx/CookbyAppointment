@@ -207,7 +207,7 @@
 
   <!-- 编辑模式的按钮 -->
   <view class="action-buttons" wx:else>
-    <button class="action-btn save" bindtap="saveDish">保存</button>
+    <button class="action-btn save" bindtap="saveDish" loading="{{isSaving}}" disabled="{{isSaving}}">保存</button>
     <button class="action-btn cancel" bindtap="cancelEdit">取消</button>
   </view>
 

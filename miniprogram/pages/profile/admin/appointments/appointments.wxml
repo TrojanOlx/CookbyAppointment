@@ -95,6 +95,9 @@
   <!-- 完成预约前的库存扣减预览 -->
   <view class="completion-overlay" wx:if="{{completionPreview}}">
     <view class="completion-modal">
+      <button class="completion-close" disabled="{{isCompleting}}" bindtap="cancelCompletion" aria-label="关闭">
+        <mp-icon icon="close" size="20" color="#725d42"></mp-icon>
+      </button>
       <view class="completion-modal-header">
         <view>
           <text class="completion-modal-title">确认完成预约</text>

@@ -28,7 +28,7 @@ export class InventoryService {
   }
 
   // 更新库存
-  static async updateInventory(item: Partial<InventoryItem>): Promise<InventoryItem> {
+  static async updateInventory(item: Partial<InventoryItem> & { expectedUpdateTime?: number }): Promise<InventoryItem> {
     return put<InventoryItem>('/api/inventory/update', item);
   }
 
@@ -62,4 +62,4 @@ export class InventoryService {
       pageSize 
     });
   }
-} 
+}

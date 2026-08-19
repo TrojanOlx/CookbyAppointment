@@ -64,6 +64,7 @@ interface CompletionUnresolved {
 
 interface CompletionPreview {
   appointmentId: string;
+  appointmentUpdateTime: number | null;
   deductions: CompletionDeduction[];
   unresolved: CompletionUnresolved[];
 }
@@ -71,6 +72,7 @@ interface CompletionPreview {
 interface CompletionResponse {
   success?: boolean;
   requiresInventoryConfirmation?: boolean;
+  appointmentUpdateTime?: number;
   deductions?: Array<Partial<CompletionDeduction>>;
   unresolved?: Array<Record<string, any>>;
 }
@@ -79,6 +81,7 @@ interface CompletionRequest {
   id: string;
   confirmDeduction?: boolean;
   deductions?: CompletionDeduction[];
+  expectedUpdateTime?: number;
 }
 
 const unresolvedReasonLabel: Record<string, string> = {
@@ -124,11 +127,19 @@ const normalizeCompletionPreview = (
     })
     : [];
 
-  return { appointmentId, deductions, unresolved };
+  return {
+    appointmentId,
+    appointmentUpdateTime: typeof response.appointmentUpdateTime === 'number'
+      ? response.appointmentUpdateTime
+      : null,
+    deductions,
+    unresolved
+  };
 };
 
 const completeAppointmentRequest = (
-  payload: CompletionRequest
+  payload: CompletionRequest,
+  idempotencyKey?: string
 ): Promise<CompletionResponse> => {
   const storedFamily = wx.getStorageSync('active_family_id');
   const familyId = storedFamily && typeof storedFamily === 'object'
@@ -147,8 +158,23 @@ const completeAppointmentRequest = (
   if (familyId !== undefined && familyId !== null && familyId !== '') {
     options.header = { 'X-Family-Id': String(familyId) };
   }
+  if (idempotencyKey) {
+    options.header = { ...(options.header || {}), 'Idempotency-Key': idempotencyKey };
+  }
   // request 统一注入 Authorization，家庭上下文仅在选中家庭时附加。
   return request<CompletionResponse>(options);
+};
+
+let adminAppointmentListRequestId = 0;
+let adminAppointmentMutationRequestId = 0;
+let adminRoleRequestId = 0;
+
+const currentAppointmentScope = () => {
+  const storedFamily = wx.getStorageSync('active_family_id');
+  const familyId = storedFamily && typeof storedFamily === 'object'
+    ? storedFamily.id || storedFamily.familyId || storedFamily.family_id || ''
+    : storedFamily;
+  return `${String(wx.getStorageSync('token') || '')}:${String(familyId || '')}`;
 };
 
 Page({
@@ -166,7 +192,8 @@ Page({
     firstDay: '',
     lastDay: '',
     completionPreview: null as CompletionPreview | null,
-    isCompleting: false
+    isCompleting: false,
+    isMutatingAppointment: false
   },
 
   onLoad() {
@@ -184,10 +211,28 @@ Page({
 
   onShow() {
     console.log('页面显示');
+    const scope = currentAppointmentScope();
+    if ((this as any)._appointmentScope && (this as any)._appointmentScope !== scope) {
+      adminAppointmentListRequestId += 1;
+      adminAppointmentMutationRequestId += 1;
+      adminRoleRequestId += 1;
+      delete (this as any)._completionIdempotencyKey;
+      this.setData({
+        userAppointments: [],
+        completionPreview: null,
+        isCompleting: false,
+        isMutatingAppointment: false
+      });
+    }
+    (this as any)._appointmentScope = scope;
     this.syncRoleVisibility();
   },
 
   async syncRoleVisibility() {
+    const requestId = ++adminRoleRequestId;
+    const sessionScope = currentAppointmentScope();
+    const isCurrentRequest = () => requestId === adminRoleRequestId
+      && sessionScope === currentAppointmentScope();
     if (!wx.getStorageSync('token')) {
       this.setData({ canManageAppointments: false, familyRole: '', userAppointments: [] });
       return;
@@ -195,12 +240,15 @@ Page({
     let legacyAdmin = false;
     try {
       const result = await UserService.checkAdmin();
+      if (!isCurrentRequest()) return;
       legacyAdmin = !!result.isAdmin;
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.warn('检查旧版管理员状态失败:', error);
     }
 
     const context = await getFamilyRoleContext();
+    if (!isCurrentRequest()) return;
     const canManageAppointments = legacyAdmin || context.canManageAppointments;
     this.setData({
       canManageAppointments,
@@ -404,9 +452,13 @@ Page({
 
   // 加载用户预约数据
   async loadUserAppointments() {
+    const requestId = ++adminAppointmentListRequestId;
+    const selectedDate = this.data.selectedDate;
+    const sessionScope = currentAppointmentScope();
+    const isCurrentRequest = () => requestId === adminAppointmentListRequestId
+      && selectedDate === this.data.selectedDate
+      && sessionScope === currentAppointmentScope();
     try {
-      const { selectedDate } = this.data;
-      
       // 验证日期格式
       if (!selectedDate || typeof selectedDate !== 'string' || !selectedDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
         console.warn('选定日期无效:', selectedDate);
@@ -414,6 +466,7 @@ Page({
         // 如果日期无效，使用当前日期
         const today = getCurrentDate();
         this.setData({ selectedDate: today, selectedDateDisplay: '今日', isLoading: false });
+        hideLoading();
         
         console.log('使用今日日期:', today);
         return;
@@ -426,6 +479,7 @@ Page({
       
       // 使用AdminAppointmentService.getDateAppointments获取特定日期的预约
       const result = await AdminAppointmentService.getDateAppointments(1, 50, selectedDate);
+      if (!isCurrentRequest()) return;
       const dateAppointments = result.list;
       console.log('dateAppointments:', dateAppointments);
       
@@ -519,6 +573,7 @@ Page({
 
       console.log(`加载到${userAppointments.length}个用户的预约`);
       console.log('userAppointments:', userAppointments);
+      if (!isCurrentRequest()) return;
       
       this.setData({
         userAppointments,
@@ -528,6 +583,7 @@ Page({
       
       hideLoading();
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('加载预约数据时出错:', error);
       
       // 发生错误时，至少确保有一个空列表显示
@@ -681,6 +737,8 @@ Page({
 
   // 确认预约
   async confirmAppointment(e: any) {
+    if (this.data.isMutatingAppointment) return;
+
     try {
       const { appointmentId } = e.currentTarget.dataset;
       
@@ -689,13 +747,21 @@ Page({
         return;
       }
 
+      const requestId = ++adminAppointmentMutationRequestId;
+      const sessionScope = currentAppointmentScope();
+      const isCurrentMutation = () => requestId === adminAppointmentMutationRequestId
+        && sessionScope === currentAppointmentScope();
+      this.setData({ isMutatingAppointment: true });
+
       // 管理员订阅「新预约」通知，确保后续有新预约时能收到推送
       await requestSubscribeForAdmin();
+      if (!isCurrentMutation()) return;
       
       showLoading('确认预约中');
       
       // 调用AppointmentService的confirmAppointment方法
       const result = await AppointmentService.confirmAppointment(appointmentId);
+      if (!isCurrentMutation()) return;
       
       if (result.success) {
         hideLoading();
@@ -707,14 +773,21 @@ Page({
         throw new Error('确认预约失败');
       }
     } catch (error) {
+      if ((this as any)._appointmentScope !== currentAppointmentScope()) return;
       console.error('确认预约失败:', error);
       hideLoading();
       showToast('确认预约失败');
+    } finally {
+      if ((this as any)._appointmentScope === currentAppointmentScope()) {
+        this.setData({ isMutatingAppointment: false });
+      }
     }
   },
   
   // 取消预约
   async cancelAppointment(e: any) {
+    if (this.data.isMutatingAppointment) return;
+
     try {
       const { appointmentId } = e.currentTarget.dataset;
       
@@ -722,20 +795,34 @@ Page({
         showToast('未找到预约ID');
         return;
       }
+
+      const requestId = ++adminAppointmentMutationRequestId;
+      const sessionScope = currentAppointmentScope();
+      const isCurrentMutation = () => requestId === adminAppointmentMutationRequestId
+        && sessionScope === currentAppointmentScope();
+      this.setData({ isMutatingAppointment: true });
       
       // 管理员订阅「新预约」通知，确保后续有新预约时能收到推送
       await requestSubscribeForAdmin();
+      if (!isCurrentMutation()) return;
 
       // 弹窗确认是否取消预约
       wx.showModal({
         title: '确认取消',
         content: '确定要取消此预约吗？',
         success: async (res) => {
-          if (res.confirm) {
+          if (!isCurrentMutation()) return;
+          if (!res.confirm) {
+            this.setData({ isMutatingAppointment: false });
+            return;
+          }
+
+          try {
             showLoading('取消预约中');
             
             // 调用AppointmentService的cancelAppointment方法
             const result = await AppointmentService.cancelAppointment(appointmentId, '管理员取消');
+            if (!isCurrentMutation()) return;
             
             if (result.success) {
               hideLoading();
@@ -747,13 +834,25 @@ Page({
               hideLoading();
               showToast('取消预约失败');
             }
+          } catch (error) {
+            if (!isCurrentMutation()) return;
+            console.error('取消预约失败:', error);
+            hideLoading();
+            showToast('取消预约失败');
+          } finally {
+            if (requestId === adminAppointmentMutationRequestId) this.setData({ isMutatingAppointment: false });
           }
+        },
+        fail: () => {
+          if (requestId === adminAppointmentMutationRequestId) this.setData({ isMutatingAppointment: false });
         }
       });
     } catch (error) {
+      if ((this as any)._appointmentScope !== currentAppointmentScope()) return;
       console.error('取消预约失败:', error);
       hideLoading();
       showToast('取消预约失败');
+      this.setData({ isMutatingAppointment: false });
     }
   },
   
@@ -769,17 +868,24 @@ Page({
         return;
       }
 
+      const requestId = ++adminAppointmentMutationRequestId;
+      const sessionScope = currentAppointmentScope();
+      const isCurrentMutation = () => requestId === adminAppointmentMutationRequestId
+        && sessionScope === currentAppointmentScope();
       // 管理员订阅「新预约」通知，确保后续有新预约时能收到推送
       await requestSubscribeForAdmin();
+      if (!isCurrentMutation()) return;
 
       this.setData({ isCompleting: true });
       showLoading('检查库存中');
 
       // 首次请求只生成消费预览，不直接扣减库存。
       const result = await completeAppointmentRequest({ id: appointmentId });
+      if (!isCurrentMutation()) return;
 
       if (result.requiresInventoryConfirmation) {
         hideLoading();
+        (this as any)._completionIdempotencyKey = `complete:${appointmentId}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2)}`;
         this.setData({
           completionPreview: normalizeCompletionPreview(appointmentId, result),
           isCompleting: false
@@ -788,6 +894,7 @@ Page({
       }
 
       if (result.success) {
+        delete (this as any)._completionIdempotencyKey;
         hideLoading();
         showToast('预约已完成');
         
@@ -797,11 +904,14 @@ Page({
         throw new Error('更新状态失败');
       }
     } catch (error) {
+      if ((this as any)._appointmentScope !== currentAppointmentScope()) return;
       console.error('完成预约失败:', error);
       hideLoading();
       showToast('完成预约失败');
     } finally {
-      this.setData({ isCompleting: false });
+      if ((this as any)._appointmentScope === currentAppointmentScope()) {
+        this.setData({ isCompleting: false });
+      }
     }
   },
 
@@ -810,17 +920,29 @@ Page({
     const preview = this.data.completionPreview as CompletionPreview | null;
     if (!preview || this.data.isCompleting) return;
 
+    const requestId = ++adminAppointmentMutationRequestId;
+    const sessionScope = currentAppointmentScope();
+    const isCurrentMutation = () => requestId === adminAppointmentMutationRequestId
+      && sessionScope === currentAppointmentScope();
     this.setData({ isCompleting: true });
     try {
       showLoading('扣减库存中');
+      const idempotencyKey = (this as any)._completionIdempotencyKey
+        || `complete:${preview.appointmentId}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2)}`;
+      (this as any)._completionIdempotencyKey = idempotencyKey;
       const result = await completeAppointmentRequest({
         id: preview.appointmentId,
         confirmDeduction: true,
-        deductions: preview.deductions
-      });
+        deductions: preview.deductions,
+        expectedUpdateTime: preview.appointmentUpdateTime === null
+          ? undefined
+          : preview.appointmentUpdateTime
+      }, idempotencyKey);
+      if (!isCurrentMutation()) return;
 
       if (result.requiresInventoryConfirmation) {
         hideLoading();
+        (this as any)._completionIdempotencyKey = `complete:${preview.appointmentId}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2)}`;
         this.setData({
           completionPreview: normalizeCompletionPreview(preview.appointmentId, result)
         });
@@ -831,20 +953,23 @@ Page({
       if (!result.success) throw new Error('更新状态失败');
 
       hideLoading();
+      delete (this as any)._completionIdempotencyKey;
       this.setData({ completionPreview: null });
       showToast('预约已完成');
       this.loadUserAppointments();
     } catch (error) {
+      if (!isCurrentMutation()) return;
       console.error('确认完成预约失败:', error);
       hideLoading();
       showToast('完成预约失败，请重试');
     } finally {
-      this.setData({ isCompleting: false });
+      if (requestId === adminAppointmentMutationRequestId) this.setData({ isCompleting: false });
     }
   },
 
   cancelCompletion() {
     if (this.data.isCompleting) return;
+    delete (this as any)._completionIdempotencyKey;
     this.setData({ completionPreview: null });
   },
   
@@ -870,6 +995,8 @@ Page({
 
   // 重新预约（恢复已取消的预约）
   async reactivateAppointment(e: any) {
+    if (this.data.isMutatingAppointment) return;
+
     try {
       const { appointmentId } = e.currentTarget.dataset;
       
@@ -877,17 +1004,30 @@ Page({
         showToast('未找到预约ID');
         return;
       }
+
+      const requestId = ++adminAppointmentMutationRequestId;
+      const sessionScope = currentAppointmentScope();
+      const isCurrentMutation = () => requestId === adminAppointmentMutationRequestId
+        && sessionScope === currentAppointmentScope();
+      this.setData({ isMutatingAppointment: true });
       
       // 弹窗确认是否重新预约
       wx.showModal({
         title: '确认重新预约',
         content: '确定要恢复此已取消的预约吗？',
         success: async (res) => {
-          if (res.confirm) {
+          if (!isCurrentMutation()) return;
+          if (!res.confirm) {
+            this.setData({ isMutatingAppointment: false });
+            return;
+          }
+
+          try {
             showLoading('处理中');
             
             // 调用AppointmentService的reactivateAppointment方法
             const result = await AppointmentService.reactivateAppointment(appointmentId);
+            if (!isCurrentMutation()) return;
             
             if (result.success) {
               hideLoading();
@@ -899,14 +1039,34 @@ Page({
               hideLoading();
               showToast('重新预约失败');
             }
+          } catch (error) {
+            if (!isCurrentMutation()) return;
+            console.error('重新预约失败:', error);
+            hideLoading();
+            showToast('重新预约失败');
+          } finally {
+            if (requestId === adminAppointmentMutationRequestId) this.setData({ isMutatingAppointment: false });
           }
+        },
+        fail: () => {
+          if (requestId === adminAppointmentMutationRequestId) this.setData({ isMutatingAppointment: false });
         }
       });
     } catch (error) {
+      if ((this as any)._appointmentScope !== currentAppointmentScope()) return;
       console.error('重新预约失败:', error);
       hideLoading();
       showToast('重新预约失败');
+      this.setData({ isMutatingAppointment: false });
     }
+  },
+
+  onUnload() {
+    adminAppointmentListRequestId += 1;
+    adminAppointmentMutationRequestId += 1;
+    adminRoleRequestId += 1;
+    (this as any)._appointmentScope = '__unloaded__';
+    delete (this as any)._completionIdempotencyKey;
   },
 
   // 切换用户预约列表的展开/折叠状态

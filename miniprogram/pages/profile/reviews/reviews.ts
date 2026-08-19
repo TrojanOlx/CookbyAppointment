@@ -3,6 +3,8 @@ import { AppointmentService } from '../../../services/appointmentService';
 import { BASE_URL } from '../../../services/http';
 import { ImageCacheService } from '../../../utils/imageCache';
 
+let reviewsRequestId = 0;
+
 Page({
   data: {
     reviews: [] as any[],
@@ -16,8 +18,13 @@ Page({
   },
 
   onLoad() {
+    (this as any)._reviewsToken = String(wx.getStorageSync('token') || '');
     wx.setNavigationBarTitle({ title: '我的评价' });
     this.loadReviews(true);
+  },
+
+  onUnload() {
+    reviewsRequestId += 1;
   },
 
   onPullDownRefresh() {
@@ -31,11 +38,28 @@ Page({
   },
 
   async loadReviews(refresh: boolean) {
-    if (this.data.loading) return;
+    const currentToken = String(wx.getStorageSync('token') || '');
+    if (this.data.loading) {
+      if (refresh && (this as any)._reviewsToken !== currentToken) {
+        reviewsRequestId += 1;
+        this.setData({ reviews: [], page: 1, total: 0, hasMore: true, loading: false, refreshing: false });
+      } else {
+        if (refresh) wx.stopPullDownRefresh();
+        return;
+      }
+    }
     const page = refresh ? 1 : this.data.page;
-    this.setData({ loading: true });
+    const requestId = ++reviewsRequestId;
+    const token = currentToken;
+    (this as any)._reviewsToken = token;
+    const isCurrentRequest = () => (
+      requestId === reviewsRequestId
+      && token === String(wx.getStorageSync('token') || '')
+    );
+    this.setData({ loading: true, refreshing: refresh });
     try {
       const res = await AppointmentService.getUserReviews(page, this.data.pageSize);
+      if (!isCurrentRequest()) return;
       const raw = res.list || [];
       const list = raw.map((item: any) => {
         let images: string[] = [];
@@ -68,6 +92,7 @@ Page({
         item => item.dishImage,
         'cachedDishImage'
       );
+      if (!isCurrentRequest()) return;
       const allReviews = refresh ? cachedList : [...this.data.reviews, ...cachedList];
       this.setData({
         reviews: allReviews,
@@ -76,10 +101,12 @@ Page({
         hasMore: allReviews.length < res.total
       });
     } catch (e) {
-      if (refresh) this.setData({ reviews: [] });
+      if (isCurrentRequest() && refresh) this.setData({ reviews: [] });
     } finally {
-      this.setData({ loading: false, refreshing: false });
-      wx.stopPullDownRefresh();
+      if (requestId === reviewsRequestId) {
+        this.setData({ loading: false, refreshing: false });
+        wx.stopPullDownRefresh();
+      }
     }
   },
 

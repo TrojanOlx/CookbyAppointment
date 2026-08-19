@@ -1,4 +1,5 @@
 // 用户认证相关工具函数
+import { ImageCacheService } from './imageCache';
 
 // 服务器URL，需要根据实际情况修改
 const BASE_URL = 'https://wx.oulongxing.com';
@@ -9,6 +10,17 @@ const LEGACY_USER_TOKEN_KEY = 'user_token';
 const USER_INFO_KEY = 'userInfo';
 const OPEN_ID_KEY = 'openid';
 const LEGACY_SESSION_KEY = 'session_key';
+
+// Incremented whenever the local login session is invalidated. Async responses
+// capture this value and must not write data after it changes.
+let authSessionGeneration = 0;
+
+export const getAuthSessionGeneration = (): number => authSessionGeneration;
+
+export const invalidateAuthSession = (): number => {
+  authSessionGeneration += 1;
+  return authSessionGeneration;
+};
 
 // 用户登录信息接口
 export interface LoginResult {
@@ -68,8 +80,13 @@ export const wxLogin = (): Promise<string> => {
  * @param code 登录凭证
  * @returns Promise<LoginResult> 登录结果
  */
-export const code2Session = async (code: string): Promise<LoginResult> => {
+export const code2Session = async (
+  code: string,
+  expectedGeneration: number = getAuthSessionGeneration()
+): Promise<LoginResult> => {
   try {
+    const initialToken = String(wx.getStorageSync(USER_TOKEN_KEY) || '');
+    const initialOpenId = String(wx.getStorageSync(OPEN_ID_KEY) || '');
     console.log('开始请求后端:');
     
     // 使用统一的多会话登录接口，服务端不会返回微信 session_key。
@@ -79,8 +96,16 @@ export const code2Session = async (code: string): Promise<LoginResult> => {
       data: { code }
     }, '登录中...');
 
+    if (
+      expectedGeneration !== getAuthSessionGeneration()
+      || String(wx.getStorageSync(USER_TOKEN_KEY) || '') !== initialToken
+      || String(wx.getStorageSync(OPEN_ID_KEY) || '') !== initialOpenId
+    ) {
+      throw new Error('登录状态已变化，请重试');
+    }
+
     console.log(response);
-    if (response) {
+    if (response && response.openid && response.token) {
       // 保存登录信息
       wx.setStorageSync(OPEN_ID_KEY, response.openid);
       wx.setStorageSync(USER_TOKEN_KEY, response.token);
@@ -111,6 +136,8 @@ export const getPhoneNumber = async (code: string): Promise<PhoneNumberResult> =
     }
     
     const openid = getOpenId();
+    const token = String(wx.getStorageSync(USER_TOKEN_KEY) || '');
+    const generation = getAuthSessionGeneration();
     
     // 调用后端接口获取手机号
     const response = await requestWithLoading<PhoneNumberResult>({
@@ -121,6 +148,14 @@ export const getPhoneNumber = async (code: string): Promise<PhoneNumberResult> =
         openid
       }
     }, '获取手机号中...');
+
+    if (
+      generation !== getAuthSessionGeneration()
+      || String(wx.getStorageSync(USER_TOKEN_KEY) || '') !== token
+      || getOpenId() !== openid
+    ) {
+      throw new Error('登录状态已变化，请重试');
+    }
     
     if (response && response.phoneNumber) {
       // 保存手机号到本地存储
@@ -147,11 +182,14 @@ export const isLoggedIn = (): boolean => {
  * 退出登录
  */
 export const logout = (): void => {
-  wx.removeStorageSync(USER_TOKEN_KEY);
-  wx.removeStorageSync(LEGACY_USER_TOKEN_KEY);
-  wx.removeStorageSync(OPEN_ID_KEY);
-  wx.removeStorageSync(LEGACY_SESSION_KEY);
-  wx.removeStorageSync(USER_INFO_KEY);
+  invalidateAuthSession();
+  [
+    USER_TOKEN_KEY, LEGACY_USER_TOKEN_KEY, OPEN_ID_KEY, LEGACY_SESSION_KEY, USER_INFO_KEY,
+    'phoneNumber', 'active_family_id', 'active_family', 'active_family_role', 'family_role',
+    'redirectUrl', 'notifyAppointment', 'notifyReview',
+    'dish_list_cache', 'inventory_cache', 'appointment_cache', 'shopping_cache'
+  ].forEach(key => wx.removeStorageSync(key));
+  void ImageCacheService.clear().catch(error => console.warn('退出后图片缓存清理失败:', error));
 };
 
 /**
@@ -197,6 +235,11 @@ export const requestWithLoading = <T>(
         wx.hideLoading();
         console.log("后端返回数据");
         console.log(res.data);
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          const errorData = res.data as any;
+          reject(new Error(errorData && errorData.message ? errorData.message : `请求失败(${res.statusCode})`));
+          return;
+        }
         
         // 判断返回的数据类型及字段
         const data = res.data as T;
@@ -270,9 +313,10 @@ export const requestWithLoading = <T>(
  */
 export const login = async (): Promise<LoginResult> => {
   try {
+    const generation = getAuthSessionGeneration();
     const code = await wxLogin();
     console.log('获取code成功:', code);
-    return await code2Session(code);
+    return await code2Session(code, generation);
   } catch (error) {
     console.error('登录失败:', error);
     throw error;

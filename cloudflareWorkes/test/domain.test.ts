@@ -6,6 +6,7 @@ import {
   convertQuantity,
   hasCapability,
   normalizeQuantity,
+  parseQuantityText,
 } from '../core/domain';
 import type { Capability, FamilyRole } from '../core/types';
 
@@ -78,6 +79,15 @@ describe('canManageRole', () => {
 });
 
 describe('quantity conversion', () => {
+  it('parses only exact supported quantity text', () => {
+    expect(parseQuantityText('3kg')).toEqual({ quantity: 3, unit: 'kg' });
+    expect(parseQuantityText('250 毫升')).toEqual({ quantity: 250, unit: '毫升' });
+    expect(parseQuantityText('1.5 L')).toEqual({ quantity: 1.5, unit: 'l' });
+    expect(parseQuantityText('适量')).toBeNull();
+    expect(parseQuantityText('约 3kg')).toBeNull();
+    expect(parseQuantityText('2包')).toBeNull();
+  });
+
   it('converts mass units in both directions', () => {
     expect(convertQuantity(1000, 'g', 'kg')).toBeCloseTo(1);
     expect(convertQuantity(1.5, 'kg', 'g')).toBeCloseTo(1500);

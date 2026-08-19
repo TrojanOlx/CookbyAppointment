@@ -5,8 +5,11 @@ const { downloadInviteCode, removeLocalInviteCode } = require('../../../services
 let invitePreviewRequestId = 0;
 let inviteContextRequestId = 0;
 let inviteCodeRequestId = 0;
+let inviteCreateRequestId = 0;
+let inviteAcceptRequestId = 0;
 
 const activeFamilyId = () => String(FamilyService.getActiveFamilyId() || '');
+const authToken = () => String(wx.getStorageSync('token') || '');
 
 Page({
   data: {
@@ -39,6 +42,7 @@ Page({
   },
 
   onLoad(options) {
+    this._authToken = authToken();
     const rawToken = options && (options.token || options.scene)
       ? String(options.token || options.scene)
       : '';
@@ -66,11 +70,54 @@ Page({
   },
 
   onShow() {
+    const currentAuthToken = authToken();
+    const authChanged = this._authToken !== undefined && this._authToken !== currentAuthToken;
+    this._authToken = currentAuthToken;
+    if (authChanged) {
+      invitePreviewRequestId += 1;
+      inviteContextRequestId += 1;
+      inviteCreateRequestId += 1;
+      inviteAcceptRequestId += 1;
+      inviteCodeRequestId += 1;
+      removeLocalInviteCode(this.data.inviteCodePath);
+      if (this.data.isPreview) {
+        this.setData({
+          preview: null,
+          previewFamily: null,
+          errorMessage: '',
+          loading: false,
+          accepting: false,
+          inviteCodePath: '',
+          inviteCodeLoading: false
+        }, () => {
+          if (this.data.token) this.loadPreview(this.data.token);
+        });
+        return;
+      }
+      const familyId = activeFamilyId();
+      this.setData({
+        familyId,
+        hasActiveFamily: !!familyId,
+        canCreateInvite: false,
+        canInviteAdmin: false,
+        contextLoading: false,
+        contextError: '',
+        hasContextLoaded: false,
+        invite: null,
+        inviteCodePath: '',
+        inviteCodeLoading: false,
+        inviteCodeError: ''
+      }, () => {
+        if (familyId) this.loadInviteContext();
+      });
+      return;
+    }
     if (this.data.isPreview) return;
     const familyId = activeFamilyId();
     const familyChanged = familyId !== this.data.familyId;
     if (familyChanged) {
       inviteContextRequestId += 1;
+      inviteCreateRequestId += 1;
       inviteCodeRequestId += 1;
       removeLocalInviteCode(this.data.inviteCodePath);
       this.setData({
@@ -100,6 +147,12 @@ Page({
     const familyId = activeFamilyId();
     if (!familyId || this.data.contextLoading) return;
     const requestId = ++inviteContextRequestId;
+    const token = authToken();
+    const isCurrentRequest = () => (
+      requestId === inviteContextRequestId
+      && activeFamilyId() === familyId
+      && authToken() === token
+    );
     this.setData({
       familyId,
       hasActiveFamily: true,
@@ -108,7 +161,7 @@ Page({
     });
     try {
       const family = await FamilyService.detail();
-      if (requestId !== inviteContextRequestId || activeFamilyId() !== familyId) return;
+      if (!isCurrentRequest()) return;
       const isOwner = !!(family && (family.isOwner || family.role === 'owner'));
       const canCreateInvite = isOwner || (family && family.role === 'admin');
       this.setData({
@@ -125,15 +178,27 @@ Page({
       });
     } catch (error) {
       console.error('获取家庭权限失败:', error);
-      if (requestId !== inviteContextRequestId || activeFamilyId() !== familyId) return;
+      if (!isCurrentRequest()) return;
       this.setData({
         hasContextLoaded: false,
         contextError: error && error.message ? error.message : '家庭权限暂时无法读取，请重试'
       });
     }
     finally {
-      if (requestId === inviteContextRequestId && activeFamilyId() === familyId) {
-        this.setData({ contextLoading: false });
+      if (requestId === inviteContextRequestId) {
+        const tokenUnchanged = authToken() === token;
+        this.setData(tokenUnchanged
+          ? { contextLoading: false }
+          : {
+            contextLoading: false,
+            canCreateInvite: false,
+            canInviteAdmin: false,
+            hasContextLoaded: false,
+            invite: null,
+            inviteCodePath: '',
+            inviteCodeLoading: false,
+            inviteCodeError: ''
+          });
       }
     }
   },
@@ -150,10 +215,16 @@ Page({
   async loadPreview(token) {
     if (!token || this.data.loading) return;
     const requestId = ++invitePreviewRequestId;
+    const requestAuthToken = authToken();
+    const isCurrentRequest = () => (
+      requestId === invitePreviewRequestId
+      && this.data.token === token
+      && authToken() === requestAuthToken
+    );
     this.setData({ loading: true, errorMessage: '' });
     try {
       const result = await FamilyService.previewInvite(token);
-      if (requestId !== invitePreviewRequestId || this.data.token !== token) return;
+      if (!isCurrentRequest()) return;
       const invitation = result.invitation || normalizeInvitation(result);
       const family = result.family || null;
       if (!invitation && !family) throw new Error('邀请不存在或已失效');
@@ -164,7 +235,7 @@ Page({
         canAccept: !invitation || !invitation.status || invitation.status === 'active'
       });
     } catch (error) {
-      if (requestId !== invitePreviewRequestId || this.data.token !== token) return;
+      if (!isCurrentRequest()) return;
       console.error('获取邀请信息失败:', error);
       if (!wx.getStorageSync('token')) {
         wx.setStorageSync('redirectUrl', `/pages/family/invite/invite?token=${encodeURIComponent(token)}`);
@@ -172,7 +243,15 @@ Page({
       this.setData({ errorMessage: error && error.message ? error.message : '邀请不存在或已失效' });
     } finally {
       if (requestId === invitePreviewRequestId && this.data.token === token) {
-        this.setData({ loading: false });
+        this.setData(authToken() === requestAuthToken
+          ? { loading: false }
+          : {
+            loading: false,
+            preview: null,
+            previewFamily: null,
+            canAccept: false,
+            errorMessage: '登录状态已变化，请重新加载'
+          });
       }
     }
   },
@@ -197,7 +276,25 @@ Page({
     const familyId = activeFamilyId();
     if (!familyId || familyId !== this.data.familyId) {
       wx.showToast({ title: '家庭已切换，请重新加载', icon: 'none' });
-      this.setData({ familyId, hasActiveFamily: !!familyId, hasContextLoaded: false });
+      inviteContextRequestId += 1;
+      inviteCreateRequestId += 1;
+      inviteCodeRequestId += 1;
+      removeLocalInviteCode(this.data.inviteCodePath);
+      this.setData({
+        familyId,
+        hasActiveFamily: !!familyId,
+        hasContextLoaded: false,
+        contextLoading: false,
+        contextError: '',
+        canCreateInvite: false,
+        canInviteAdmin: false,
+        invite: null,
+        inviteCodePath: '',
+        inviteCodeLoading: false,
+        inviteCodeError: ''
+      }, () => {
+        if (familyId) this.loadInviteContext();
+      });
       return;
     }
     if (this.data.role === 'admin' && !this.data.canInviteAdmin) {
@@ -205,9 +302,21 @@ Page({
       return;
     }
     if (this.data.creating) return;
+    const requestId = ++inviteCreateRequestId;
+    const token = authToken();
+    const isCurrentRequest = () => (
+      requestId === inviteCreateRequestId
+      && activeFamilyId() === familyId
+      && this.data.familyId === familyId
+      && authToken() === token
+    );
     this.setData({ creating: true, errorMessage: '' });
     try {
       const invite = await FamilyService.createInvite(this.data.role);
+      if (!isCurrentRequest()) {
+        if (requestId === inviteCreateRequestId) this.setData({ creating: false });
+        return;
+      }
       if (activeFamilyId() !== familyId) {
         wx.showToast({ title: '家庭已切换，请重新生成邀请', icon: 'none' });
         return;
@@ -220,17 +329,32 @@ Page({
         inviteCodePath: '',
         inviteCodeLoading: false,
         inviteCodeError: ''
+      }, () => {
+        if (isCurrentRequest() && this.data.invite && this.data.invite.token === invite.token) {
+          this.loadInviteCode(invite.token);
+        }
       });
-      this.loadInviteCode(invite.token);
       wx.setClipboardData({
         data: invite.token,
         success: () => wx.showToast({ title: '邀请码已复制', icon: 'success', duration: 1400 })
       });
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('生成邀请失败:', error);
       wx.showToast({ title: error && error.message ? error.message : '生成邀请失败', icon: 'none' });
     } finally {
-      this.setData({ creating: false });
+      if (requestId === inviteCreateRequestId) {
+        const requestStillCurrent = isCurrentRequest();
+        this.setData(requestStillCurrent
+          ? { creating: false }
+          : {
+            creating: false,
+            invite: null,
+            inviteCodePath: '',
+            inviteCodeLoading: false,
+            inviteCodeError: ''
+          });
+      }
     }
   },
 
@@ -303,21 +427,57 @@ Page({
 
   async acceptInvite() {
     if (!this.data.token || this.data.accepting) return;
+    const token = this.data.token;
+    const requestAuthToken = authToken();
+    const requestId = ++inviteAcceptRequestId;
+    const isCurrentRequest = () => (
+      requestId === inviteAcceptRequestId
+      && this.data.token === token
+      && authToken() === requestAuthToken
+    );
+    let navigationPending = false;
     this.setData({ accepting: true });
     try {
-      const result = await FamilyService.acceptInvite(this.data.token);
+      const result = await FamilyService.acceptInvite(token);
+      if (!isCurrentRequest()) {
+        // FamilyService selects the returned family before resolving; never leave
+        // that selection attached to a different login session.
+        if (authToken() !== requestAuthToken) FamilyService.clearActiveFamilyId();
+        return;
+      }
       if (!result.family || !result.family.id) throw new Error('加入结果缺少家庭信息');
       FamilyService.setActiveFamilyId(result.family.id);
       wx.showToast({ title: '已加入家庭', icon: 'success', duration: 1200 });
-      setTimeout(() => wx.redirectTo({ url: '/pages/family/index/index' }), 500);
+      navigationPending = true;
+      setTimeout(() => {
+        if (requestId !== inviteAcceptRequestId || authToken() !== requestAuthToken) {
+          if (requestId === inviteAcceptRequestId) this.setData({ accepting: false });
+          return;
+        }
+        wx.redirectTo({ url: '/pages/family/index/index' });
+        this.setData({ accepting: false });
+      }, 500);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('加入家庭失败:', error);
       if (!wx.getStorageSync('token')) {
         wx.setStorageSync('redirectUrl', `/pages/family/invite/invite?token=${encodeURIComponent(this.data.token)}`);
       }
       wx.showToast({ title: error && error.message ? error.message : '加入失败，请稍后重试', icon: 'none' });
     } finally {
-      this.setData({ accepting: false });
+      if (requestId === inviteAcceptRequestId) {
+        if (isCurrentRequest()) {
+          if (!navigationPending) this.setData({ accepting: false });
+        } else {
+          this.setData({
+            accepting: false,
+            preview: null,
+            previewFamily: null,
+            canAccept: false,
+            errorMessage: '登录状态已变化，请重新加载'
+          });
+        }
+      }
     }
   },
 
@@ -333,6 +493,8 @@ Page({
     invitePreviewRequestId += 1;
     inviteContextRequestId += 1;
     inviteCodeRequestId += 1;
+    inviteCreateRequestId += 1;
+    inviteAcceptRequestId += 1;
     removeLocalInviteCode(this.data.inviteCodePath);
   },
 

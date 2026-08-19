@@ -10,7 +10,7 @@
   <!-- 用户信息区 -->
   <view class="user-info">
     <block wx:if="{{!userInfo}}">
-      <button class="login-btn" bindtap="doLogin" loading="{{isLoggingIn}}">微信登录</button>
+      <button class="login-btn" bindtap="doLogin" loading="{{isLoggingIn}}" disabled="{{isLoggingIn}}">微信登录</button>
     </block>
     <view wx:elif="{{userInfo}}" class="user-avatar-info">
       <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">

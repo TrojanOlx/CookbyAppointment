@@ -2,9 +2,11 @@ import { InventoryCategory, InventoryItem } from '../../models/inventory';
 import { InventoryService } from '../../services/inventoryService';
 import { showConfirm, showSuccess, showToast, showLoading, hideLoading, getCurrentDate, formatDate, isDateExpired, dateDiff } from '../../utils/util';
 import { ImageCacheService } from '../../utils/imageCache';
+const { FamilyService } = require('../../services/family');
 
 // 每页加载的数量
 const PAGE_SIZE = 10;
+let inventoryRequestId = 0;
 
 interface DisplayInventoryItem extends InventoryItem {
   isExpired: boolean;
@@ -114,7 +116,19 @@ Page({
 
   // 加载库存数据
   async loadInventory(refresh = false) {
-    if (this.data.loading && !this.data.isRefreshing) return;
+    if (!refresh && (this.data.loading || this.data.isRefreshing)) return;
+
+    const requestId = ++inventoryRequestId;
+    const token = String(wx.getStorageSync('token') || '');
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const isCurrentRequest = () => requestId === inventoryRequestId
+      && token === String(wx.getStorageSync('token') || '')
+      && familyId === String(FamilyService.getActiveFamilyId() || '');
+    const searchKeyword = this.data.searchKeyword;
+    const filterStatus = this.data.filterStatus;
+    const currentPage = this.data.currentPage;
+    let filteredItems = this.data.allFilteredItems;
+    let counts: CountInfo | null = null;
 
     this.setData({
       loading: true,
@@ -128,10 +142,10 @@ Page({
         let response;
 
         // 根据搜索关键词获取数据
-        if (this.data.searchKeyword) {
+        if (searchKeyword) {
           // 使用搜索接口
           response = await InventoryService.searchInventory(
-            this.data.searchKeyword,
+            searchKeyword,
             1,
             100 // 获取较多数据以便本地筛选
           );
@@ -141,9 +155,10 @@ Page({
           response = await InventoryService.getInventoryList(1, 100); // 获取较多数据以便本地筛选
           inventoryItems = response.list;
         }
+        if (!isCurrentRequest()) return;
 
         // 计算各状态计数
-        const counts = this.calculateCounts(inventoryItems);
+        counts = this.calculateCounts(inventoryItems);
 
         // 处理数据，添加过期信息
         const allItems: DisplayInventoryItem[] = [];
@@ -177,16 +192,16 @@ Page({
           };
 
           // 根据筛选条件过滤
-          if (this.data.filterStatus === '') {
+          if (filterStatus === '') {
             // 全部
             allItems.push(displayItem);
-          } else if (this.data.filterStatus === 'normal' && !displayItem.isExpired && !displayItem.isExpiringSoon) {
+          } else if (filterStatus === 'normal' && !displayItem.isExpired && !displayItem.isExpiringSoon) {
             // 未到期（不包括即将过期）
             allItems.push(displayItem);
-          } else if (this.data.filterStatus === 'expiring' && displayItem.isExpiringSoon) {
+          } else if (filterStatus === 'expiring' && displayItem.isExpiringSoon) {
             // 即将过期
             allItems.push(displayItem);
-          } else if (this.data.filterStatus === 'expired' && displayItem.isExpired) {
+          } else if (filterStatus === 'expired' && displayItem.isExpired) {
             // 已过期
             allItems.push(displayItem);
           }
@@ -206,32 +221,32 @@ Page({
           return a.name.localeCompare(b.name);
         });
 
-        // 保存筛选并排序后的完整数据
-        this.setData({
-          allFilteredItems: allItems,
-          ...counts // 更新各状态计数
-        });
+        filteredItems = allItems;
       }
 
       // 使用已保存的筛选后数据进行分页
-      const filteredTotal = this.data.allFilteredItems.length;
-      const start = refresh ? 0 : (this.data.currentPage - 1) * this.data.pageSize;
+      const filteredTotal = filteredItems.length;
+      const start = refresh ? 0 : currentPage * this.data.pageSize;
       const end = start + this.data.pageSize;
-      const items = this.data.allFilteredItems.slice(start, end);
+      const items = filteredItems.slice(start, end);
       const cachedItems = await ImageCacheService.withCachedImages(items, item => item.image);
+      if (!isCurrentRequest()) return;
       const hasMore = end < filteredTotal;
 
       // 更新数据
       this.setData({
         items: refresh ? cachedItems : [...this.data.items, ...cachedItems],
-        currentPage: refresh ? 1 : this.data.currentPage + 1,
+        allFilteredItems: filteredItems,
+        currentPage: refresh ? 1 : currentPage + 1,
         hasMore,
         filteredTotal,
+        ...(counts || {}),
         loading: false,
         isRefreshing: false,
         isLoadingMore: false
       });
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('加载库存数据失败:', error);
       showToast('加载数据失败，请重试');
       this.setData({

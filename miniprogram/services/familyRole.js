@@ -13,7 +13,7 @@ function readStoredRole(familyId) {
     if (!value) continue;
     const item = typeof value === 'string' ? { role: value } : value;
     const storedFamilyId = item.familyId || item.family_id || item.id || '';
-    if (storedFamilyId && String(storedFamilyId) !== String(familyId)) continue;
+    if (!storedFamilyId || String(storedFamilyId) !== String(familyId)) continue;
     const role = item.role || item.memberRole || item.member_role;
     if (role) return normalizeRole(role);
   }
@@ -21,7 +21,8 @@ function readStoredRole(familyId) {
 }
 
 async function getFamilyRole() {
-  if (!wx.getStorageSync('token')) return '';
+  const token = String(wx.getStorageSync('token') || '');
+  if (!token) return '';
   const familyId = FamilyService.getActiveFamilyId();
   if (!familyId) return '';
 
@@ -30,6 +31,8 @@ async function getFamilyRole() {
 
   try {
     const families = await FamilyService.list();
+    if (String(wx.getStorageSync('token') || '') !== token) return '';
+    if (String(FamilyService.getActiveFamilyId()) !== String(familyId)) return '';
     const active = (families || []).find(item => String(item.id) === String(familyId));
     return active ? normalizeRole(active.role) : '';
   } catch (error) {

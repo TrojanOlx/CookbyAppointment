@@ -13,30 +13,52 @@ const DEFAULT_ITEM: Partial<InventoryItem> = {
   image: ''
 };
 
+let inventoryEditorLoadRequestId = 0;
+let inventoryEditorMutationRequestId = 0;
+
+const currentInventoryEditorScope = () => {
+  const family = wx.getStorageSync('active_family_id');
+  return `${String(wx.getStorageSync('token') || '')}|${JSON.stringify(family || '')}`;
+};
+
 Page({
   data: {
     item: { ...DEFAULT_ITEM } as Partial<InventoryItem>,
     editMode: false,
-    localImagePath: '' // 本地临时图片路径（选图后未上传前）
+    localImagePath: '', // 本地临时图片路径（选图后未上传前）
+    isSubmitting: false
   },
 
   async onLoad(options: { id?: string }) {
+    const requestId = ++inventoryEditorLoadRequestId;
+    const scope = currentInventoryEditorScope();
+    const isCurrentRequest = () => requestId === inventoryEditorLoadRequestId
+      && scope === currentInventoryEditorScope();
     if (options.id) {
       // 编辑模式，从 API 加载食材数据
       showLoading('加载中');
       try {
         const item = await InventoryService.getInventoryDetail(options.id);
+        if (!isCurrentRequest()) return;
         this.setData({ item, editMode: true });
         wx.setNavigationBarTitle({ title: '编辑食材' });
       } catch {
+        if (!isCurrentRequest()) return;
         showError('未找到指定食材');
-        setTimeout(() => wx.navigateBack(), 1500);
+        setTimeout(() => {
+          if (isCurrentRequest()) wx.navigateBack();
+        }, 1500);
       } finally {
-        hideLoading();
+        if (isCurrentRequest()) hideLoading();
       }
     } else {
       this.setData({ 'item.putInDate': getCurrentDate() });
     }
+  },
+
+  onUnload() {
+    inventoryEditorLoadRequestId += 1;
+    inventoryEditorMutationRequestId += 1;
   },
 
   // 选择图片
@@ -73,8 +95,11 @@ Page({
 
   // 提交表单
   async submitForm(e: any) {
+    if (this.data.isSubmitting) return;
+
     const formData = e.detail.value;
-    const { item, editMode, localImagePath } = this.data;
+    const { editMode, localImagePath } = this.data;
+    const item = { ...this.data.item };
 
     if (!formData.name || formData.name.trim() === '') {
       showError('请输入食材名称');
@@ -97,6 +122,11 @@ Page({
       return;
     }
 
+    const requestId = ++inventoryEditorMutationRequestId;
+    const scope = currentInventoryEditorScope();
+    const isCurrentRequest = () => requestId === inventoryEditorMutationRequestId
+      && scope === currentInventoryEditorScope();
+    this.setData({ isSubmitting: true });
     showLoading('保存中');
     try {
       let imageUrl = item.image || '';
@@ -104,6 +134,7 @@ Page({
       // 如果选择了新图片，先上传到服务器
       if (localImagePath && localImagePath === imageUrl) {
         const uploadResult = await FileService.uploadFile(localImagePath, 'inventory');
+        if (!isCurrentRequest()) return;
         if (uploadResult?.data?.url) {
           imageUrl = uploadResult.data.url;
         } else {
@@ -120,18 +151,26 @@ Page({
       };
 
       if (editMode && item.id) {
-        await InventoryService.updateInventory({ ...saveItem, id: item.id });
+        await InventoryService.updateInventory({ ...saveItem, id: item.id, expectedUpdateTime: item.updateTime });
+        if (!isCurrentRequest()) return;
         showSuccess('食材更新成功');
       } else {
         await InventoryService.addInventory(saveItem);
+        if (!isCurrentRequest()) return;
         showSuccess('食材添加成功');
       }
 
-      setTimeout(() => wx.navigateBack(), 1000);
+      setTimeout(() => {
+        if (isCurrentRequest()) wx.navigateBack();
+      }, 1000);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       showError('操作失败：' + (error as Error).message);
     } finally {
-      hideLoading();
+      if (isCurrentRequest()) {
+        hideLoading();
+        this.setData({ isSubmitting: false });
+      }
     }
   }
-}); 
+});

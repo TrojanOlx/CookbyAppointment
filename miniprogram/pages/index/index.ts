@@ -2,9 +2,15 @@
 import { AppointmentService } from '../../services/appointmentService';
 import { InventoryService } from '../../services/inventoryService';
 import { getCurrentDate, dateDiff } from '../../utils/util';
+const FamilyService = require('../../services/family');
 
 // 获取应用实例
 const app = getApp<IAppOption>();
+
+let todayAppointmentsRequestId = 0;
+let expiringItemsRequestId = 0;
+
+const currentHomeScope = () => `${String(wx.getStorageSync('token') || '')}|${String(FamilyService.getActiveFamilyId() || '')}`;
 
 Page({
   data: {
@@ -33,10 +39,32 @@ Page({
     if (isLoggedIn) {
       this.loadTodayAppointments();
       this.loadExpiringItems();
+    } else {
+      todayAppointmentsRequestId += 1;
+      expiringItemsRequestId += 1;
+      this.setData({
+        todayAppointments: [],
+        expiringItems: [],
+        loadingAppointments: false,
+        loadingInventory: false
+      });
     }
   },
 
+  onHide() {
+    todayAppointmentsRequestId += 1;
+    expiringItemsRequestId += 1;
+  },
+
+  onUnload() {
+    todayAppointmentsRequestId += 1;
+    expiringItemsRequestId += 1;
+  },
+
   async loadTodayAppointments() {
+    const requestId = ++todayAppointmentsRequestId;
+    const scope = currentHomeScope();
+    const isCurrentRequest = () => requestId === todayAppointmentsRequestId && scope === currentHomeScope();
     this.setData({ loadingAppointments: true });
     try {
       const today = getCurrentDate();
@@ -45,15 +73,20 @@ Page({
         ...item,
         dishCount: Array.isArray(item.dishes) ? item.dishes.length : 0
       }));
+      if (!isCurrentRequest()) return;
       this.setData({ todayAppointments: list });
     } catch (e) {
+      if (!isCurrentRequest()) return;
       this.setData({ todayAppointments: [] });
     } finally {
-      this.setData({ loadingAppointments: false });
+      if (isCurrentRequest()) this.setData({ loadingAppointments: false });
     }
   },
 
   async loadExpiringItems() {
+    const requestId = ++expiringItemsRequestId;
+    const scope = currentHomeScope();
+    const isCurrentRequest = () => requestId === expiringItemsRequestId && scope === currentHomeScope();
     this.setData({ loadingInventory: true });
     try {
       const today = getCurrentDate();
@@ -63,11 +96,13 @@ Page({
         const isExpired = new Date(item.expiryDate) < new Date(today);
         return { ...item, daysLeft: isExpired ? 0 : diff, isExpired };
       });
+      if (!isCurrentRequest()) return;
       this.setData({ expiringItems: list });
     } catch (e) {
+      if (!isCurrentRequest()) return;
       this.setData({ expiringItems: [] });
     } finally {
-      this.setData({ loadingInventory: false });
+      if (isCurrentRequest()) this.setData({ loadingInventory: false });
     }
   },
 

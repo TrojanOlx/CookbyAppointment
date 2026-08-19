@@ -4,10 +4,13 @@ import { showLoading, hideLoading, showToast } from '../../utils/util';
 import { UserService } from '../../services/userService';
 import { ImageCacheService } from '../../utils/imageCache';
 const { getFamilyRoleContext } = require('../../services/familyRole');
+const { FamilyService } = require('../../services/family');
 
 interface DisplayDish extends Dish {
   cachedImage?: string;
 }
+
+let menuListRequestId = 0;
 
 Page({
   /**
@@ -131,11 +134,19 @@ Page({
   /**
    * 加载菜品数据
    */
-  async loadDishes(refresh = false) {
-    if (this.data.loading) {
+  async loadDishes(refresh = false, selectedType?: string) {
+    if (this.data.loading && !refresh) {
       console.log("正在加载中，忽略此次请求");
       return;
     }
+
+    const requestId = ++menuListRequestId;
+    const requestedType = selectedType === undefined ? this.data.selectedType : selectedType;
+    const token = String(wx.getStorageSync('token') || '');
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const isCurrentRequest = () => requestId === menuListRequestId
+      && token === String(wx.getStorageSync('token') || '')
+      && familyId === String(FamilyService.getActiveFamilyId() || '');
     
     console.log("开始加载菜品数据", refresh ? "刷新" : "加载更多", "当前页:", this.data.currentPage);
     
@@ -149,6 +160,7 @@ Page({
       // 加载更多时，只设置loading状态，不显示全屏loading
       this.setData({ loading: true });
     }
+    if (refresh) this.setData({ loading: true });
     
     try {
       const page = refresh ? 1 : this.data.currentPage;
@@ -156,6 +168,7 @@ Page({
       // 如果当前没有更多数据，并且不是刷新操作，则直接返回
       if (!this.data.hasMore && !refresh) {
         console.log("没有更多数据，取消加载");
+        this.setData({ loading: false });
         return;
       }
       
@@ -164,7 +177,7 @@ Page({
       const result = await DishService.getDishList(
         page,
         this.data.pageSize,
-        this.data.selectedType || undefined
+        requestedType || undefined
       );
       
       const cachedDishes = await ImageCacheService.withCachedImages(
@@ -174,6 +187,7 @@ Page({
       console.log("获取数据成功，数量:", cachedDishes.length, "总数:", result.total);
       
       // 计算是否还有更多数据（使用 total 对比已加载数量，避免边界误判）
+      if (!isCurrentRequest()) return;
       const loadedCount = refresh ? result.list.length : this.data.dishes.length + result.list.length;
       const hasMore = loadedCount < result.total;
       
@@ -205,13 +219,16 @@ Page({
         });
       }
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('获取菜品列表失败:', error);
       showToast('获取菜品列表失败');
       this.setData({ loading: false });
     } finally {
-      hideLoading();
-      if (refresh && wx.stopPullDownRefresh) {
-        wx.stopPullDownRefresh();
+      if (isCurrentRequest()) {
+        hideLoading();
+        if (refresh && wx.stopPullDownRefresh) {
+          wx.stopPullDownRefresh();
+        }
       }
     }
   },
@@ -225,8 +242,7 @@ Page({
       selectedType: type,
       currentPage: 1,
       dishes: []
-    });
-    this.loadDishes(true);
+    }, () => this.loadDishes(true, type));
   },
 
   /**

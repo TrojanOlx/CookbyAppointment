@@ -2,6 +2,10 @@
 import { showToast } from '../../../utils/util';
 import { UserService } from '../../../services/userService';
 import { ImageCacheService } from '../../../utils/imageCache';
+import { getAuthSessionGeneration } from '../../../utils/auth';
+
+let settingsLoginRequestId = 0;
+let phoneBinding = false;
 
 // 页面数据接口
 interface IPageData {
@@ -68,8 +72,20 @@ Page<IPageData, IPageMethods>({
       return;
     }
 
+    const requestId = ++settingsLoginRequestId;
+    const sessionGeneration = getAuthSessionGeneration();
     const code = await this.wxLoginCode();
+    if (
+      requestId !== settingsLoginRequestId
+      || sessionGeneration !== getAuthSessionGeneration()
+      || wx.getStorageSync('token')
+    ) return;
     const loginResult = await UserService.login(code);
+    if (
+      requestId !== settingsLoginRequestId
+      || sessionGeneration !== getAuthSessionGeneration()
+      || wx.getStorageSync('token')
+    ) return;
     if (!loginResult.token) {
       throw new Error('登录返回数据不完整，缺少 token');
     }
@@ -103,7 +119,7 @@ Page<IPageData, IPageMethods>({
    * 生命周期函数--监听页面卸载
    */
   onUnload() {
-
+    settingsLoginRequestId += 1;
   },
 
   /**
@@ -130,6 +146,7 @@ Page<IPageData, IPageMethods>({
   // 获取手机号
   async getPhoneNumber(e: WechatMiniprogram.ButtonGetPhoneNumber) {
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
+      if (phoneBinding) return;
       // 用户同意授权，获取code
       const code = e.detail.code;
       console.log('获取手机号成功, code:', code);
@@ -140,9 +157,19 @@ Page<IPageData, IPageMethods>({
       }
 
       wx.showLoading({ title: '绑定中...', mask: true });
+      phoneBinding = true;
+      const bindingGeneration = getAuthSessionGeneration();
       try {
         await this.ensureLoggedIn();
+        if (bindingGeneration !== getAuthSessionGeneration()) return;
+        const openid = String(wx.getStorageSync('openid') || '');
+        const sessionGeneration = getAuthSessionGeneration();
+        if (!openid) throw new Error('登录状态无效');
         const result = await UserService.getPhoneNumber(code);
+        if (
+          sessionGeneration !== getAuthSessionGeneration()
+          || String(wx.getStorageSync('openid') || '') !== openid
+        ) return;
         console.log('手机号信息:', result);
         this.setData({ phoneNumber: result.phoneNumber });
         wx.setStorageSync('phoneNumber', result.phoneNumber);
@@ -157,6 +184,7 @@ Page<IPageData, IPageMethods>({
           icon: 'none'
         });
       } finally {
+        phoneBinding = false;
         wx.hideLoading();
       }
     } else {
@@ -187,27 +215,15 @@ Page<IPageData, IPageMethods>({
   clearCache() {
     wx.showModal({
       title: '清除缓存',
-      content: '确定要清除本地缓存吗？这将清除您的浏览记录和临时数据，但不会影响您的账号信息。',
+      content: '确定要清除图片等临时缓存吗？这不会影响登录状态、家庭选择和账号信息。',
       success: (res) => {
         if (res.confirm) {
-          // 保留必要的登录信息和用户设置
-          const userInfo = wx.getStorageSync('userInfo');
-          const openid = wx.getStorageSync('openid');
-          const phoneNumber = wx.getStorageSync('phoneNumber');
-
-          const clearLocalStorage = () => {
-            // 清除缓存
-            wx.clearStorageSync();
-
-            // 恢复必要的信息
-            if (userInfo) wx.setStorageSync('userInfo', userInfo);
-            if (openid) wx.setStorageSync('openid', openid);
-            if (phoneNumber) wx.setStorageSync('phoneNumber', phoneNumber);
-
-            showToast('缓存已清除');
-          };
-
-          ImageCacheService.clear().then(clearLocalStorage, clearLocalStorage);
+          ImageCacheService.clear()
+            .then(() => showToast('缓存已清除'))
+            .catch((error) => {
+              console.error('清除缓存失败:', error);
+              showToast('清除缓存失败');
+            });
         }
       }
     });

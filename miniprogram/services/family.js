@@ -20,7 +20,14 @@ const setActiveFamilyId = (familyId) => {
     wx.removeStorageSync(ACTIVE_FAMILY_KEY);
     return '';
   }
-  const value = String(familyId);
+  const normalized = typeof familyId === 'object'
+    ? familyId.id || familyId.familyId || familyId.family_id || ''
+    : familyId;
+  if (!normalized) {
+    wx.removeStorageSync(ACTIVE_FAMILY_KEY);
+    return '';
+  }
+  const value = String(normalized);
   const previous = getActiveFamilyId();
   wx.setStorageSync(ACTIVE_FAMILY_KEY, value);
   if (previous && previous !== value) {
@@ -144,7 +151,11 @@ class FamilyService {
   }
 
   static async acceptInvite(token) {
+    const authToken = String(wx.getStorageSync('token') || '');
     const response = await familyRequest('/api/family/invite/accept', 'POST', { token }, false);
+    if (!authToken || String(wx.getStorageSync('token') || '') !== authToken) {
+      throw new Error('登录状态已变化，请重新加入');
+    }
     const family = model.extractFamily(response);
     if (family && family.id) setActiveFamilyId(family.id);
     return { response, family };

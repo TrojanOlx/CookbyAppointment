@@ -1,6 +1,7 @@
 import { requireCapability, requireFamilyContext, writeAudit } from '../core/auth';
-import { normalizeQuantity } from '../core/domain';
+import { normalizeIngredientName, normalizeQuantity, parseQuantityText } from '../core/domain';
 import { ApiError, json, optionalString, pagination, readJson, requiredString } from '../core/http';
+import { withOperationLock } from '../core/operationLock';
 import type { Env } from '../core/types';
 
 interface InventoryInput {
@@ -16,20 +17,58 @@ interface InventoryInput {
   expiryDate?: unknown;
   image?: unknown;
   remarks?: unknown;
+  expectedUpdateTime?: unknown;
+}
+
+export function withFamilyInventoryLock<T>(env: Env, familyId: string, execute: () => Promise<T>): Promise<T> {
+  return withOperationLock(env, `family:${familyId}:inventory`, execute);
 }
 
 function quantityFields(data: InventoryInput): { quantity: number | null; unit: string | null; legacyAmount: string | null; amount: string } {
+  if (Object.prototype.hasOwnProperty.call(data, 'amount')) {
+    const amount = typeof data.amount === 'string' ? data.amount.trim().slice(0, 100) : '';
+    if (!amount) throw new ApiError(400, 'INVALID_QUANTITY', '请填写数量，无法换算时可填写“适量”等说明');
+    const parsed = parseQuantityText(amount);
+    if (parsed) return { ...parsed, legacyAmount: null, amount };
+    return { quantity: null, unit: null, legacyAmount: amount, amount };
+  }
   const quantity = typeof data.quantity === 'number' && Number.isFinite(data.quantity) && data.quantity >= 0 ? data.quantity : null;
   const unit = typeof data.unit === 'string' && data.unit.trim() ? data.unit.trim().slice(0, 20) : null;
   if ((quantity === null) !== (unit === null)) {
     throw new ApiError(400, 'INVALID_QUANTITY', '结构化数量必须同时包含 quantity 和 unit');
   }
   if (quantity !== null && unit !== null && !normalizeQuantity(quantity, unit)) {
-    return { quantity, unit, legacyAmount: typeof data.amount === 'string' ? data.amount : `${quantity}${unit}`, amount: typeof data.amount === 'string' ? data.amount : `${quantity}${unit}` };
+    const amount = `${quantity}${unit}`;
+    return { quantity: null, unit: null, legacyAmount: amount, amount };
   }
-  const legacyAmount = typeof data.amount === 'string' && data.amount.trim() ? data.amount.trim().slice(0, 100) : null;
-  if (quantity === null && !legacyAmount) throw new ApiError(400, 'INVALID_QUANTITY', '请填写数量，无法换算时可填写“适量”等说明');
-  return { quantity, unit, legacyAmount, amount: legacyAmount || `${quantity}${unit}` };
+  if (quantity === null) throw new ApiError(400, 'INVALID_QUANTITY', '请填写数量，无法换算时可填写“适量”等说明');
+  return { quantity, unit, legacyAmount: null, amount: `${quantity}${unit}` };
+}
+
+async function resolveIngredientId(env: Env, name: string, requestedId?: unknown): Promise<string> {
+  const normalized = normalizeIngredientName(name);
+  if (typeof requestedId === 'string' && requestedId) {
+    const requested = await env.DB.prepare(`
+      SELECT c.id, c.canonicalName, group_concat(a.alias, '|') AS aliases
+      FROM ingredient_catalog c LEFT JOIN ingredient_aliases a ON a.ingredientId = c.id
+      WHERE c.id = ? GROUP BY c.id
+    `).bind(requestedId).first<{ id: string; canonicalName: string; aliases: string | null }>();
+    const names = requested ? [requested.canonicalName, ...(requested.aliases || '').split('|')] : [];
+    if (requested && names.some(value => value && normalizeIngredientName(value) === normalized)) return requested.id;
+  }
+  const existing = await env.DB.prepare(`
+    SELECT c.id FROM ingredient_catalog c
+    LEFT JOIN ingredient_aliases a ON a.ingredientId = c.id
+    WHERE lower(replace(c.canonicalName, ' ', '')) = ? OR lower(replace(a.alias, ' ', '')) = ? LIMIT 1
+  `).bind(normalized, normalized).first<{ id: string }>();
+  if (existing) return existing.id;
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  await env.DB.prepare(`
+    INSERT INTO ingredient_catalog (id, canonicalName, category, createdAt, updatedAt)
+    VALUES (?, ?, '其他', ?, ?)
+  `).bind(id, name, now, now).run();
+  return id;
 }
 
 async function listInventory(request: Request, env: Env): Promise<Response> {
@@ -69,30 +108,33 @@ async function addInventory(request: Request, env: Env): Promise<Response> {
   const data = await readJson<InventoryInput>(request);
   const name = requiredString(data.name, '食材名称', 80);
   const quantity = quantityFields(data);
+  const ingredientId = await resolveIngredientId(env, name, data.ingredientId);
   const id = crypto.randomUUID();
   const now = Date.now();
   const item = {
     id, familyId: context.familyId, userId: context.user.id, openid: context.user.openid,
     name, amount: quantity.amount, quantity: quantity.quantity, unit: quantity.unit,
     legacyAmount: quantity.legacyAmount,
-    ingredientId: optionalString(data.ingredientId, 100),
+    ingredientId,
     category: optionalString(data.category, 40) || '其他', status: optionalString(data.status, 20) || '正常',
     putInDate: optionalString(data.putInDate, 20), expiryDate: optionalString(data.expiryDate, 20),
     image: optionalString(data.image, 1000), remarks: optionalString(data.remarks, 500) || '',
     createTime: now, updateTime: now,
   };
-  await env.DB.prepare(`
-    INSERT INTO inventory_items (
-      id, userId, openid, name, amount, category, status, putInDate, expiryDate, image, remarks,
-      createTime, updateTime, familyId, ingredientId, quantity, unit, legacyAmount
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    item.id, item.userId, item.openid, item.name, item.amount, item.category, item.status,
-    item.putInDate, item.expiryDate, item.image, item.remarks, now, now, item.familyId,
-    item.ingredientId, item.quantity, item.unit, item.legacyAmount,
-  ).run();
-  await writeAudit(env, context, 'inventory.created', 'inventory', id, { name });
-  return json(item, 201);
+  return withFamilyInventoryLock(env, context.familyId, async () => {
+    await env.DB.prepare(`
+      INSERT INTO inventory_items (
+        id, userId, openid, name, amount, category, status, putInDate, expiryDate, image, remarks,
+        createTime, updateTime, familyId, ingredientId, quantity, unit, legacyAmount
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      item.id, item.userId, item.openid, item.name, item.amount, item.category, item.status,
+      item.putInDate, item.expiryDate, item.image, item.remarks, now, now, item.familyId,
+      item.ingredientId, item.quantity, item.unit, item.legacyAmount,
+    ).run();
+    await writeAudit(env, context, 'inventory.created', 'inventory', id, { name });
+    return json(item, 201);
+  });
 }
 
 async function updateInventory(request: Request, env: Env): Promise<Response> {
@@ -100,33 +142,64 @@ async function updateInventory(request: Request, env: Env): Promise<Response> {
   requireCapability(context, 'inventory.write');
   const data = await readJson<InventoryInput>(request);
   const id = requiredString(data.id, '库存ID');
-  const current = await env.DB.prepare('SELECT * FROM inventory_items WHERE id = ? AND familyId = ?')
-    .bind(id, context.familyId).first<Record<string, unknown>>();
-  if (!current) throw new ApiError(404, 'INVENTORY_NOT_FOUND', '库存项不存在');
-  const merged: InventoryInput = { ...current, ...data };
-  const amount = quantityFields(merged);
-  const next = {
-    name: data.name === undefined ? String(current.name) : requiredString(data.name, '食材名称', 80),
-    ingredientId: data.ingredientId === undefined ? current.ingredientId : optionalString(data.ingredientId, 100),
-    category: data.category === undefined ? current.category : optionalString(data.category, 40) || '其他',
-    status: data.status === undefined ? current.status : optionalString(data.status, 20) || '正常',
-    putInDate: data.putInDate === undefined ? current.putInDate : optionalString(data.putInDate, 20),
-    expiryDate: data.expiryDate === undefined ? current.expiryDate : optionalString(data.expiryDate, 20),
-    image: data.image === undefined ? current.image : optionalString(data.image, 1000),
-    remarks: data.remarks === undefined ? current.remarks : optionalString(data.remarks, 500) || '',
-  };
-  const updateTime = Date.now();
-  await env.DB.prepare(`
-    UPDATE inventory_items SET name = ?, amount = ?, category = ?, status = ?, putInDate = ?, expiryDate = ?,
-      image = ?, remarks = ?, updateTime = ?, ingredientId = ?, quantity = ?, unit = ?, legacyAmount = ?
-    WHERE id = ? AND familyId = ?
-  `).bind(
-    next.name, amount.amount, next.category, next.status, next.putInDate, next.expiryDate,
-    next.image, next.remarks, updateTime, next.ingredientId, amount.quantity, amount.unit,
-    amount.legacyAmount, id, context.familyId,
-  ).run();
-  await writeAudit(env, context, 'inventory.updated', 'inventory', id);
-  return json({ ...current, ...next, ...amount, id, updateTime });
+  return withFamilyInventoryLock(env, context.familyId, async () => {
+    const current = await env.DB.prepare('SELECT * FROM inventory_items WHERE id = ? AND familyId = ?')
+      .bind(id, context.familyId).first<Record<string, unknown>>();
+    if (!current) throw new ApiError(404, 'INVENTORY_NOT_FOUND', '库存项不存在');
+    const currentUpdateTime = Number(current.updateTime);
+    const expectedUpdateTime = data.expectedUpdateTime === undefined ? currentUpdateTime : Number(data.expectedUpdateTime);
+    if (!Number.isFinite(expectedUpdateTime) || expectedUpdateTime < 0) {
+      throw new ApiError(400, 'VALIDATION_ERROR', '库存版本无效');
+    }
+    if (expectedUpdateTime !== currentUpdateTime) {
+      throw new ApiError(409, 'INVENTORY_CHANGED', '库存已被其他操作修改，请刷新后重试');
+    }
+    const hasAmount = Object.prototype.hasOwnProperty.call(data, 'amount');
+    const hasStructuredQuantity = Object.prototype.hasOwnProperty.call(data, 'quantity')
+      || Object.prototype.hasOwnProperty.call(data, 'unit');
+    const amount = hasAmount
+      ? quantityFields({ amount: data.amount })
+      : hasStructuredQuantity
+        ? quantityFields({
+          quantity: data.quantity === undefined ? current.quantity : data.quantity,
+          unit: data.unit === undefined ? current.unit : data.unit,
+        })
+        : {
+          quantity: typeof current.quantity === 'number' ? current.quantity : null,
+          unit: typeof current.unit === 'string' && current.unit ? current.unit : null,
+          legacyAmount: typeof current.legacyAmount === 'string' && current.legacyAmount ? current.legacyAmount : null,
+          amount: typeof current.amount === 'string' ? current.amount : '',
+        };
+    const nextName = data.name === undefined ? String(current.name) : requiredString(data.name, '食材名称', 80);
+    const ingredientId = await resolveIngredientId(
+      env,
+      nextName,
+      data.ingredientId === undefined ? current.ingredientId : data.ingredientId,
+    );
+    const next = {
+      name: nextName,
+      ingredientId,
+      category: data.category === undefined ? current.category : optionalString(data.category, 40) || '其他',
+      status: data.status === undefined ? current.status : optionalString(data.status, 20) || '正常',
+      putInDate: data.putInDate === undefined ? current.putInDate : optionalString(data.putInDate, 20),
+      expiryDate: data.expiryDate === undefined ? current.expiryDate : optionalString(data.expiryDate, 20),
+      image: data.image === undefined ? current.image : optionalString(data.image, 1000),
+      remarks: data.remarks === undefined ? current.remarks : optionalString(data.remarks, 500) || '',
+    };
+    const updateTime = Math.max(Date.now(), currentUpdateTime + 1);
+    const result = await env.DB.prepare(`
+      UPDATE inventory_items SET name = ?, amount = ?, category = ?, status = ?, putInDate = ?, expiryDate = ?,
+        image = ?, remarks = ?, updateTime = ?, ingredientId = ?, quantity = ?, unit = ?, legacyAmount = ?
+      WHERE id = ? AND familyId = ? AND updateTime = ?
+    `).bind(
+      next.name, amount.amount, next.category, next.status, next.putInDate, next.expiryDate,
+      next.image, next.remarks, updateTime, next.ingredientId, amount.quantity, amount.unit,
+      amount.legacyAmount, id, context.familyId, expectedUpdateTime,
+    ).run();
+    if (!result.meta.changes) throw new ApiError(409, 'INVENTORY_CHANGED', '库存已被其他操作修改，请刷新后重试');
+    await writeAudit(env, context, 'inventory.updated', 'inventory', id);
+    return json({ ...current, ...next, ...amount, id, updateTime });
+  });
 }
 
 async function deleteInventory(request: Request, env: Env): Promise<Response> {
@@ -134,11 +207,13 @@ async function deleteInventory(request: Request, env: Env): Promise<Response> {
   requireCapability(context, 'inventory.delete');
   const id = new URL(request.url).searchParams.get('id');
   if (!id) throw new ApiError(400, 'VALIDATION_ERROR', '缺少库存ID');
-  const result = await env.DB.prepare('DELETE FROM inventory_items WHERE id = ? AND familyId = ?')
-    .bind(id, context.familyId).run();
-  if (!result.meta.changes) throw new ApiError(404, 'INVENTORY_NOT_FOUND', '库存项不存在');
-  await writeAudit(env, context, 'inventory.deleted', 'inventory', id);
-  return json({ success: true });
+  return withFamilyInventoryLock(env, context.familyId, async () => {
+    const result = await env.DB.prepare('DELETE FROM inventory_items WHERE id = ? AND familyId = ?')
+      .bind(id, context.familyId).run();
+    if (!result.meta.changes) throw new ApiError(404, 'INVENTORY_NOT_FOUND', '库存项不存在');
+    await writeAudit(env, context, 'inventory.deleted', 'inventory', id);
+    return json({ success: true });
+  });
 }
 
 async function expiringInventory(request: Request, env: Env): Promise<Response> {
@@ -175,41 +250,43 @@ async function deductInventory(request: Request, env: Env): Promise<Response> {
   const eligibleSql = deductions.map(() => '(eligible.id = ? AND eligible.quantity IS NOT NULL AND eligible.quantity >= ?)').join(' OR ');
   const caseBindings = deductions.flatMap(item => [item.id, item.quantity]);
   const eligibleBindings = deductions.flatMap(item => [item.id, item.quantity]);
-  const updated = await env.DB.prepare(`
-    UPDATE inventory_items
-    SET quantity = quantity - CASE ${caseSql} ELSE 0 END,
-      amount = CAST(quantity - CASE ${caseSql} ELSE 0 END AS TEXT) || COALESCE(unit, ''),
-      updateTime = ?
-    WHERE familyId = ? AND id IN (${placeholders})
-      AND (
-        SELECT COUNT(*) FROM inventory_items eligible
-        WHERE eligible.familyId = ? AND (${eligibleSql})
-      ) = ?
-    RETURNING id
-  `).bind(
-    ...caseBindings, ...caseBindings, Date.now(), context.familyId,
-    ...deductions.map(item => item.id), context.familyId, ...eligibleBindings, deductions.length,
-  ).all<{ id: string }>();
-  if (updated.results.length !== deductions.length) {
-    const current = await env.DB.prepare(`
-      SELECT id, quantity FROM inventory_items WHERE familyId = ? AND id IN (${placeholders})
-    `).bind(context.familyId, ...deductions.map(item => item.id)).all<{ id: string; quantity: number | null }>();
-    const byId = new Map(current.results.map(item => [item.id, item.quantity]));
-    for (const deduction of deductions) {
-      if (!byId.has(deduction.id)) throw new ApiError(404, 'INVENTORY_NOT_FOUND', '库存项不存在', { id: deduction.id });
-      const available = byId.get(deduction.id);
-      if (available === undefined) throw new ApiError(409, 'INVENTORY_CHANGED', '库存已变化，请刷新后重试');
-      if (available === null) throw new ApiError(409, 'QUANTITY_NOT_CONVERTIBLE', '该库存仅有文字数量，不能自动扣减', { id: deduction.id });
-      if (available < deduction.quantity) {
-        throw new ApiError(409, 'INVENTORY_INSUFFICIENT', '库存不足', {
-          id: deduction.id, available, requested: deduction.quantity,
-        });
+  return withFamilyInventoryLock(env, context.familyId, async () => {
+    const updated = await env.DB.prepare(`
+      UPDATE inventory_items
+      SET quantity = quantity - CASE ${caseSql} ELSE 0 END,
+        amount = CAST(quantity - CASE ${caseSql} ELSE 0 END AS TEXT) || COALESCE(unit, ''),
+        updateTime = ?
+      WHERE familyId = ? AND id IN (${placeholders})
+        AND (
+          SELECT COUNT(*) FROM inventory_items eligible
+          WHERE eligible.familyId = ? AND (${eligibleSql})
+        ) = ?
+      RETURNING id
+    `).bind(
+      ...caseBindings, ...caseBindings, Date.now(), context.familyId,
+      ...deductions.map(item => item.id), context.familyId, ...eligibleBindings, deductions.length,
+    ).all<{ id: string }>();
+    if (updated.results.length !== deductions.length) {
+      const current = await env.DB.prepare(`
+        SELECT id, quantity FROM inventory_items WHERE familyId = ? AND id IN (${placeholders})
+      `).bind(context.familyId, ...deductions.map(item => item.id)).all<{ id: string; quantity: number | null }>();
+      const byId = new Map(current.results.map(item => [item.id, item.quantity]));
+      for (const deduction of deductions) {
+        if (!byId.has(deduction.id)) throw new ApiError(404, 'INVENTORY_NOT_FOUND', '库存项不存在', { id: deduction.id });
+        const available = byId.get(deduction.id);
+        if (available === undefined) throw new ApiError(409, 'INVENTORY_CHANGED', '库存已变化，请刷新后重试');
+        if (available === null) throw new ApiError(409, 'QUANTITY_NOT_CONVERTIBLE', '该库存仅有文字数量，不能自动扣减', { id: deduction.id });
+        if (available < deduction.quantity) {
+          throw new ApiError(409, 'INVENTORY_INSUFFICIENT', '库存不足', {
+            id: deduction.id, available, requested: deduction.quantity,
+          });
+        }
       }
+      throw new ApiError(409, 'INVENTORY_CHANGED', '库存已变化，请刷新后重试');
     }
-    throw new ApiError(409, 'INVENTORY_CHANGED', '库存已变化，请刷新后重试');
-  }
-  await writeAudit(env, context, 'inventory.bulk_deducted', 'inventory', undefined, { items: deductions });
-  return json({ success: true });
+    await writeAudit(env, context, 'inventory.bulk_deducted', 'inventory', undefined, { items: deductions });
+    return json({ success: true });
+  });
 }
 
 export async function handleInventoryV2(request: Request, env: Env, path: string): Promise<Response> {

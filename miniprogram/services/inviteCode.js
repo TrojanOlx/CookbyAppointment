@@ -76,6 +76,10 @@ const removeLocalInviteCode = (filePath) => {
 const downloadInviteCode = (token) => new Promise((resolve, reject) => {
   const authToken = wx.getStorageSync('token') || '';
   const familyId = getFamilyId();
+  const isCurrentContext = () => (
+    String(wx.getStorageSync('token') || '') === String(authToken)
+    && getFamilyId() === familyId
+  );
   if (!authToken) {
     reject(new Error('请先登录后生成小程序码'));
     return;
@@ -95,6 +99,10 @@ const downloadInviteCode = (token) => new Promise((resolve, reject) => {
       'X-App-Version': getAppVersion()
     },
     success: async (response) => {
+      if (!isCurrentContext()) {
+        reject(new Error('登录状态或家庭已变化，请重新生成小程序码'));
+        return;
+      }
       const contentType = String(
         (response.header && (response.header['content-type'] || response.header['Content-Type'])) || ''
       ).toLowerCase();
@@ -109,7 +117,13 @@ const downloadInviteCode = (token) => new Promise((resolve, reject) => {
         return;
       }
       try {
-        resolve(await writeInviteCode(response.data, contentType));
+        const filePath = await writeInviteCode(response.data, contentType);
+        if (!isCurrentContext()) {
+          removeLocalInviteCode(filePath);
+          reject(new Error('登录状态或家庭已变化，请重新生成小程序码'));
+          return;
+        }
+        resolve(filePath);
       } catch (error) {
         reject(error);
       }

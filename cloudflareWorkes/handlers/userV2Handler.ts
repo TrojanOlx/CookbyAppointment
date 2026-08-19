@@ -133,19 +133,37 @@ async function updateInfo(request: Request, env: Env): Promise<Response> {
     city: typeof body.city === 'string' ? body.city.trim().slice(0, 40) : current.city,
     language: typeof body.language === 'string' ? body.language.trim().slice(0, 20) : current.language,
   };
+  const hasField = (field: string) => Object.prototype.hasOwnProperty.call(body, field);
   const updateTime = Date.now();
   await env.DB.prepare(`
-    UPDATE users SET nickName = ?, avatarUrl = ?, gender = ?, country = ?, province = ?, city = ?, language = ?, updateTime = ?
+    UPDATE users SET
+      nickName = CASE WHEN ? = 1 THEN ? ELSE nickName END,
+      avatarUrl = CASE WHEN ? = 1 THEN ? ELSE avatarUrl END,
+      gender = CASE WHEN ? = 1 THEN ? ELSE gender END,
+      country = CASE WHEN ? = 1 THEN ? ELSE country END,
+      province = CASE WHEN ? = 1 THEN ? ELSE province END,
+      city = CASE WHEN ? = 1 THEN ? ELSE city END,
+      language = CASE WHEN ? = 1 THEN ? ELSE language END,
+      updateTime = ?
     WHERE id = ?
   `).bind(
-    next.nickName, next.avatarUrl, next.gender, next.country, next.province,
-    next.city, next.language, updateTime, auth.user.id,
+    hasField('nickName') ? 1 : 0, next.nickName,
+    hasField('avatarUrl') ? 1 : 0, next.avatarUrl,
+    hasField('gender') ? 1 : 0, next.gender,
+    hasField('country') ? 1 : 0, next.country,
+    hasField('province') ? 1 : 0, next.province,
+    hasField('city') ? 1 : 0, next.city,
+    hasField('language') ? 1 : 0, next.language,
+    updateTime, auth.user.id,
   ).run();
+  const updated = await env.DB.prepare(`
+    SELECT id, openid, nickName, avatarUrl, gender, country, province, city, language, phoneNumber, createTime, updateTime
+    FROM users WHERE id = ?
+  `).bind(auth.user.id).first<Record<string, unknown>>();
+  if (!updated) throw new ApiError(404, 'USER_NOT_FOUND', '用户不存在');
   return json({
-    ...current,
-    ...next,
-    avatarUrl: await avatarForResponse(request, env, auth.user.id, next.avatarUrl),
-    updateTime,
+    ...updated,
+    avatarUrl: await avatarForResponse(request, env, auth.user.id, updated.avatarUrl),
   });
 }
 

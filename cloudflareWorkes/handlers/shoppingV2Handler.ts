@@ -2,6 +2,7 @@ import { requireCapability, requireFamilyContext, writeAudit } from '../core/aut
 import { normalizeIngredientName, normalizeQuantity } from '../core/domain';
 import { ApiError, json, readJson, requiredString } from '../core/http';
 import { withOperationLock } from '../core/operationLock';
+import { withFamilyInventoryLock } from './inventoryV2Handler';
 import type { Env, FamilyContext } from '../core/types';
 
 interface Requirement {
@@ -220,12 +221,18 @@ async function updateItem(request: Request, env: Env): Promise<Response> {
   requireCapability(context, 'shopping.write');
   const body = await readJson<Record<string, unknown>>(request);
   const id = requiredString(body.id, '采购项ID');
-  return withOperationLock(env, `family:${context.familyId}:shopping`, async () => {
+  return withFamilyShoppingLock(env, context.familyId, async () => {
     const current = await env.DB.prepare(`
       SELECT i.* FROM shopping_list_items i JOIN shopping_lists l ON l.id = i.shoppingListId
       WHERE i.id = ? AND l.familyId = ? AND l.status = 'active'
     `).bind(id, context.familyId).first<Record<string, unknown>>();
     if (!current) throw new ApiError(404, 'SHOPPING_ITEM_NOT_FOUND', '采购项不存在');
+    const expectedUpdatedAt = body.expectedUpdatedAt === undefined
+      ? Number(current.updatedAt)
+      : typeof body.expectedUpdatedAt === 'number' && Number.isFinite(body.expectedUpdatedAt)
+        ? body.expectedUpdatedAt
+        : null;
+    if (expectedUpdatedAt === null) throw new ApiError(400, 'VALIDATION_ERROR', '采购项版本格式错误');
     let assigneeId = current.assigneeId;
     if (body.assigneeId !== undefined) {
       assigneeId = typeof body.assigneeId === 'string' && body.assigneeId ? body.assigneeId : null;
@@ -239,11 +246,11 @@ async function updateItem(request: Request, env: Env): Promise<Response> {
     const purchasedAt = checked ? Number(current.purchasedAt || Date.now()) : null;
     const quantity = typeof body.quantity === 'number' && Number.isFinite(body.quantity) && body.quantity >= 0 ? body.quantity : current.quantity;
     const unit = typeof body.unit === 'string' && body.unit.trim() ? body.unit.trim().slice(0, 20) : current.unit;
-    const now = Date.now();
+    const now = Math.max(Date.now(), Number(current.updatedAt) + 1);
     const updated = await env.DB.prepare(`
       UPDATE shopping_list_items SET quantity = ?, unit = ?, assigneeId = ?, checked = ?, purchasedAt = ?, updatedAt = ?
       WHERE id = ? AND updatedAt = ?
-    `).bind(quantity, unit, assigneeId, checked, purchasedAt, now, id, current.updatedAt).run();
+    `).bind(quantity, unit, assigneeId, checked, purchasedAt, now, id, expectedUpdatedAt).run();
     if (!updated.meta.changes) throw new ApiError(409, 'SHOPPING_ITEM_CHANGED', '采购项已变化，请刷新后重试');
     await writeAudit(env, context, checked ? 'shopping.item_purchased' : 'shopping.item_updated', 'shopping_item', id);
     return json({ ...current, id, quantity, unit, assigneeId, checked: Boolean(checked), purchasedAt, updatedAt: now });
@@ -287,7 +294,8 @@ async function stockIn(request: Request, env: Env): Promise<Response> {
     throw new ApiError(400, 'VALIDATION_ERROR', '请选择已购采购项');
   }
   const itemIds = Array.from(new Set(body.itemIds.filter((id): id is string => typeof id === 'string')));
-  return withOperationLock(env, `family:${context.familyId}:shopping`, async () => {
+  return withFamilyShoppingLock(env, context.familyId, () =>
+    withFamilyInventoryLock(env, context.familyId, async () => {
     const placeholders = itemIds.map(() => '?').join(',');
     const rows = await env.DB.prepare(`
       SELECT i.* FROM shopping_list_items i JOIN shopping_lists l ON l.id = i.shoppingListId
@@ -327,9 +335,9 @@ async function stockIn(request: Request, env: Env): Promise<Response> {
       }
       throw error;
     }
-    await writeAudit(env, context, 'shopping.stocked_in', 'shopping_item', undefined, { itemIds });
-    return json({ success: true, stockedCount: itemIds.length });
-  });
+      await writeAudit(env, context, 'shopping.stocked_in', 'shopping_item', undefined, { itemIds });
+      return json({ success: true, stockedCount: itemIds.length });
+    }));
 }
 
 export async function handleShoppingV2(request: Request, env: Env, path: string): Promise<Response> {

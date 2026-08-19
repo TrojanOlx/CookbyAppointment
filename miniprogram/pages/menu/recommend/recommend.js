@@ -10,7 +10,8 @@ Page({
     loadError: '',
     members: [],
     selectedDinerIds: [],
-    recommendations: []
+    recommendations: [],
+    recommendationQueued: false
   },
 
   async onLoad() {
@@ -32,7 +33,7 @@ Page({
     const familyId = String(FamilyService.getActiveFamilyId() || '');
     if (familyId === this.data.familyId) return;
     recommendationRequestId += 1;
-    this.setData({ familyId, members: [], selectedDinerIds: [], recommendations: [], loadError: '', loading: false });
+    this.setData({ familyId, members: [], selectedDinerIds: [], recommendations: [], loadError: '', loading: false, recommendationQueued: false });
     if (familyId && await this.loadMembers()) await this.loadRecommendations();
   },
 
@@ -59,8 +60,13 @@ Page({
   },
 
   async loadRecommendations() {
-    const requestId = ++recommendationRequestId;
     const familyId = String(FamilyService.getActiveFamilyId() || '');
+    if (!familyId || familyId !== this.data.familyId) return;
+    if (this.data.loading) {
+      this.setData({ recommendationQueued: true });
+      return;
+    }
+    const requestId = ++recommendationRequestId;
     const dinerIds = this.data.selectedDinerIds.slice();
     this.setData({ loading: true, loadError: '' });
     try {
@@ -76,7 +82,16 @@ Page({
       this.setData({ loadError: error.message || '推荐加载失败' });
       wx.showToast({ title: error.message || '推荐加载失败', icon: 'none' });
     } finally {
-      if (requestId === recommendationRequestId) this.setData({ loading: false });
+      if (requestId === recommendationRequestId) {
+        const queued = this.data.recommendationQueued;
+        this.setData({ loading: false, recommendationQueued: false }, () => {
+          if (queued
+            && familyId === String(FamilyService.getActiveFamilyId() || '')
+            && familyId === this.data.familyId) {
+            this.loadRecommendations();
+          }
+        });
+      }
     }
   },
 

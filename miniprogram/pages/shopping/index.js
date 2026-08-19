@@ -2,6 +2,7 @@ const shoppingService = require('../../services/shopping');
 const shoppingModel = require('../../models/shopping');
 
 let shoppingListRequestId = 0;
+let shoppingMembersRequestId = 0;
 
 let FamilyService = null;
 try {
@@ -51,6 +52,7 @@ Page({
     familyName: '家庭采购清单',
     hasFamily: false,
     hasToken: false,
+    authToken: '',
     loading: false,
     loadError: '',
     refreshing: false,
@@ -62,6 +64,8 @@ Page({
     selectedStockIds: [],
     activeTab: 'active',
     members: [],
+    membersLoading: false,
+    pendingItemIds: [],
     showAdd: false,
     adding: false,
     form: {
@@ -71,13 +75,16 @@ Page({
       note: ''
     },
     showRecalculate: false,
-    recalculating: false
+    recalculating: false,
+    stocking: false
   },
 
   onLoad() {
     wx.setNavigationBarTitle({ title: '家庭采购' });
+    const token = shoppingService.getToken();
     this.setData({
-      hasToken: !!shoppingService.getToken()
+      hasToken: !!token,
+      authToken: token
     });
     this.loadMembers();
     this.loadList();
@@ -85,20 +92,30 @@ Page({
 
   onShow() {
     const familyId = String(shoppingService.getActiveFamilyId() || '');
-    const hasToken = !!shoppingService.getToken();
-    if (familyId !== this.data.familyId || hasToken !== this.data.hasToken) {
+    const token = shoppingService.getToken();
+    const hasToken = !!token;
+    if (familyId !== this.data.familyId || hasToken !== this.data.hasToken || token !== this.data.authToken) {
       shoppingListRequestId += 1;
+      shoppingMembersRequestId += 1;
       this.setData({
         familyId,
         hasFamily: !!familyId,
         hasToken,
+        authToken: token,
         loadError: '',
+        familyName: '家庭采购清单',
         items: [],
         activeItems: [],
         purchasedItems: [],
         activeCount: 0,
         purchasedCount: 0,
-        selectedStockIds: []
+        selectedStockIds: [],
+        members: [],
+        membersLoading: false,
+        pendingItemIds: [],
+        stocking: false,
+        showAdd: false,
+        showRecalculate: false
       });
       this.loadMembers();
       this.loadList();
@@ -115,37 +132,50 @@ Page({
 
   async loadMembers() {
     const familyId = String(shoppingService.getActiveFamilyId() || '');
-    if (!this.data.hasToken || !familyId) {
-      this.setData({ members: [] });
+    const token = shoppingService.getToken();
+    const hasToken = !!token;
+    if (!hasToken || !familyId) {
+      shoppingMembersRequestId += 1;
+      this.setData({ members: [], membersLoading: false });
       return;
     }
+    if (this.data.membersLoading) return;
+    const requestId = ++shoppingMembersRequestId;
+    const isCurrentRequest = () => requestId === shoppingMembersRequestId
+      && familyId === String(shoppingService.getActiveFamilyId() || '')
+      && token === shoppingService.getToken();
+    this.setData({ membersLoading: true });
     try {
-      if (FamilyService && typeof FamilyService.members === 'function') {
-        const members = await FamilyService.members();
-        if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
-        const normalized = (Array.isArray(members) ? members : []).map(normalizeMember).filter(Boolean);
-        if (normalized.length) {
-          this.setData({ members: normalized });
-          this.refreshAssigneeNames(normalized);
-          return;
+      try {
+        if (FamilyService && typeof FamilyService.members === 'function') {
+          const members = await FamilyService.members();
+          if (!isCurrentRequest()) return;
+          const normalized = (Array.isArray(members) ? members : []).map(normalizeMember).filter(Boolean);
+          if (normalized.length) {
+            this.setData({ members: normalized });
+            this.refreshAssigneeNames(normalized);
+            return;
+          }
         }
+      } catch (error) {
+        if (!isCurrentRequest()) return;
+        console.warn('获取家庭成员失败:', error);
       }
-    } catch (error) {
-      if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
-      console.warn('获取家庭成员失败:', error);
-    }
 
-    // 成员接口不可用时，至少允许当前用户给自己分配采购项。
-    const userInfo = wx.getStorageSync('userInfo') || {};
-    const current = normalizeMember({
-      userId: userInfo.id || userInfo.userId || userInfo.openid,
-      nickName: userInfo.nickName || userInfo.nickname || '我',
-      avatarUrl: userInfo.avatarUrl || ''
-    });
-    const fallbackMembers = current ? [current] : [];
-    if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
-    this.setData({ members: fallbackMembers });
-    this.refreshAssigneeNames(fallbackMembers);
+      // 成员接口不可用时，至少允许当前用户给自己分配采购项。
+      const userInfo = wx.getStorageSync('userInfo') || {};
+      const current = normalizeMember({
+        userId: userInfo.id || userInfo.userId || userInfo.openid,
+        nickName: userInfo.nickName || userInfo.nickname || '我',
+        avatarUrl: userInfo.avatarUrl || ''
+      });
+      const fallbackMembers = current ? [current] : [];
+      if (!isCurrentRequest()) return;
+      this.setData({ members: fallbackMembers });
+      this.refreshAssigneeNames(fallbackMembers);
+    } finally {
+      if (isCurrentRequest()) this.setData({ membersLoading: false });
+    }
   },
 
   refreshAssigneeNames(members) {
@@ -162,7 +192,8 @@ Page({
 
   async loadList() {
     const familyId = String(shoppingService.getActiveFamilyId() || '');
-    const hasToken = !!shoppingService.getToken();
+    const token = shoppingService.getToken();
+    const hasToken = !!token;
     const requestId = ++shoppingListRequestId;
     this.setData({ familyId, hasFamily: !!familyId, hasToken, loadError: '' });
     if (!familyId || !hasToken) {
@@ -174,7 +205,7 @@ Page({
     try {
       const response = await shoppingService.getShoppingList('active');
       const currentFamilyId = String(shoppingService.getActiveFamilyId() || '');
-      if (requestId !== shoppingListRequestId || currentFamilyId !== familyId) return;
+      if (requestId !== shoppingListRequestId || currentFamilyId !== familyId || shoppingService.getToken() !== token) return;
       const normalized = shoppingModel.normalizeShoppingListResponse(response);
       const selectedStockIds = this.data.selectedStockIds;
       const items = normalized.items.map(item => {
@@ -194,13 +225,15 @@ Page({
       });
     } catch (error) {
       const currentFamilyId = String(shoppingService.getActiveFamilyId() || '');
-      if (requestId !== shoppingListRequestId || currentFamilyId !== familyId) return;
+      if (requestId !== shoppingListRequestId || currentFamilyId !== familyId || shoppingService.getToken() !== token) return;
       console.error('加载采购清单失败:', error);
       this.setData({ loadError: error && error.message ? error.message : '采购清单加载失败，请稍后重试。' });
       showError(error, '加载采购清单失败');
     } finally {
       const currentFamilyId = String(shoppingService.getActiveFamilyId() || '');
-      if (requestId === shoppingListRequestId && currentFamilyId === familyId) this.setData({ loading: false });
+      if (requestId === shoppingListRequestId && currentFamilyId === familyId && shoppingService.getToken() === token) {
+        this.setData({ loading: false });
+      }
     }
   },
 
@@ -241,6 +274,7 @@ Page({
   stopPropagation() {},
 
   async submitAdd() {
+    if (this.data.adding) return;
     const form = this.data.form;
     const name = String(form.name || '').trim();
     const quantityText = String(form.quantity || '').trim();
@@ -258,6 +292,7 @@ Page({
       wx.showToast({ title: '数量和单位请一起填写', icon: 'none' });
       return;
     }
+    const familyId = String(shoppingService.getActiveFamilyId() || '');
     this.setData({ adding: true });
     wx.showLoading({ title: '添加中' });
     try {
@@ -267,6 +302,7 @@ Page({
         unit: unit || undefined,
         note: String(form.note || '').trim() || undefined
       });
+      if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
       wx.showToast({ title: '已加入清单', icon: 'success' });
       this.setData({ showAdd: false });
       await this.loadList();
@@ -283,16 +319,22 @@ Page({
     const id = event.currentTarget.dataset.id;
     const item = this.data.items.find(entry => entry.id === id);
     if (!item || item.stockedAt) return;
+    const itemKey = String(id);
+    if (this.data.pendingItemIds.indexOf(itemKey) >= 0) return;
+    this.setData({ pendingItemIds: this.data.pendingItemIds.concat(itemKey) });
+    const familyId = String(shoppingService.getActiveFamilyId() || '');
     const checked = !item.checked;
     wx.showLoading({ title: checked ? '标记已购' : '移回清单' });
     try {
-      await shoppingService.updateShoppingItem({ id, checked });
+      await shoppingService.updateShoppingItem({ id, checked, expectedUpdatedAt: Number(item.updatedAt) });
+      if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
       await this.loadList();
     } catch (error) {
       console.error('更新采购状态失败:', error);
       showError(error, '更新失败');
     } finally {
       wx.hideLoading();
+      this.setData({ pendingItemIds: this.data.pendingItemIds.filter(entry => entry !== itemKey) });
     }
   },
 
@@ -308,19 +350,26 @@ Page({
     wx.showActionSheet({
       itemList,
       success: async (result) => {
+        const itemKey = String(id);
+        if (this.data.pendingItemIds.indexOf(itemKey) >= 0) return;
         const selected = result.tapIndex === members.length ? null : members[result.tapIndex];
+        this.setData({ pendingItemIds: this.data.pendingItemIds.concat(itemKey) });
+        const familyId = String(shoppingService.getActiveFamilyId() || '');
         wx.showLoading({ title: '保存中' });
         try {
           await shoppingService.updateShoppingItem({
             id,
-            assigneeId: selected ? selected.userId : ''
+            assigneeId: selected ? selected.userId : '',
+            expectedUpdatedAt: Number(item.updatedAt)
           });
+          if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
           await this.loadList();
         } catch (error) {
           console.error('分配采购人失败:', error);
           showError(error, '分配失败');
         } finally {
           wx.hideLoading();
+          this.setData({ pendingItemIds: this.data.pendingItemIds.filter(entry => entry !== itemKey) });
         }
       }
     });
@@ -336,9 +385,14 @@ Page({
       confirmColor: '#e05a5a',
       success: async (result) => {
         if (!result.confirm) return;
+        const itemKey = String(id);
+        if (this.data.pendingItemIds.indexOf(itemKey) >= 0) return;
+        this.setData({ pendingItemIds: this.data.pendingItemIds.concat(itemKey) });
+        const familyId = String(shoppingService.getActiveFamilyId() || '');
         wx.showLoading({ title: '删除中' });
         try {
           await shoppingService.deleteShoppingItem(id);
+          if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
           await this.loadList();
           wx.showToast({ title: '已删除', icon: 'success' });
         } catch (error) {
@@ -346,6 +400,7 @@ Page({
           showError(error, '删除失败');
         } finally {
           wx.hideLoading();
+          this.setData({ pendingItemIds: this.data.pendingItemIds.filter(entry => entry !== itemKey) });
         }
       }
     });
@@ -368,6 +423,7 @@ Page({
   },
 
   confirmStockIn() {
+    if (this.data.stocking) return;
     const itemIds = this.data.selectedStockIds.slice();
     if (!itemIds.length) {
       wx.showToast({ title: '请先选择要入库的食材', icon: 'none' });
@@ -378,10 +434,13 @@ Page({
       content: `将 ${itemIds.length} 项食材加入库存，已购标记会保留。`,
       confirmText: '确认入库',
       success: async (result) => {
-        if (!result.confirm) return;
+        if (!result.confirm || this.data.stocking) return;
+        this.setData({ stocking: true });
+        const familyId = String(shoppingService.getActiveFamilyId() || '');
         wx.showLoading({ title: '入库中' });
         try {
           await shoppingService.stockInShoppingItems(itemIds);
+          if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
           this.setData({ selectedStockIds: [] });
           await this.loadList();
           wx.showToast({ title: '已完成入库', icon: 'success' });
@@ -390,6 +449,7 @@ Page({
           showError(error, '入库失败');
         } finally {
           wx.hideLoading();
+          this.setData({ stocking: false });
         }
       }
     });
@@ -412,10 +472,13 @@ Page({
   },
 
   async submitRecalculate() {
+    if (this.data.recalculating) return;
+    const familyId = String(shoppingService.getActiveFamilyId() || '');
     this.setData({ recalculating: true });
     wx.showLoading({ title: '重新计算中' });
     try {
       await shoppingService.recalculateShoppingList();
+      if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
       this.setData({ showRecalculate: false });
       await this.loadList();
       wx.showToast({ title: '采购清单已重新计算', icon: 'success' });

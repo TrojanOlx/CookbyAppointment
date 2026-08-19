@@ -16,6 +16,12 @@ WxCalendar.use(LunarPlugin);
 let appointmentListRequestId = 0;
 let calendarMarksRequestId = 0;
 
+const currentSessionOwner = (): string => {
+  const userInfo = wx.getStorageSync('userInfo') || {};
+  const identity = userInfo.id || userInfo.userId || userInfo.openid;
+  return identity ? String(identity) : `token:${String(wx.getStorageSync('token') || '')}`;
+};
+
 interface CalendarDay {
   year: number;
   month: number;
@@ -70,6 +76,7 @@ Page({
     plugins: [LunarPlugin],  // 使用农历插件
     safeAreaBottom: 0,
     isLoading: false, // 加载状态
+    pendingActionId: '',
     familyId: '',
     familyRole: '',
     firstDay: '', // 日历初始化时选中的第一天
@@ -91,6 +98,13 @@ Page({
 
   onShow() {
     console.log('页面显示');
+    if (!wx.getStorageSync('token')) {
+      appointmentListRequestId += 1;
+      calendarMarksRequestId += 1;
+      hideLoading();
+      this.setData({ todayAppointments: [], markedDates: [], familyId: '', familyRole: '', isLoading: false, pendingActionId: '' });
+      return;
+    }
     // 加载当前选中日期的预约
     if (this.data.selectedDate) {
       this.loadAppointments();
@@ -108,6 +122,19 @@ Page({
         selected: 2
       });
     }
+  },
+
+  onUnload() {
+    appointmentListRequestId += 1;
+    calendarMarksRequestId += 1;
+    hideLoading();
+  },
+
+  onHide() {
+    appointmentListRequestId += 1;
+    calendarMarksRequestId += 1;
+    hideLoading();
+    this.setData({ isLoading: false });
   },
 
   // 设置安全区域
@@ -142,9 +169,11 @@ Page({
     console.log('更新日历标记');
     const requestId = ++calendarMarksRequestId;
     const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const sessionOwner = currentSessionOwner();
+    const isCurrentRequest = () => requestId === calendarMarksRequestId
+      && familyId === String(FamilyService.getActiveFamilyId() || '')
+      && sessionOwner === currentSessionOwner();
     try {
-      showLoading('加载数据中');
-      this.setData({ isLoading: true });
       // 获取所有预约
       const result = await AppointmentService.getAppointmentList(
         1,
@@ -154,7 +183,7 @@ Page({
         lastDay
       );
       const appointments = result.list;
-      if (requestId !== calendarMarksRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '')) return;
+      if (!isCurrentRequest()) return;
 
       // 创建日期到预约类型的映射
       const dateToMeals = new Map<string, {
@@ -272,15 +301,12 @@ Page({
         }
       }
 
-      if (requestId !== calendarMarksRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '')) return;
+      if (!isCurrentRequest()) return;
       console.log('设置日历标记:', marks);
-      this.setData({ markedDates: marks, isLoading: false });
-      hideLoading();
+      this.setData({ markedDates: marks });
     } catch (error) {
-      if (requestId !== calendarMarksRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '')) return;
+      if (!isCurrentRequest()) return;
       console.error('更新日历标记时出错:', error);
-      this.setData({ isLoading: false });
-      hideLoading();
       showToast('获取预约数据失败');
     }
   },
@@ -295,6 +321,11 @@ Page({
     const requestId = ++appointmentListRequestId;
     let familyId = String(FamilyService.getActiveFamilyId() || '');
     const selectedDate = this.data.selectedDate;
+    const sessionOwner = currentSessionOwner();
+    const isCurrentRequest = () => requestId === appointmentListRequestId
+      && familyId === String(FamilyService.getActiveFamilyId() || '')
+      && selectedDate === this.data.selectedDate
+      && sessionOwner === currentSessionOwner();
     if (this.data.familyId && this.data.familyId !== familyId) {
       calendarMarksRequestId += 1;
       this.setData({ familyId, familyRole: '', todayAppointments: [], markedDates: [] });
@@ -306,7 +337,7 @@ Page({
 
       // 使用新的getAppointmentListByDate方法获取预约数据
       const result = await AppointmentService.getAppointmentListByDate(selectedDate);
-      if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
+      if (!isCurrentRequest()) return;
 
       const userInfo = wx.getStorageSync('userInfo') || {};
       const currentUserId = String(userInfo.id || userInfo.userId || '');
@@ -315,11 +346,11 @@ Page({
       if (!familyRole && wx.getStorageSync('token')) {
         try {
           const context = await getFamilyRoleContext();
-          if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
+          if (!isCurrentRequest()) return;
           familyRole = String(context && context.role || '');
           if (!familyRole) {
             const families = await FamilyService.list();
-            if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
+            if (!isCurrentRequest()) return;
             const active = (families || []).find((family: any) => String(family.id) === familyId)
               || ((families || []).length === 1 ? (families || [])[0] : null);
             if (active) {
@@ -384,7 +415,7 @@ Page({
         return mealOrder[a.mealType as MealType] - mealOrder[b.mealType as MealType];
       });
 
-      if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
+      if (!isCurrentRequest()) return;
 
       console.log('加载到的预约:', displayAppointments);
       this.setData({
@@ -393,7 +424,7 @@ Page({
       });
       hideLoading();
     } catch (error) {
-      if (requestId !== appointmentListRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || selectedDate !== this.data.selectedDate) return;
+      if (!isCurrentRequest()) return;
       console.error('加载预约数据时出错:', error);
       this.setData({ isLoading: false });
       hideLoading();
@@ -519,16 +550,22 @@ Page({
   // 删除预约
   async deleteAppointment(e: any) {
     const id = e.currentTarget.dataset.id;
+    const actionId = `cancel:${id}`;
+    if (!id || this.data.pendingActionId) return;
+    this.setData({ pendingActionId: actionId });
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const sessionOwner = currentSessionOwner();
 
-    // 在 tap 事件中请求订阅，积累推送配额
-    await requestSubscribeForUser();
-
-    const confirmed = await showConfirm('确认取消', '确定要取消这个预约吗？');
-    if (confirmed) {
+    try {
+      // 在 tap 事件中请求订阅，积累推送配额
+      await requestSubscribeForUser();
+      const confirmed = await showConfirm('确认取消', '确定要取消这个预约吗？');
+      if (!confirmed) return;
       try {
         showLoading('取消中');
         this.setData({ isLoading: true });
         const result = await AppointmentService.cancelAppointment(id, '用户取消预约');
+        if (familyId !== String(FamilyService.getActiveFamilyId() || '') || sessionOwner !== currentSessionOwner()) return;
         if (result.success) {
           hideLoading();
           this.setData({ isLoading: false });
@@ -546,6 +583,9 @@ Page({
         console.error('取消预约失败:', error);
         showToast('取消预约失败');
       }
+    } finally {
+      if (this.data.pendingActionId === actionId) this.setData({ pendingActionId: '', isLoading: false });
+      hideLoading();
     }
   },
 
@@ -598,17 +638,23 @@ Page({
   // 重新预约（恢复已取消的预约）
   async reactivateAppointment(e: any) {
     const id = e.currentTarget.dataset.id;
+    const actionId = `reactivate:${id}`;
+    if (!id || this.data.pendingActionId) return;
+    this.setData({ pendingActionId: actionId });
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const sessionOwner = currentSessionOwner();
 
-    // 在 tap 事件中请求订阅，将在重新激活后等待确认通知
-    await requestSubscribeForUser();
-
-    const confirmed = await showConfirm('确认重新预约', '确定要恢复这个已取消的预约吗？');
-    if (confirmed) {
+    try {
+      // 在 tap 事件中请求订阅，将在重新激活后等待确认通知
+      await requestSubscribeForUser();
+      const confirmed = await showConfirm('确认重新预约', '确定要恢复这个已取消的预约吗？');
+      if (!confirmed) return;
       try {
         showLoading('处理中');
         this.setData({ isLoading: true });
         
         const result = await AppointmentService.reactivateAppointment(id);
+        if (familyId !== String(FamilyService.getActiveFamilyId() || '') || sessionOwner !== currentSessionOwner()) return;
         
         if (result.success) {
           hideLoading();
@@ -627,6 +673,9 @@ Page({
         console.error('重新预约失败:', error);
         showToast('重新预约失败');
       }
+    } finally {
+      if (this.data.pendingActionId === actionId) this.setData({ pendingActionId: '', isLoading: false });
+      hideLoading();
     }
   }
 });

@@ -155,7 +155,7 @@
       <view class="action-buttons">
         <view class="button-wrapper">
           <button class="cancel-btn" bindtap="cancel">取消</button>
-          <button class="submit-btn" bindtap="saveAppointment" disabled="{{selectedDishes.length === 0}}">保存预约</button>
+          <button class="submit-btn" bindtap="saveAppointment" loading="{{isSaving}}" disabled="{{isSaving || selectedDishes.length === 0}}">保存预约</button>
         </view>
         <view class="safe-area-bottom"></view>
       </view>

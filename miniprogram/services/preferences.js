@@ -7,6 +7,13 @@ const model = require('../models/preferences');
 const PREFERENCES_URL = '/api/user/preferences';
 const ACTIVE_FAMILY_KEY = 'active_family_id';
 
+const normalizeFamilyId = (value) => {
+  if (value && typeof value === 'object') {
+    return value.id || value.familyId || value.family_id || '';
+  }
+  return value;
+};
+
 const readGlobalFamilyId = () => {
   try {
     const app = typeof getApp === 'function' ? getApp() : null;
@@ -16,23 +23,28 @@ const readGlobalFamilyId = () => {
       globalData.currentFamilyId ||
       globalData.activeFamilyId ||
       globalData.selectedFamilyId ||
-      (family && (family.id || family.familyId))
+      normalizeFamilyId(family)
     );
-    return value === undefined || value === null ? '' : String(value);
+    const normalized = normalizeFamilyId(value);
+    return normalized === undefined || normalized === null ? '' : String(normalized);
   } catch (_) {
     return '';
   }
 };
 
 const getCurrentFamilyId = (familyId) => {
-  if (familyId !== undefined && familyId !== null && familyId !== '') return String(familyId);
+  const explicitFamilyId = normalizeFamilyId(familyId);
+  if (explicitFamilyId !== undefined && explicitFamilyId !== null && explicitFamilyId !== '') {
+    return String(explicitFamilyId);
+  }
 
   const globalFamilyId = readGlobalFamilyId();
   if (globalFamilyId) return globalFamilyId;
 
   try {
     const stored = wx.getStorageSync(ACTIVE_FAMILY_KEY);
-    return stored === undefined || stored === null ? '' : String(stored);
+    const normalized = normalizeFamilyId(stored);
+    return normalized === undefined || normalized === null ? '' : String(normalized);
   } catch (_) {
     return '';
   }

@@ -11,6 +11,16 @@ const STATUS_ALIASES: Record<string, AppointmentStatusKey> = {
   '已取消': 'cancelled', cancelled: 'cancelled'
 };
 
+let statisticsRequestId = 0;
+
+const currentSessionScope = () => {
+  const storedFamily = wx.getStorageSync('active_family_id');
+  const familyId = storedFamily && typeof storedFamily === 'object'
+    ? storedFamily.id || storedFamily.familyId || storedFamily.family_id || ''
+    : storedFamily;
+  return `${String(wx.getStorageSync('token') || '')}:${String(familyId || '')}`;
+};
+
 function normalizeStatus(value: unknown): AppointmentStatusKey | null {
   return STATUS_ALIASES[String(value || '').trim().toLowerCase()] || null;
 }
@@ -46,17 +56,20 @@ Page({
   switchRange(e: WechatMiniprogram.TouchEvent) {
     const days = e.currentTarget.dataset.days as number;
     if (days === this.data.rangeTab) return;
-    this.setData({ rangeTab: days });
-    this.loadStatistics();
+    this.setData({ rangeTab: days }, () => this.loadStatistics(days));
   },
 
-  async loadStatistics() {
+  async loadStatistics(rangeTab?: number) {
+    const requestId = ++statisticsRequestId;
+    const requestedRange = rangeTab === undefined ? this.data.rangeTab : rangeTab;
+    const sessionScope = currentSessionScope();
+    const isCurrentRequest = () => requestId === statisticsRequestId && sessionScope === currentSessionScope();
     this.setData({ loading: true });
     wx.showLoading({ title: '加载中...' });
     try {
       const now = new Date();
       const endDate = now.toISOString().slice(0, 10);
-      const startDate = new Date(now.getTime() - (this.data.rangeTab - 1) * 86400000)
+      const startDate = new Date(now.getTime() - (requestedRange - 1) * 86400000)
         .toISOString().slice(0, 10);
       const res = await get<any>('/api/admin/statistics', { startDate, endDate });
 
@@ -135,6 +148,7 @@ Page({
       const dailyValues: number[] = [];
       const maxDailyValue = 1;
 
+      if (!isCurrentRequest()) return;
       this.setData({
         summary,
         reviewTotal: Number(reviews.total || 0),
@@ -153,12 +167,18 @@ Page({
         wx.nextTick(() => { this.drawBarChart(); });
       });
     } catch (e) {
-      wx.showToast({ title: '加载失败', icon: 'error' });
+      if (isCurrentRequest()) wx.showToast({ title: '加载失败', icon: 'error' });
     } finally {
-      this.setData({ loading: false });
-      wx.hideLoading();
-      wx.stopPullDownRefresh();
+      if (isCurrentRequest()) {
+        this.setData({ loading: false });
+        wx.hideLoading();
+        wx.stopPullDownRefresh();
+      }
     }
+  },
+
+  onUnload() {
+    statisticsRequestId += 1;
   },
 
   drawBarChart() {

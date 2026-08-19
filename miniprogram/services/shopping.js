@@ -17,7 +17,6 @@ function getFamilyContext() {
   const familyId = String(getActiveFamilyId() || '');
   if (!familyId) throw new Error('请先选择一个家庭');
   return {
-    token: getToken(),
     familyId
   };
 }
@@ -27,8 +26,6 @@ function familyRequest(url, method, data) {
   const header = {
     'X-Family-Id': context.familyId
   };
-  // http.ts 会自动读取 token，这里显式带上 storage 中的 token 以保证该服务可独立测试/替换请求实现。
-  if (context.token) header.Authorization = `Bearer ${context.token}`;
 
   return request({
     url,

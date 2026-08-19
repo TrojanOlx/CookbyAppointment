@@ -142,6 +142,215 @@ try {
   const crossDetail = await api('/api/inventory/detail?id=it-stock-b', 'token-owner-a', 'it-family-a');
   assert(crossDetail.status === 404, 'cross-family inventory detail leaked', crossDetail);
 
+  const concurrentProfileUpdates = await Promise.all([
+    api('/api/user/info', 'token-member-a', undefined, {
+      method: 'PUT', body: JSON.stringify({ nickName: '并发昵称' }),
+    }),
+    api('/api/user/info', 'token-member-a', undefined, {
+      method: 'PUT', body: JSON.stringify({ city: '杭州' }),
+    }),
+  ]);
+  const profileAfterConcurrentUpdates = await api('/api/user/info', 'token-member-a');
+  assert(
+    concurrentProfileUpdates.every(result => result.status === 200)
+      && profileAfterConcurrentUpdates.status === 200
+      && profileAfterConcurrentUpdates.data.nickName === '并发昵称'
+      && profileAfterConcurrentUpdates.data.city === '杭州',
+    'concurrent partial profile updates overwrote each other',
+    { concurrentProfileUpdates, profileAfterConcurrentUpdates },
+  );
+
+  const concurrentDishUpdates = await Promise.all([
+    api('/api/dish/update', 'token-owner-a', 'it-family-a', {
+      method: 'PUT', body: JSON.stringify({ id: 'it-dish-a', notice: '并发提示' }),
+    }),
+    api('/api/dish/update', 'token-owner-a', 'it-family-a', {
+      method: 'PUT', body: JSON.stringify({ id: 'it-dish-a', remark: '并发备注' }),
+    }),
+  ]);
+  const dishAfterConcurrentUpdates = await api('/api/dish/detail?id=it-dish-a', 'token-owner-a', 'it-family-a');
+  assert(
+    concurrentDishUpdates.every(result => result.status === 200)
+      && dishAfterConcurrentUpdates.status === 200
+      && dishAfterConcurrentUpdates.data.notice === '并发提示'
+      && dishAfterConcurrentUpdates.data.remark === '并发备注',
+    'concurrent partial dish updates overwrote each other',
+    { concurrentDishUpdates, dishAfterConcurrentUpdates },
+  );
+
+  const versionedAppointment = await api(
+    '/api/appointment/detail?id=it-appointment-idempotent-b',
+    'token-owner-a',
+    'it-family-a',
+  );
+  const firstAppointmentUpdate = await api('/api/appointment/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: versionedAppointment.data.id,
+      remarks: '较新的预约内容',
+      dinerIds: ['it-owner-a'],
+      expectedUpdateTime: versionedAppointment.data.updateTime,
+    }),
+  });
+  const staleAppointmentUpdate = await api('/api/appointment/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: versionedAppointment.data.id,
+      remarks: '不应覆盖的新内容',
+      dinerIds: ['it-member-a'],
+      expectedUpdateTime: versionedAppointment.data.updateTime,
+    }),
+  });
+  const appointmentAfterStaleUpdate = await api(
+    `/api/appointment/detail?id=${encodeURIComponent(versionedAppointment.data.id)}`,
+    'token-owner-a',
+    'it-family-a',
+  );
+  assert(
+    versionedAppointment.status === 200
+      && firstAppointmentUpdate.status === 200
+      && firstAppointmentUpdate.data.updateTime > versionedAppointment.data.updateTime
+      && staleAppointmentUpdate.status === 409
+      && staleAppointmentUpdate.data.code === 'APPOINTMENT_CHANGED'
+      && appointmentAfterStaleUpdate.data.remarks === '较新的预约内容'
+      && appointmentAfterStaleUpdate.data.diners?.length === 1
+      && appointmentAfterStaleUpdate.data.diners[0].userId === 'it-owner-a',
+    'stale appointment edit overwrote a newer version',
+    { versionedAppointment, firstAppointmentUpdate, staleAppointmentUpdate, appointmentAfterStaleUpdate },
+  );
+
+  const structuredInventory = await api('/api/inventory/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST', body: JSON.stringify({ name: '数量编辑测试', quantity: 1, unit: 'kg', category: '其他' }),
+  });
+  const editedStructuredInventory = await api('/api/inventory/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT', body: JSON.stringify({
+      id: structuredInventory.data.id,
+      amount: '3kg',
+      expectedUpdateTime: structuredInventory.data.updateTime,
+    }),
+  });
+  const staleStructuredInventory = await api('/api/inventory/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT', body: JSON.stringify({
+      id: structuredInventory.data.id,
+      amount: '9kg',
+      expectedUpdateTime: structuredInventory.data.updateTime,
+    }),
+  });
+  const editedLegacyInventory = await api('/api/inventory/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT', body: JSON.stringify({ id: structuredInventory.data.id, amount: '适量' }),
+  });
+  const editedQuantityInventory = await api('/api/inventory/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT', body: JSON.stringify({ id: structuredInventory.data.id, quantity: 4, unit: 'kg' }),
+  });
+  assert(
+    structuredInventory.status === 201
+      && editedStructuredInventory.status === 200
+      && editedStructuredInventory.data.quantity === 3
+      && editedStructuredInventory.data.unit === 'kg'
+      && editedStructuredInventory.data.legacyAmount === null
+      && staleStructuredInventory.status === 409
+      && staleStructuredInventory.data.code === 'INVENTORY_CHANGED'
+      && editedLegacyInventory.status === 200
+      && editedLegacyInventory.data.quantity === null
+      && editedLegacyInventory.data.unit === null
+      && editedLegacyInventory.data.legacyAmount === '适量'
+      && editedQuantityInventory.status === 200
+      && editedQuantityInventory.data.quantity === 4
+      && editedQuantityInventory.data.unit === 'kg'
+      && editedQuantityInventory.data.amount === '4kg'
+      && editedQuantityInventory.data.legacyAmount === null,
+    'editing inventory amount left stale structured quantity data',
+    { structuredInventory, editedStructuredInventory, staleStructuredInventory, editedLegacyInventory },
+  );
+
+  const catalogDish = await api('/api/dish/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: '食材目录编辑测试', type: '家常菜', spicy: '不辣', images: [], steps: ['测试'],
+      ingredients: [{ id: 'it-catalog-dish-ingredient', name: '土豆', amount: '1kg', ingredientId: 'it-ingredient-potato' }],
+    }),
+  });
+  const catalogDishUpdate = await api('/api/dish/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: catalogDish.data.id,
+      expectedUpdateTime: catalogDish.data.updateTime,
+      ingredients: [{ id: 'it-catalog-dish-ingredient', name: '豆腐', amount: '3kg', ingredientId: 'it-ingredient-potato' }],
+    }),
+  });
+  const staleCatalogDishUpdate = await api('/api/dish/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: catalogDish.data.id,
+      expectedUpdateTime: catalogDish.data.updateTime,
+      notice: '不应覆盖',
+    }),
+  });
+  const updatedCatalogIngredient = catalogDishUpdate.data.ingredients?.[0];
+  assert(
+    catalogDish.status === 200
+      && catalogDishUpdate.status === 200
+      && updatedCatalogIngredient?.ingredientId === 'it-ingredient-tofu'
+      && updatedCatalogIngredient?.quantity === 3
+      && updatedCatalogIngredient?.unit === 'kg'
+      && staleCatalogDishUpdate.status === 409
+      && staleCatalogDishUpdate.data.code === 'DISH_CHANGED',
+    'dish ingredient edit retained a stale catalog or quantity mapping',
+    { catalogDish, catalogDishUpdate, staleCatalogDishUpdate, updatedCatalogIngredient },
+  );
+  const versionedIngredientAdd = await api('/api/dish/ingredient/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: 'it-versioned-ingredient',
+      dishId: catalogDish.data.id,
+      name: '土豆',
+      amount: '1kg',
+      expectedUpdateTime: catalogDishUpdate.data.updateTime,
+    }),
+  });
+  const staleIngredientAdd = await api('/api/dish/ingredient/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: 'it-stale-ingredient',
+      dishId: catalogDish.data.id,
+      name: '土豆',
+      amount: '1kg',
+      expectedUpdateTime: catalogDishUpdate.data.updateTime,
+    }),
+  });
+  const dishAfterStaleIngredient = await api(`/api/dish/detail?id=${encodeURIComponent(catalogDish.data.id)}`, 'token-owner-a', 'it-family-a');
+  assert(
+    versionedIngredientAdd.status === 201
+      && staleIngredientAdd.status === 409
+      && staleIngredientAdd.data.code === 'DISH_CHANGED'
+      && dishAfterStaleIngredient.data.ingredients.some(item => item.id === 'it-versioned-ingredient')
+      && !dishAfterStaleIngredient.data.ingredients.some(item => item.id === 'it-stale-ingredient'),
+    'legacy ingredient endpoint bypassed the dish version',
+    { versionedIngredientAdd, staleIngredientAdd, dishAfterStaleIngredient },
+  );
+
+  const atomicDishBefore = await api(`/api/dish/detail?id=${encodeURIComponent(catalogDish.data.id)}`, 'token-owner-a', 'it-family-a');
+  const failedAtomicDishUpdate = await api('/api/dish/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: catalogDish.data.id,
+      notice: '不应保存',
+      ingredients: [
+        { id: 'it-duplicate-ingredient', name: '土豆', amount: '1kg' },
+        { id: 'it-duplicate-ingredient', name: '豆腐', amount: '1kg' },
+      ],
+    }),
+  });
+  const atomicDishAfter = await api(`/api/dish/detail?id=${encodeURIComponent(catalogDish.data.id)}`, 'token-owner-a', 'it-family-a');
+  assert(
+    failedAtomicDishUpdate.status >= 400
+      && atomicDishAfter.status === 200
+      && atomicDishAfter.data.notice === atomicDishBefore.data.notice
+      && JSON.stringify(atomicDishAfter.data.ingredients) === JSON.stringify(atomicDishBefore.data.ingredients),
+    'failed dish ingredient replacement partially changed the dish',
+    { failedAtomicDishUpdate, atomicDishBefore, atomicDishAfter },
+  );
+
   const signedDishImage = await api('/api/dish/detail?id=it-dish-a', 'token-owner-a', 'it-family-a');
   assert(
     signedDishImage.status === 200
@@ -238,6 +447,22 @@ try {
     'concurrent inventory deductions did not converge atomically',
     { concurrentDeductions, inventoryAfterConcurrentDeduction },
   );
+  const staleInventoryAfterDeduction = await api('/api/inventory/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: deductibleInventory.data.id,
+      amount: '5kg',
+      expectedUpdateTime: deductibleInventory.data.updateTime,
+    }),
+  });
+  const inventoryAfterStaleEdit = await api(`/api/inventory/detail?id=${encodeURIComponent(deductibleInventory.data.id)}`, 'token-owner-a', 'it-family-a');
+  assert(
+    staleInventoryAfterDeduction.status === 409
+      && staleInventoryAfterDeduction.data.code === 'INVENTORY_CHANGED'
+      && inventoryAfterStaleEdit.data.quantity === 0.25,
+    'stale inventory form overwrote a newer deduction',
+    { staleInventoryAfterDeduction, inventoryAfterStaleEdit },
+  );
 
   const memberStatistics = await api('/api/admin/statistics', 'token-member-a', 'it-family-a');
   assert(
@@ -327,6 +552,37 @@ try {
       deductions: [{ id: 'it-stock-a', quantity: 0.25 }],
     }),
   });
+  const completionPreviewBeforeEdit = await api('/api/appointment/complete', 'token-owner-a', 'it-family-a', {
+    method: 'PUT', body: JSON.stringify({ id: 'it-appointment-stale-complete' }),
+  });
+  const appointmentEditBeforeCompletion = await api('/api/appointment/update', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: 'it-appointment-stale-complete',
+      remarks: '完成前更新',
+      expectedUpdateTime: completionPreviewBeforeEdit.data.appointmentUpdateTime,
+    }),
+  });
+  const staleCompletion = await api('/api/appointment/complete', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    headers: { 'Idempotency-Key': 'it-stale-completion' },
+    body: JSON.stringify({
+      id: 'it-appointment-stale-complete',
+      confirmDeduction: true,
+      expectedUpdateTime: completionPreviewBeforeEdit.data.appointmentUpdateTime,
+      deductions: [{ id: 'it-stock-a', quantity: 0.25 }],
+    }),
+  });
+  const inventoryAfterStaleCompletion = await api('/api/inventory/detail?id=it-stock-a', 'token-owner-a', 'it-family-a');
+  assert(
+    completionPreviewBeforeEdit.status === 200
+      && appointmentEditBeforeCompletion.status === 200
+      && staleCompletion.status === 409
+      && staleCompletion.data.code === 'APPOINTMENT_CHANGED'
+      && inventoryAfterStaleCompletion.data.quantity === 1,
+    'stale completion preview completed a newer appointment or deducted inventory',
+    { completionPreviewBeforeEdit, appointmentEditBeforeCompletion, staleCompletion, inventoryAfterStaleCompletion },
+  );
   const concurrentCompletions = await Promise.all([
     completionRequest('it-complete-a'),
     completionRequest('it-complete-b'),
@@ -431,6 +687,29 @@ try {
     { shoppingMutationRace, racedItem },
   );
 
+  const staleVersionItem = await api('/api/shopping/item', 'token-owner-a', 'it-family-a', {
+    method: 'POST', body: JSON.stringify({ name: '版本冲突测试', quantity: 1, unit: '个' }),
+  });
+  const shoppingBeforeVersionUpdate = await api('/api/shopping/list', 'token-owner-a', 'it-family-a');
+  const versionSnapshot = (shoppingBeforeVersionUpdate.data.items || []).find(item => item.id === staleVersionItem.data.id);
+  const firstVersionUpdate = await api('/api/shopping/item', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({ id: staleVersionItem.data.id, checked: true, expectedUpdatedAt: versionSnapshot?.updatedAt }),
+  });
+  const staleVersionUpdate = await api('/api/shopping/item', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({ id: staleVersionItem.data.id, assigneeId: 'it-owner-a', expectedUpdatedAt: versionSnapshot?.updatedAt }),
+  });
+  assert(
+    staleVersionItem.status === 201
+      && versionSnapshot
+      && firstVersionUpdate.status === 200
+      && staleVersionUpdate.status === 409
+      && staleVersionUpdate.data.code === 'SHOPPING_ITEM_CHANGED',
+    'stale shopping item update overwrote a newer client version',
+    { staleVersionItem, versionSnapshot, firstVersionUpdate, staleVersionUpdate },
+  );
+
   const accountExport = await api('/api/user/export', 'token-member-a');
   assert(
     accountExport.status === 200
@@ -481,7 +760,7 @@ try {
   const revokedSession = await api('/api/user/export', 'token-member-a');
   assert(revokedSession.status === 401, 'deleted account session remained active', revokedSession);
 
-  console.log('Worker+D1 integration checks passed (48 assertions).');
+  console.log('Worker+D1 integration checks passed (53 assertions).');
 } finally {
   worker.kill('SIGTERM');
   await delay(200);

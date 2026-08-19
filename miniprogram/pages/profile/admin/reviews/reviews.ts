@@ -2,6 +2,16 @@
 import { get, del } from '../../../../services/http';
 import { ImageCacheService } from '../../../../utils/imageCache';
 
+let adminReviewsRequestId = 0;
+
+const currentSessionScope = () => {
+  const storedFamily = wx.getStorageSync('active_family_id');
+  const familyId = storedFamily && typeof storedFamily === 'object'
+    ? storedFamily.id || storedFamily.familyId || storedFamily.family_id || ''
+    : storedFamily;
+  return `${String(wx.getStorageSync('token') || '')}:${String(familyId || '')}`;
+};
+
 Page({
   data: {
     reviews: [] as any[],
@@ -30,12 +40,16 @@ Page({
   },
 
   async loadReviews(refresh: boolean) {
-    if (this.data.loading) return;
+    if (this.data.loading && !refresh) return;
     const page = refresh ? 1 : this.data.page;
+    const requestId = ++adminReviewsRequestId;
+    const filterRating = this.data.filterRating;
+    const sessionScope = currentSessionScope();
+    const isCurrentRequest = () => requestId === adminReviewsRequestId && sessionScope === currentSessionScope();
     this.setData({ loading: true });
     try {
       const params: any = { page, pageSize: this.data.pageSize };
-      if (this.data.filterRating > 0) params.maxRating = this.data.filterRating;
+      if (filterRating > 0) params.maxRating = filterRating;
       const res = await get<{ total: number, list: any[] }>('/api/admin/review/list', params);
       const rawList = Array.isArray(res.list) ? res.list : [];
       const list = rawList.map((item: any) => {
@@ -76,6 +90,7 @@ Page({
       );
       const all = refresh ? cachedList : [...this.data.reviews, ...cachedList];
       const responseTotal = Number(res.total || 0);
+      if (!isCurrentRequest()) return;
       this.setData({
         reviews: all,
         page: page + 1,
@@ -83,18 +98,23 @@ Page({
         hasMore: page * this.data.pageSize < responseTotal
       });
     } catch (e) {
-      if (refresh) this.setData({ reviews: [] });
+      if (isCurrentRequest() && refresh) this.setData({ reviews: [] });
     } finally {
-      this.setData({ loading: false });
-      wx.stopPullDownRefresh();
+      if (isCurrentRequest()) {
+        this.setData({ loading: false });
+        wx.stopPullDownRefresh();
+      }
     }
+  },
+
+  onUnload() {
+    adminReviewsRequestId += 1;
   },
 
   selectFilter(e: WechatMiniprogram.TouchEvent) {
     const rating = e.currentTarget.dataset.rating as number;
     const newRating = this.data.filterRating === rating ? 0 : rating;
-    this.setData({ filterRating: newRating });
-    this.loadReviews(true);
+    this.setData({ filterRating: newRating }, () => this.loadReviews(true));
   },
 
   toggleExpand(e: WechatMiniprogram.TouchEvent) {

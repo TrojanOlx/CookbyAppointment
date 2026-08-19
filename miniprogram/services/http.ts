@@ -1,4 +1,6 @@
 // 基础HTTP请求服务
+import { ImageCacheService } from '../utils/imageCache';
+import { invalidateAuthSession } from '../utils/auth';
 
 // 根据运行环境自动切换 API 地址
 // 开发环境：使用微信开发者工具 → 详情 → 本地设置 → 不校验合法域名
@@ -18,6 +20,13 @@ interface RequestOptions {
   header?: Record<string, string>;
 }
 
+const withoutAuthorization = <T extends Record<string, any>>(header?: T): T => {
+  if (!header) return {} as T;
+  return Object.fromEntries(
+    Object.entries(header).filter(([key]) => key.toLowerCase() !== 'authorization')
+  ) as T;
+};
+
 // 获取全局应用实例
 const getGlobalApp = (): WechatMiniprogram.App.Instance<{
   globalData: {
@@ -31,13 +40,14 @@ const getGlobalApp = (): WechatMiniprogram.App.Instance<{
 
 // 清除所有登录相关信息
 const clearLoginInfo = () => {
-  wx.removeStorageSync('token');
-  wx.removeStorageSync('user_token');
-  wx.removeStorageSync('session_key');
-  wx.removeStorageSync('userInfo');
-  wx.removeStorageSync('openid');
-  wx.removeStorageSync('active_family_id');
-  wx.removeStorageSync('active_family');
+  invalidateAuthSession();
+  [
+    'token', 'user_token', 'session_key', 'userInfo', 'openid', 'phoneNumber',
+    'active_family_id', 'active_family', 'active_family_role', 'family_role',
+    'redirectUrl', 'notifyAppointment', 'notifyReview',
+    'dish_list_cache', 'inventory_cache', 'appointment_cache', 'shopping_cache'
+  ].forEach(key => wx.removeStorageSync(key));
+  void ImageCacheService.clear().catch(error => console.warn('退出后图片缓存清理失败:', error));
 };
 
 const getFamilyId = (): string => {
@@ -57,33 +67,25 @@ const getAppVersion = (): string => {
 };
 
 // ---------- 静默刷新 token ----------
-// 刷新锁：避免多个并发请求同时触发刷新
-let _isRefreshing = false;
-let _refreshQueue: Array<(token: string | null) => void> = [];
+// 每个旧 token 独立复用刷新请求，避免旧账号的刷新锁干扰新登录。
+const refreshPromises = new Map<string, Promise<string>>();
 
 /**
  * 静默刷新 token：调用 wx.login() 获取新 code 后重新登录，返回新 token。
  * 多个并发请求同时遇到 401 时，只执行一次刷新，其余排队等待结果。
  */
-const silentRefreshToken = (): Promise<string> => {
-  if (_isRefreshing) {
-    return new Promise((resolve, reject) => {
-      _refreshQueue.push((token) => {
-        token ? resolve(token) : reject(new Error('token 刷新失败'));
-      });
-    });
+const silentRefreshToken = (expectedToken: string): Promise<string> => {
+  const currentToken = String(wx.getStorageSync('token') || '');
+  if (!expectedToken || currentToken !== expectedToken) {
+    return Promise.reject(new Error('登录状态已变化，请重试'));
   }
-  _isRefreshing = true;
-  const flush = (token: string | null) => {
-    _isRefreshing = false;
-    _refreshQueue.forEach(cb => cb(token));
-    _refreshQueue = [];
-  };
-  return new Promise((resolve, reject) => {
+  const pending = refreshPromises.get(expectedToken);
+  if (pending) return pending;
+
+  const refreshPromise = new Promise<string>((resolve, reject) => {
     wx.login({
       success: (loginRes) => {
         if (!loginRes.code) {
-          flush(null);
           reject(new Error('wx.login 未返回 code'));
           return;
         }
@@ -94,26 +96,37 @@ const silentRefreshToken = (): Promise<string> => {
           header: { 'Content-Type': 'application/json' },
           success: (res: any) => {
             if (res.statusCode === 200 && res.data && res.data.token) {
+              if (String(wx.getStorageSync('token') || '') !== expectedToken) {
+                reject(new Error('登录状态已变化，请重试'));
+                return;
+              }
               const newToken: string = res.data.token;
               wx.setStorageSync('token', newToken);
               if (res.data.openid) wx.setStorageSync('openid', res.data.openid);
-              flush(newToken);
               resolve(newToken);
             } else {
-              flush(null);
               reject(new Error('自动登录失败'));
             }
           },
-          fail: (err) => { flush(null); reject(err); }
+          fail: reject
         });
       },
-      fail: (err) => { flush(null); reject(err); }
+      fail: reject
     });
   });
+  refreshPromises.set(expectedToken, refreshPromise);
+  const releaseRefresh = () => {
+    if (refreshPromises.get(expectedToken) === refreshPromise) refreshPromises.delete(expectedToken);
+  };
+  void refreshPromise.then(releaseRefresh, releaseRefresh);
+  return refreshPromise;
 };
 
 // 弹窗提示并跳转登录（仅在静默刷新也失败后才调用）
-const handleUnauthorized = (statusCode: number) => {
+const handleUnauthorized = (statusCode: number, expectedToken: string): boolean => {
+  if (!expectedToken || String(wx.getStorageSync('token') || '') !== expectedToken) {
+    return false;
+  }
   clearLoginInfo();
   const errMsg = statusCode === 401 ? '登录已过期，请重新登录' : '权限不足';
   const pages = getCurrentPages();
@@ -133,6 +146,7 @@ const handleUnauthorized = (statusCode: number) => {
       }
     }
   });
+  return true;
 };
 
 // 内部请求实现；allowRetry=true 时遇到 401 会先静默刷新 token 再重试一次
@@ -145,7 +159,7 @@ const doRequest = <T = any>(options: RequestOptions, allowRetry: boolean): Promi
       'Authorization': token ? `Bearer ${token}` : '',
       'X-App-Version': getAppVersion(),
       ...(familyId ? { 'X-Family-Id': familyId } : {}),
-      ...options.header
+      ...withoutAuthorization(options.header)
     };
     let data = options.data;
     if ((options.method === 'GET' || options.method === 'DELETE') && data) {
@@ -165,21 +179,37 @@ const doRequest = <T = any>(options: RequestOptions, allowRetry: boolean): Promi
       success: (res: any) => {
         console.log(`请求响应: ${options.url}`, res.statusCode, res.data);
         if (res.statusCode >= 200 && res.statusCode < 300) {
+          if (String(wx.getStorageSync('token') || '') !== String(token) || getFamilyId() !== familyId) {
+            reject(new Error('登录状态或家庭已变化，请重试'));
+            return;
+          }
           resolve(res.data as T);
         } else if (res.statusCode === 401 && allowRetry) {
+          if (!token || String(wx.getStorageSync('token') || '') !== token) {
+            reject(new Error('登录状态已变化，请重试'));
+            return;
+          }
           // 先静默刷新 token，成功后用新 token 重试原请求（仅重试一次）
-          silentRefreshToken()
-            .then(() => {
-              doRequest<T>(options, false).then(resolve).catch(reject);
+          silentRefreshToken(token)
+            .then((refreshedToken) => {
+              if (String(wx.getStorageSync('token') || '') !== refreshedToken) {
+                throw new Error('登录状态已变化，请重试');
+              }
+              if (getFamilyId() !== familyId) {
+                throw new Error('家庭已切换，请重试');
+              }
+              doRequest<T>({ ...options, header: withoutAuthorization(options.header) }, false)
+                .then(resolve)
+                .catch(reject);
             })
-            .catch(() => {
-              handleUnauthorized(401);
-              reject(new Error('登录已过期，请重新登录'));
+            .catch((error) => {
+              const handled = handleUnauthorized(401, token);
+              reject(handled ? new Error('登录已过期，请重新登录') : error);
             });
         } else if (res.statusCode === 401) {
           // 静默刷新重试后仍失败，清理失效登录态。
-          handleUnauthorized(401);
-          reject(new Error('登录已过期，请重新登录'));
+          const handled = handleUnauthorized(401, token);
+          reject(new Error(handled ? '登录已过期，请重新登录' : '登录状态已变化，请重试'));
         } else if (res.statusCode === 403) {
           // RBAC 拒绝不代表登录失效，保留会话和当前家庭。
           const errMsg = res.data && res.data.message ? res.data.message : '权限不足';
@@ -269,7 +299,7 @@ export function upload<T>(url: string, filePath: string, formData: Record<string
         'Authorization': token ? `Bearer ${token}` : '',
         'X-App-Version': getAppVersion(),
         ...(familyId ? { 'X-Family-Id': familyId } : {}),
-        ...header
+        ...withoutAuthorization(header)
       },
       success(res) {
         let body: any = res.data;
@@ -282,6 +312,10 @@ export function upload<T>(url: string, filePath: string, formData: Record<string
         }
 
         if (res.statusCode >= 200 && res.statusCode < 300) {
+          if (String(wx.getStorageSync('token') || '') !== String(token) || getFamilyId() !== familyId) {
+            reject(new Error('登录状态或家庭已变化，请重试'));
+            return;
+          }
           if (body === null || body === undefined) {
             reject(new Error('上传响应无效'));
           } else {
@@ -294,17 +328,30 @@ export function upload<T>(url: string, filePath: string, formData: Record<string
           ? body.message
           : `请求失败(${res.statusCode})`;
         if (res.statusCode === 401 && allowRetry) {
-          silentRefreshToken()
-            .then(() => attempt(false).then(resolve).catch(reject))
-            .catch(() => {
-              handleUnauthorized(401);
-              reject(new Error('登录已过期，请重新登录'));
+          if (!token || String(wx.getStorageSync('token') || '') !== token) {
+            reject(new Error('登录状态已变化，请重试'));
+            return;
+          }
+          silentRefreshToken(token)
+            .then((refreshedToken) => {
+              if (String(wx.getStorageSync('token') || '') !== refreshedToken) {
+                throw new Error('登录状态已变化，请重试');
+              }
+              if (getFamilyId() !== familyId) {
+                throw new Error('家庭已切换，请重试');
+              }
+              return attempt(false);
+            })
+            .then(resolve)
+            .catch((error) => {
+              const handled = handleUnauthorized(401, token);
+              reject(handled ? new Error('登录已过期，请重新登录') : error);
             });
           return;
         }
         if (res.statusCode === 401) {
-          handleUnauthorized(401);
-          reject(new Error('登录已过期，请重新登录'));
+          const handled = handleUnauthorized(401, token);
+          reject(new Error(handled ? '登录已过期，请重新登录' : '登录状态已变化，请重试'));
           return;
         }
         if (res.statusCode === 403) {

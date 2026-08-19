@@ -2,13 +2,16 @@ const { FamilyService } = require('../../../services/family');
 const { FamilyRole } = require('../../../models/family');
 
 let membersRequestId = 0;
+let memberMutationRequestId = 0;
 
 const activeFamilyId = () => String(FamilyService.getActiveFamilyId() || '');
+const authToken = () => String(wx.getStorageSync('token') || '');
 
 Page({
   data: {
     family: null,
     familyId: '',
+    authToken: '',
     members: [],
     loading: false,
     loadError: '',
@@ -19,27 +22,37 @@ Page({
     canManage: false,
     isOwner: false,
     refreshing: false,
-    leaving: false
+    leaving: false,
+    memberMutationId: ''
   },
 
   onLoad() {
     const userInfo = wx.getStorageSync('userInfo') || {};
     const familyId = activeFamilyId();
+    const token = authToken();
     this.setData({
       currentUserId: String(userInfo.id || userInfo.userId || ''),
       currentUserOpenid: String(userInfo.openid || ''),
       familyId,
+      authToken: token,
       hasActiveFamily: !!familyId
     });
   },
 
   onShow() {
     const familyId = activeFamilyId();
+    const token = authToken();
     const familyChanged = familyId !== this.data.familyId;
-    if (familyChanged) {
+    const authChanged = token !== this.data.authToken;
+    if (familyChanged || authChanged) {
       membersRequestId += 1;
+      memberMutationRequestId += 1;
+      const userInfo = wx.getStorageSync('userInfo') || {};
       this.setData({
         familyId,
+        authToken: token,
+        currentUserId: String(userInfo.id || userInfo.userId || ''),
+        currentUserOpenid: String(userInfo.openid || ''),
         hasActiveFamily: !!familyId,
         family: null,
         members: [],
@@ -47,7 +60,8 @@ Page({
         canManage: false,
         isOwner: false,
         actorRole: FamilyRole.MEMBER,
-        loading: false
+        loading: false,
+        memberMutationId: ''
       }, () => {
         if (familyId) this.loadMembers();
       });
@@ -77,13 +91,14 @@ Page({
       return;
     }
     const requestId = ++membersRequestId;
+    const token = authToken();
     this.setData({ loading: true, familyId, hasActiveFamily: true, loadError: '' });
     try {
       const [familyResult, membersResult] = await Promise.all([
         FamilyService.detail().catch(() => null),
         FamilyService.members()
       ]);
-      if (requestId !== membersRequestId || activeFamilyId() !== familyId) return;
+      if (requestId !== membersRequestId || activeFamilyId() !== familyId || authToken() !== token) return;
       const members = Array.isArray(membersResult) ? membersResult : [];
       const current = members.find(item => this.isCurrentMember(item));
       const family = familyResult || {
@@ -106,13 +121,13 @@ Page({
         loadError: ''
       });
     } catch (error) {
-      if (requestId !== membersRequestId || activeFamilyId() !== familyId) return;
+      if (requestId !== membersRequestId || activeFamilyId() !== familyId || authToken() !== token) return;
       console.error('获取家庭成员失败:', error);
       const message = error && error.message ? error.message : '成员加载失败，请重试';
       this.setData({ loadError: message });
       wx.showToast({ title: error && error.message ? error.message : '成员加载失败', icon: 'none' });
     } finally {
-      if (requestId === membersRequestId && activeFamilyId() === familyId) {
+      if (requestId === membersRequestId && activeFamilyId() === familyId && authToken() === token) {
         this.setData({ loading: false, refreshing: false });
         if (wx.stopPullDownRefresh) wx.stopPullDownRefresh();
       }
@@ -150,6 +165,10 @@ Page({
       wx.stopPullDownRefresh();
       return;
     }
+    if (this.data.loading) {
+      wx.stopPullDownRefresh();
+      return;
+    }
     this.setData({ refreshing: true });
     this.loadMembers();
   },
@@ -167,7 +186,7 @@ Page({
   },
 
   openMemberActions(event) {
-    if (!this.data.canManage) return;
+    if (!this.data.canManage || this.data.memberMutationId) return;
     const userId = event.currentTarget.dataset.id;
     const role = event.currentTarget.dataset.role;
     const current = this.data.members.find(item => item.userId === userId);
@@ -208,14 +227,27 @@ Page({
   },
 
   async updateRole(userId, role) {
+    const mutationId = String(userId || '');
+    if (!mutationId || this.data.memberMutationId) return;
+    const requestId = ++memberMutationRequestId;
+    const familyId = activeFamilyId();
+    const token = authToken();
+    const isCurrentMutation = () => requestId === memberMutationRequestId
+      && familyId === activeFamilyId()
+      && token === authToken();
+    this.setData({ memberMutationId: mutationId });
     try {
       await FamilyService.updateMemberRole(userId, role);
+      if (!isCurrentMutation()) return;
       const roleText = role === FamilyRole.ADMIN ? '管理员' : role === FamilyRole.CHEF ? '厨师' : '普通成员';
       wx.showToast({ title: `已设为${roleText}`, icon: 'success' });
       this.loadMembers();
     } catch (error) {
+      if (!isCurrentMutation()) return;
       console.error('更新成员角色失败:', error);
       wx.showToast({ title: error && error.message ? error.message : '角色更新失败', icon: 'none' });
+    } finally {
+      if (requestId === memberMutationRequestId) this.setData({ memberMutationId: '' });
     }
   },
 
@@ -226,21 +258,34 @@ Page({
       confirmText: '确认移出',
       confirmColor: '#e05a5a',
       success: async (result) => {
-        if (!result.confirm) return;
+        if (!result.confirm || this.data.memberMutationId) return;
+        const mutationId = String(userId || '');
+        if (!mutationId) return;
+        const requestId = ++memberMutationRequestId;
+        const familyId = activeFamilyId();
+        const token = authToken();
+        const isCurrentMutation = () => requestId === memberMutationRequestId
+          && familyId === activeFamilyId()
+          && token === authToken();
+        this.setData({ memberMutationId: mutationId });
         try {
           await FamilyService.removeMember(userId);
+          if (!isCurrentMutation()) return;
           wx.showToast({ title: '成员已移出', icon: 'success' });
           this.loadMembers();
         } catch (error) {
+          if (!isCurrentMutation()) return;
           console.error('移出成员失败:', error);
           wx.showToast({ title: error && error.message ? error.message : '移出失败', icon: 'none' });
+        } finally {
+          if (requestId === memberMutationRequestId) this.setData({ memberMutationId: '' });
         }
       }
     });
   },
 
   transferOwnership(event) {
-    if (!this.data.isOwner) return;
+    if (!this.data.isOwner || this.data.memberMutationId) return;
     const userId = event.currentTarget.dataset.id;
     if (!userId) return;
     const member = this.data.members.find(item => item.userId === userId);
@@ -251,20 +296,35 @@ Page({
       confirmText: '确认转让',
       confirmColor: '#e59266',
       success: async (result) => {
-        if (!result.confirm) return;
+        if (!result.confirm || this.data.memberMutationId) return;
+        const mutationId = String(userId || '');
+        if (!mutationId) return;
+        const requestId = ++memberMutationRequestId;
+        const familyId = activeFamilyId();
+        const token = authToken();
+        const isCurrentMutation = () => requestId === memberMutationRequestId
+          && familyId === activeFamilyId()
+          && token === authToken();
+        this.setData({ memberMutationId: mutationId });
         try {
           await FamilyService.transferOwnership(userId);
+          if (!isCurrentMutation()) return;
           wx.showToast({ title: '家庭主身份已转让', icon: 'success' });
           this.loadMembers();
         } catch (error) {
+          if (!isCurrentMutation()) return;
           console.error('转让家庭主身份失败:', error);
           wx.showToast({ title: error && error.message ? error.message : '转让失败', icon: 'none' });
+        } finally {
+          if (requestId === memberMutationRequestId) this.setData({ memberMutationId: '' });
         }
       }
     });
   },
 
   leaveFamily() {
+    const modalFamilyId = activeFamilyId();
+    const modalToken = authToken();
     if (this.data.isOwner) {
       wx.showModal({
         title: '解散家庭',
@@ -282,22 +342,31 @@ Page({
             success: async (finalResult) => {
               if (!finalResult.confirm || this.data.leaving) return;
               const familyId = activeFamilyId();
-              if (!familyId || familyId !== this.data.familyId) {
+              const token = authToken();
+              if (!familyId || familyId !== this.data.familyId || familyId !== modalFamilyId || token !== modalToken) {
                 wx.showToast({ title: '家庭已切换，请重新操作', icon: 'none' });
                 return;
               }
+              const requestId = ++memberMutationRequestId;
+              const isCurrentMutation = () => requestId === memberMutationRequestId
+                && familyId === activeFamilyId()
+                && token === authToken();
               this.setData({ leaving: true });
               try {
                 await FamilyService.remove();
+                if (!isCurrentMutation()) return;
                 membersRequestId += 1;
                 FamilyService.clearActiveFamilyId();
                 wx.showToast({ title: '家庭已解散', icon: 'success', duration: 1000 });
-                setTimeout(() => this.openFamilyList(), 450);
+                setTimeout(() => {
+                  if (requestId === memberMutationRequestId && token === authToken()) this.openFamilyList();
+                }, 450);
               } catch (error) {
+                if (!isCurrentMutation()) return;
                 console.error('解散家庭失败:', error);
                 wx.showToast({ title: error && error.message ? error.message : '解散失败', icon: 'none' });
               } finally {
-                this.setData({ leaving: false });
+                if (requestId === memberMutationRequestId) this.setData({ leaving: false });
               }
             }
           });
@@ -312,20 +381,39 @@ Page({
       confirmColor: '#e05a5a',
       success: async (result) => {
         if (!result.confirm || this.data.leaving) return;
+        const familyId = activeFamilyId();
+        const token = authToken();
+        if (!familyId || familyId !== this.data.familyId || familyId !== modalFamilyId || token !== modalToken) {
+          wx.showToast({ title: '家庭已切换，请重新操作', icon: 'none' });
+          return;
+        }
+        const requestId = ++memberMutationRequestId;
+        const isCurrentMutation = () => requestId === memberMutationRequestId
+          && familyId === activeFamilyId()
+          && token === authToken();
         this.setData({ leaving: true });
         try {
           await FamilyService.leave();
+          if (!isCurrentMutation()) return;
           membersRequestId += 1;
           FamilyService.clearActiveFamilyId();
           wx.showToast({ title: '已退出家庭', icon: 'success', duration: 1000 });
-          setTimeout(() => this.openFamilyList(), 450);
+          setTimeout(() => {
+            if (requestId === memberMutationRequestId && token === authToken()) this.openFamilyList();
+          }, 450);
         } catch (error) {
+          if (!isCurrentMutation()) return;
           console.error('退出家庭失败:', error);
           wx.showToast({ title: error && error.message ? error.message : '退出失败', icon: 'none' });
         } finally {
-          this.setData({ leaving: false });
+          if (requestId === memberMutationRequestId) this.setData({ leaving: false });
         }
       }
     });
+  },
+
+  onUnload() {
+    membersRequestId += 1;
+    memberMutationRequestId += 1;
   }
 });

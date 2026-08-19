@@ -59,6 +59,21 @@ export interface NormalizedQuantity {
   dimension: UnitDimension;
 }
 
+export interface ParsedQuantityText {
+  quantity: number;
+  unit: string;
+}
+
+export function parseQuantityText(value: unknown): ParsedQuantityText | null {
+  if (typeof value !== 'string') return null;
+  const match = value.trim().match(/^(\d+(?:\.\d+)?)\s*(g|gram|kg|ml|l|piece|pieces|克|千克|公斤|毫升|升|个|只)$/i);
+  if (!match) return null;
+  const quantity = Number(match[1]);
+  const unit = match[2].toLowerCase();
+  if (!Number.isFinite(quantity) || quantity < 0 || !normalizeQuantity(quantity, unit)) return null;
+  return { quantity, unit };
+}
+
 export function normalizeQuantity(quantity: unknown, unit: unknown): NormalizedQuantity | null {
   if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity < 0 || typeof unit !== 'string') return null;
   const definition = UNIT_FACTORS[unit.trim().toLowerCase()] || UNIT_FACTORS[unit.trim()];

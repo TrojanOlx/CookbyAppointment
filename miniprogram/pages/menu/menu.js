@@ -26,12 +26,13 @@ Page({
   /**
    * 加载菜品数据
    */
-  loadDishes: function() {
+  loadDishes: function(selectedType) {
     const dishService = require('../../utils/storage').dishService;
     let dishes;
+    const type = selectedType === undefined ? this.data.selectedType : selectedType;
     
-    if (this.data.selectedType) {
-      dishes = dishService.getDishesByType(this.data.selectedType);
+    if (type) {
+      dishes = dishService.getDishesByType(type);
     } else {
       dishes = dishService.getAllDishes();
     }
@@ -52,7 +53,7 @@ Page({
     this.setData({
       selectedType: type
     });
-    this.loadDishes();
+    this.loadDishes(type);
   },
 
   /**
@@ -81,4 +82,4 @@ Page({
     this.loadDishes();
     wx.stopPullDownRefresh();
   }
-}); 
+});

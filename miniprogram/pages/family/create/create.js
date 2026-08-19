@@ -1,5 +1,7 @@
 const { FamilyService } = require('../../../services/family');
 
+let createFamilyRequestId = 0;
+
 Page({
   data: {
     name: '',
@@ -26,23 +28,44 @@ Page({
       return;
     }
     if (this.data.saving) return;
+    const requestId = ++createFamilyRequestId;
+    const token = String(wx.getStorageSync('token') || '');
+    const isCurrentRequest = () => (
+      requestId === createFamilyRequestId
+      && token === String(wx.getStorageSync('token') || '')
+    );
+    let navigationPending = false;
     this.setData({ saving: true });
     try {
       const family = await FamilyService.create(name, this.data.timezone);
+      if (!isCurrentRequest()) return;
       if (!family || !family.id) throw new Error('创建结果缺少家庭 ID');
       FamilyService.setActiveFamilyId(family.id);
       wx.showToast({ title: '家庭已创建', icon: 'success', duration: 1200 });
+      navigationPending = true;
       setTimeout(() => {
+        if (requestId !== createFamilyRequestId || token !== String(wx.getStorageSync('token') || '')) {
+          if (requestId === createFamilyRequestId) this.setData({ saving: false });
+          return;
+        }
         const pages = getCurrentPages();
         if (pages.length > 1) wx.navigateBack();
         else wx.redirectTo({ url: '/pages/family/index/index' });
+        this.setData({ saving: false });
       }, 500);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('创建家庭失败:', error);
       wx.showToast({ title: error && error.message ? error.message : '创建失败，请稍后重试', icon: 'none' });
     } finally {
-      this.setData({ saving: false });
+      if (requestId === createFamilyRequestId && !navigationPending) {
+        this.setData({ saving: false });
+      }
     }
+  },
+
+  onUnload() {
+    createFamilyRequestId += 1;
   },
 
   goBack() {

@@ -8,12 +8,18 @@ WHERE itemId IN (SELECT id FROM shopping_list_items WHERE id LIKE 'it-%')
    OR appointmentId LIKE 'it-%';
 DELETE FROM shopping_list_items
 WHERE id LIKE 'it-%' OR shoppingListId IN (SELECT id FROM shopping_lists WHERE id LIKE 'it-%');
-DELETE FROM appointment_diners WHERE appointmentId LIKE 'it-%';
-DELETE FROM appointment_dishes WHERE appointmentId LIKE 'it-%';
+DELETE FROM appointment_diners
+WHERE appointmentId LIKE 'it-%'
+   OR appointmentId IN (SELECT id FROM appointments WHERE familyId LIKE 'it-%');
+DELETE FROM appointment_dishes
+WHERE appointmentId LIKE 'it-%'
+   OR appointmentId IN (SELECT id FROM appointments WHERE familyId LIKE 'it-%');
 DELETE FROM reviews WHERE id LIKE 'it-%' OR familyId LIKE 'it-%';
-DELETE FROM appointments WHERE id LIKE 'it-%';
-DELETE FROM ingredients WHERE id LIKE 'it-%' OR dishId LIKE 'it-%';
-DELETE FROM dishes WHERE id LIKE 'it-%';
+DELETE FROM appointments WHERE id LIKE 'it-%' OR familyId LIKE 'it-%';
+DELETE FROM ingredients
+WHERE id LIKE 'it-%' OR dishId LIKE 'it-%'
+   OR dishId IN (SELECT id FROM dishes WHERE familyId LIKE 'it-%');
+DELETE FROM dishes WHERE id LIKE 'it-%' OR familyId LIKE 'it-%';
 DELETE FROM inventory_items WHERE id LIKE 'it-%' OR familyId LIKE 'it-%';
 DELETE FROM family_files WHERE id LIKE 'it-%' OR familyId LIKE 'it-%';
 DELETE FROM audit_events WHERE id LIKE 'it-%' OR familyId LIKE 'it-%';
@@ -21,7 +27,9 @@ DELETE FROM family_members WHERE familyId LIKE 'it-%';
 DELETE FROM shopping_lists WHERE id LIKE 'it-%' OR familyId LIKE 'it-%';
 DELETE FROM families WHERE id LIKE 'it-%';
 DELETE FROM user_sessions WHERE id LIKE 'it-%';
-DELETE FROM ingredient_catalog WHERE id LIKE 'it-%';
+DELETE FROM ingredient_catalog
+WHERE id LIKE 'it-%'
+   OR canonicalName IN ('数量编辑测试', '并发扣减测试');
 DELETE FROM api_rate_limits WHERE scope LIKE '%it-%';
 DELETE FROM users WHERE id LIKE 'it-%';
 
@@ -126,6 +134,9 @@ VALUES (
   1700000000000, 1700000000000, 'it-family-a', '[]', 0
 ), (
   'it-appointment-idempotent-c', 'it-owner-a', 'openid-owner-a', '2026-08-19', '晚餐', '已确认', '',
+  1700000000000, 1700000000000, 'it-family-a', '[]', 1
+), (
+  'it-appointment-stale-complete', 'it-owner-a', 'openid-owner-a', '2026-08-19', '午餐', '已确认', '',
   1700000000000, 1700000000000, 'it-family-a', '[]', 1
 ), (
   'it-appointment-lock-b', 'it-owner-b', 'openid-owner-b', '2026-08-20', '晚餐', '待确认', '',

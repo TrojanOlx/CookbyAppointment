@@ -140,7 +140,7 @@
     <view class="booking-bottom-dock"></view>
     <view class="booking-actions">
       <button class="booking-cancel" bindtap="cancelBooking">取消</button>
-      <button class="booking-save" loading="{{saving}}" disabled="{{loading || saving || selectedDishIds.length === 0 || selectedDinerIds.length === 0}}" bindtap="saveBooking">{{editMode ? '更新预约' : '创建预约'}}</button>
+      <button class="booking-save" loading="{{saving}}" disabled="{{loading || saving || isPreviewing || selectedDishIds.length === 0 || selectedDinerIds.length === 0}}" bindtap="saveBooking">{{editMode ? '更新预约' : '创建预约'}}</button>
     </view>
     <view class="safe-area-bottom"></view>
   </view>

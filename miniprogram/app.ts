@@ -243,6 +243,7 @@ App({
         const { url } = options;
         const path = app.getPathFromUrl(url);
         if (app.needLogin(path) && !isLoggedIn()) {
+          wx.setStorageSync('redirectUrl', url);
           wx.showToast({
             title: '请先登录',
             icon: 'none',

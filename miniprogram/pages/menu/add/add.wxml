@@ -111,7 +111,7 @@
   <view class="bottom-action-dock"></view>
   <view class="form-actions">
     <button class="cancel-btn" bindtap="cancel">取消</button>
-    <button class="submit-btn" form-type="submit">保存</button>
+    <button class="submit-btn" form-type="submit" loading="{{isSubmitting}}" disabled="{{isSubmitting}}">保存</button>
   </view>
   <view class="safe-area-bottom"></view>
 </view>

@@ -49,6 +49,7 @@ Page({
     dishId: '',
     safeAreaBottom: 0,
     loading: false,
+    isSaving: false,
     isAdmin: false, // 是否为管理员
     familyRole: '',
     isEdit: false,  // 是否处于编辑状态
@@ -192,33 +193,40 @@ Page({
    * 保存编辑后的菜品
    */
   async saveDish() {
+    if (this.data.isSaving) return;
+
+    const originalDish = this.data.dish;
+    const tempDish = JSON.parse(JSON.stringify(this.data.tempDish)) as Dish;
+    const initialEditSignature = JSON.stringify(this.data.tempDish);
+
     try {
       // 基本数据校验
-      if (!this.data.tempDish.name) {
+      if (!tempDish.name) {
         showToast('菜品名称不能为空');
         return;
       }
 
-      if (this.data.tempDish.ingredients.length === 0) {
+      if (!tempDish.ingredients.length) {
         showToast('请至少添加一种食材');
         return;
       }
 
-      if (this.data.tempDish.steps.length === 0) {
+      if (!tempDish.steps.length) {
         showToast('请至少添加一个步骤');
         return;
       }
 
+      this.setData({ isSaving: true });
       showLoading('保存中');
       
       // 处理图片上传
-      let uploadedImages = [...this.data.tempDish.images];
-      const newImages = this.data.tempDish.images.filter(img => img.startsWith('wxfile://') || img.startsWith('http://tmp/') || img.startsWith('tmp_'));
+      let uploadedImages = [...tempDish.images];
+      const newImages = tempDish.images.filter(img => img.startsWith('wxfile://') || img.startsWith('http://tmp/') || img.startsWith('tmp_'));
       
       if (newImages.length > 0) {
         try {
           // 获取菜品名称的拼音首字母（小写）
-          const dishName = this.data.tempDish.name.trim();
+          const dishName = tempDish.name.trim();
           const pinyinResult = cnchar.spell(dishName, 'first', 'low');
           const pinyinInitials = Array.isArray(pinyinResult) ? pinyinResult.join('') : pinyinResult;
           
@@ -279,30 +287,46 @@ Page({
         } catch (error) {
           console.error('处理图片时出错:', error);
           hideLoading();
+          this.setData({ isSaving: false });
           showToast('图片处理失败，请重试');
           return;
         }
       }
       
-      // 更新图片数组
-      this.data.tempDish.images = uploadedImages;
-      
-      // 使用DishService更新菜品
-      await DishService.updateDish(this.data.tempDish);
+      tempDish.images = uploadedImages;
+
+      // 只发送本次编辑实际修改的字段，避免旧详情覆盖服务端并发更新的字段。
+      const dishUpdate: Partial<Dish> = { id: tempDish.id || this.data.dishId };
+      if (tempDish.name !== originalDish.name) dishUpdate.name = tempDish.name;
+      if (tempDish.type !== originalDish.type) dishUpdate.type = tempDish.type;
+      if (tempDish.spicy !== originalDish.spicy) dishUpdate.spicy = tempDish.spicy;
+      if (JSON.stringify(tempDish.images) !== JSON.stringify(originalDish.images)) dishUpdate.images = tempDish.images;
+      if (JSON.stringify(tempDish.ingredients) !== JSON.stringify(originalDish.ingredients)) dishUpdate.ingredients = tempDish.ingredients;
+      if (JSON.stringify(tempDish.steps) !== JSON.stringify(originalDish.steps)) dishUpdate.steps = tempDish.steps;
+      if (tempDish.notice !== originalDish.notice) dishUpdate.notice = tempDish.notice;
+      if (tempDish.remark !== originalDish.remark) dishUpdate.remark = tempDish.remark;
+      if (tempDish.reference !== originalDish.reference) dishUpdate.reference = tempDish.reference;
+
+      const updatedDish = await DishService.updateDish(dishUpdate);
       
       hideLoading();
       showSuccess('保存成功');
       
-      // 更新成功后，退出编辑模式并刷新数据
-      this.setData({
-        isEdit: false,
-        dish: this.data.tempDish
-      });
-      
-      // 重新加载最新数据
-      this.loadDish();
+      // 如果保存期间用户又输入了内容，保留这些未保存的输入，避免旧响应覆盖新输入。
+      if (JSON.stringify(this.data.tempDish) === initialEditSignature) {
+        this.setData({
+          isEdit: false,
+          isSaving: false,
+          dish: updatedDish,
+          tempDish: {} as Dish
+        });
+        this.loadDish();
+      } else {
+        this.setData({ isSaving: false });
+      }
     } catch (error) {
       hideLoading();
+      this.setData({ isSaving: false });
       console.error('保存菜品失败:', error);
       showToast('保存失败，请重试');
     }

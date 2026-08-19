@@ -13,9 +13,10 @@ const MAX_CACHE_ITEMS = 120;
 const MAX_CACHE_BYTES = 30 * 1024 * 1024;
 const FAILURE_COOLDOWN_MS = 5 * 60 * 1000;
 
-const pendingDownloads: Record<string, Promise<string>> = {};
+const pendingDownloads: Partial<Record<string, Promise<string>>> = {};
 const failedUntil: Record<string, number> = {};
 let memoryCache: ImageCacheMap | null = null;
+let cacheGeneration = 0;
 
 function isRemoteImage(url?: string): url is string {
   if (!url) return false;
@@ -142,8 +143,12 @@ export class ImageCacheService {
     const downloadPromise = this.downloadAndSave(url, key);
     pendingDownloads[key] = downloadPromise;
     downloadPromise.then(
-      () => { delete pendingDownloads[key]; },
-      () => { delete pendingDownloads[key]; }
+      () => {
+        if (pendingDownloads[key] === downloadPromise) delete pendingDownloads[key];
+      },
+      () => {
+        if (pendingDownloads[key] === downloadPromise) delete pendingDownloads[key];
+      }
     );
 
     return pendingDownloads[key];
@@ -175,27 +180,38 @@ export class ImageCacheService {
   }
 
   static async clear(): Promise<void> {
+    cacheGeneration += 1;
+    Object.keys(pendingDownloads).forEach(key => {
+      delete pendingDownloads[key];
+    });
     const map = getCacheMap();
-    const entries = Object.values(map);
-    await Promise.all(entries.map(entry => removeSavedFile(entry.localPath)));
+    const entries = Object.values({ ...map });
     memoryCache = {};
     Object.keys(failedUntil).forEach(key => {
       delete failedUntil[key];
     });
     wx.removeStorageSync(CACHE_STORAGE_KEY);
+    await Promise.all(entries.map(entry => removeSavedFile(entry.localPath)));
   }
 
   private static async downloadAndSave(url: string, key: string): Promise<string> {
+    const generation = cacheGeneration;
+    let localPath = '';
     try {
       const tempFilePath = await downloadFile(url);
       const map = getCacheMap();
-      let localPath = '';
 
       try {
         localPath = await saveTempFile(tempFilePath);
       } catch {
+        if (generation !== cacheGeneration) return url;
         await this.prune(map, true);
         localPath = await saveTempFile(tempFilePath);
+      }
+
+      if (generation !== cacheGeneration) {
+        await removeSavedFile(localPath);
+        return url;
       }
 
       const size = await getFileSize(localPath);
@@ -209,10 +225,15 @@ export class ImageCacheService {
       };
 
       await this.prune(map, false);
+      if (generation !== cacheGeneration) {
+        delete map[key];
+        await removeSavedFile(localPath);
+        return url;
+      }
       saveCacheMap(map);
       return localPath;
     } catch (error) {
-      failedUntil[key] = Date.now() + FAILURE_COOLDOWN_MS;
+      if (generation === cacheGeneration) failedUntil[key] = Date.now() + FAILURE_COOLDOWN_MS;
       console.warn('图片缓存失败，回退远程地址:', url, error);
       return url;
     }

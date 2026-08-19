@@ -4,6 +4,7 @@ import { Dish } from '../../models/dish';
 import { showToast, showLoading, hideLoading, showConfirm, formatTime } from '../../utils/util';
 import { FileService } from '../../services/fileService';
 import { ImageCacheService } from '../../utils/imageCache';
+const { FamilyService } = require('../../services/family');
 
 // 定义菜品评价状态接口
 interface DishWithReviewStatus extends Omit<Dish, 'images'> {
@@ -14,6 +15,9 @@ interface DishWithReviewStatus extends Omit<Dish, 'images'> {
   createTimeFormat?: string;
   cachedImage?: string;
 }
+
+let reviewImageUploadRequestId = 0;
+let reviewDetailsRequestId = 0;
 
 Page({
   data: {
@@ -45,6 +49,13 @@ Page({
 
   // 加载预约详情
   async loadAppointmentDetails(appointmentId: string) {
+    const requestId = ++reviewDetailsRequestId;
+    const token = String(wx.getStorageSync('token') || '');
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const isCurrentRequest = () => requestId === reviewDetailsRequestId
+      && token === String(wx.getStorageSync('token') || '')
+      && familyId === String(FamilyService.getActiveFamilyId() || '')
+      && appointmentId === this.data.appointmentId;
     try {
       showLoading('加载数据中');
 
@@ -99,18 +110,27 @@ Page({
         item => item.images && item.images.length > 0 ? item.images[0] : undefined
       );
 
+      if (!isCurrentRequest()) return;
+
       this.setData({
         date: appointment.date,
         mealType: appointment.mealType,
         dishes: cachedDishes
       });
 
-      hideLoading();
     } catch (error) {
-      hideLoading();
+      if (!isCurrentRequest()) return;
       console.error('加载失败:', error);
       showToast('加载失败，请重试');
+    } finally {
+      if (isCurrentRequest()) hideLoading();
     }
+  },
+
+  onUnload() {
+    reviewDetailsRequestId += 1;
+    reviewImageUploadRequestId += 1;
+    hideLoading();
   },
 
   // 选择菜品
@@ -176,6 +196,8 @@ Page({
 
   // 上传图片
   async uploadImages(tempFilePaths: string[]) {
+    const requestId = ++reviewImageUploadRequestId;
+    const dishIndex = this.data.currentDishIndex;
     showLoading('上传图片中');
 
     try {
@@ -190,15 +212,16 @@ Page({
         }
       }
 
+      if (requestId !== reviewImageUploadRequestId || this.data.currentDishIndex !== dishIndex) return;
       this.setData({
         images: uploadedImages
       });
-
-      hideLoading();
     } catch (error) {
-      hideLoading();
+      if (requestId !== reviewImageUploadRequestId || this.data.currentDishIndex !== dishIndex) return;
       console.error('上传图片失败:', error);
       showToast('上传图片失败，请重试');
+    } finally {
+      if (requestId === reviewImageUploadRequestId) hideLoading();
     }
   },
 
@@ -248,13 +271,19 @@ Page({
       return;
     }
 
+    const reviewSnapshot = {
+      rating: this.data.rating,
+      content: this.data.content,
+      images: [...this.data.images]
+    };
+
     // 构建评价数据
     const reviewData: Partial<Review> = {
       appointmentId: this.data.appointmentId,
       dishId: this.data.dishes[currentDishIndex].id,
-      rating: this.data.rating,
-      content: this.data.content,
-      images: this.data.images
+      rating: reviewSnapshot.rating,
+      content: reviewSnapshot.content,
+      images: reviewSnapshot.images
     };
 
     try {
@@ -271,17 +300,18 @@ Page({
       // 更新菜品评价状态
       const dishes = [...this.data.dishes];
       dishes[currentDishIndex].reviewed = true;
-      dishes[currentDishIndex].rating = this.data.rating;
-      dishes[currentDishIndex].content = this.data.content;
-      dishes[currentDishIndex].images = [...this.data.images];
+      dishes[currentDishIndex].rating = reviewSnapshot.rating;
+      dishes[currentDishIndex].content = reviewSnapshot.content;
+      dishes[currentDishIndex].images = [...reviewSnapshot.images];
       dishes[currentDishIndex].createTimeFormat = formatTime(new Date());
 
-      this.setData({
-        dishes,
-        rating: 0,
-        content: '',
-        images: []
-      });
+      const formChanged = this.data.currentDishIndex !== currentDishIndex
+        || this.data.rating !== reviewSnapshot.rating
+        || this.data.content !== reviewSnapshot.content
+        || JSON.stringify(this.data.images) !== JSON.stringify(reviewSnapshot.images);
+      this.setData(formChanged
+        ? { dishes }
+        : { dishes, rating: 0, content: '', images: [] });
     } catch (error) {
       hideLoading();
       this.setData({ isSubmitting: false });

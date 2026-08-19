@@ -5,9 +5,12 @@ import { DishService } from '../../../services/dishService';
 import { showError, showSuccess, showToast, showLoading, hideLoading } from '../../../utils/util';
 import { requestSubscribeForUser } from '../../../services/notificationService';
 import { ImageCacheService } from '../../../utils/imageCache';
+const { FamilyService } = require('../../../services/family');
 
 // 每页加载的菜品数量
 const PAGE_SIZE = 10;
+
+let selectDishListRequestId = 0;
 
 interface DisplayDish extends Dish {
   cachedImage?: string;
@@ -24,10 +27,12 @@ Page({
     searchKeyword: '', // 搜索关键词
     editMode: false, // 是否是编辑模式
     appointmentId: '', // 编辑的预约ID
+    appointmentUpdateTime: null as number | null, // 编辑时读取到的服务端版本
     isLoading: true, // 加载状态
     selectedCount: 0, // 已选择的菜品数量
     isRefreshing: false, // 是否正在刷新
     isLoadingMore: false, // 是否正在加载更多
+    isSaving: false, // 是否正在保存预约
     currentPage: 1, // 当前页码
     hasMoreData: true, // 是否还有更多数据
     headerHeight: 0, // 顶部固定区域的高度
@@ -88,6 +93,7 @@ Page({
             selectedDishes,
             editMode: true,
             appointmentId: options.id,
+            appointmentUpdateTime: typeof appointment.updateTime === 'number' ? appointment.updateTime : null,
             selectedCount
           });
           
@@ -202,6 +208,12 @@ Page({
 
   // 分页加载数据
   async loadPageData(page: number) {
+    const requestId = ++selectDishListRequestId;
+    const token = String(wx.getStorageSync('token') || '');
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const isCurrentRequest = () => requestId === selectDishListRequestId
+      && token === String(wx.getStorageSync('token') || '')
+      && familyId === String(FamilyService.getActiveFamilyId() || '');
     const { selectedType, searchKeyword } = this.data;
     
     console.log('加载数据开始，设置isLoading=', page === 1);
@@ -230,6 +242,8 @@ Page({
         item => item.images && item.images.length > 0 ? item.images[0] : undefined
       );
       const total = dishesResult.total;
+
+      if (!isCurrentRequest()) return;
       
       this.setData({
         dishes: page === 1 ? dishes : [...this.data.dishes, ...dishes],
@@ -248,6 +262,7 @@ Page({
         hideLoading();
       }
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('加载菜品数据失败:', error);
       showToast('加载菜品数据失败');
       this.setData({
@@ -348,6 +363,8 @@ Page({
   onSearchInput(e: any) {
     // 保存输入值
     const searchValue = e.detail.value;
+    // 让正在返回的旧查询失效，避免输入新关键词时旧结果回写列表。
+    selectDishListRequestId += 1;
     
     // 设置搜索关键词（不立即触发搜索）
     this.setData({
@@ -462,6 +479,8 @@ Page({
 
   // 保存预约
   async saveAppointment() {
+    if (this.data.isSaving) return;
+
     const { date, selectedMealType, selectedDishes, editMode, appointmentId } = this.data;
     
     // 获取选中的菜品ID列表
@@ -472,6 +491,8 @@ Page({
       showError('请至少选择一个菜品');
       return;
     }
+
+    this.setData({ isSaving: true });
     
     try {
       if (editMode) {
@@ -482,7 +503,10 @@ Page({
           id: appointmentId,
           date,
           mealType: selectedMealType,
-          dishes: selectedDishIds
+          dishes: selectedDishIds,
+          expectedUpdateTime: this.data.appointmentUpdateTime === null
+            ? undefined
+            : this.data.appointmentUpdateTime
         });
         
         hideLoading();
@@ -528,6 +552,8 @@ Page({
       hideLoading();
       console.error('保存预约失败', error);
       showError('保存预约失败，请重试');
+    } finally {
+      this.setData({ isSaving: false });
     }
   },
   

@@ -2,6 +2,16 @@ const { PreferencesService } = require('../../../services/preferences');
 const preferenceModel = require('../../../models/preferences');
 
 let preferencesRequestId = 0;
+let preferencesEditRevision = 0;
+let preferencesInputRevision = 0;
+
+const currentSessionScope = () => {
+  const family = wx.getStorageSync('active_family_id');
+  const familyId = family && typeof family === 'object'
+    ? family.id || family.familyId || family.family_id || ''
+    : family;
+  return `${String(wx.getStorageSync('token') || '')}:${String(familyId || '')}`;
+};
 
 const CATEGORY_CONFIG = Object.freeze([
   {
@@ -87,19 +97,29 @@ Page({
   async loadPreferences(fromRefresh) {
     if (this.data.loading && !fromRefresh) return;
     const requestId = ++preferencesRequestId;
+    const editRevision = preferencesEditRevision;
+    const inputRevision = preferencesInputRevision;
+    const wasDirty = this.data.dirty;
+    const wasLoaded = this.data.hasLoaded;
+    const sessionScope = currentSessionScope();
+    const isCurrentRequest = () => requestId === preferencesRequestId
+      && sessionScope === currentSessionScope();
     this.setData({ loading: true, loadError: '' });
 
     try {
       const preferences = await PreferencesService.getPreferences();
-      if (requestId !== preferencesRequestId) return;
+      if (!isCurrentRequest()
+        || editRevision !== preferencesEditRevision
+        || inputRevision !== preferencesInputRevision
+        || wasDirty) return;
       this.applyPreferences(preferences);
     } catch (error) {
-      if (requestId !== preferencesRequestId) return;
+      if (!isCurrentRequest()) return;
       console.warn('加载口味偏好失败:', error);
-      this.setData({ hasLoaded: false, loadError: '口味偏好暂时无法加载，请重试后再编辑。' });
+      this.setData({ hasLoaded: wasLoaded, loadError: '口味偏好暂时无法加载，请重试后再编辑。' });
       wx.showToast({ title: '偏好暂时无法加载', icon: 'none' });
     } finally {
-      if (requestId === preferencesRequestId) {
+      if (isCurrentRequest()) {
         this.setData({ loading: false, refreshing: false });
         wx.stopPullDownRefresh();
       }
@@ -128,6 +148,8 @@ Page({
     const category = this.data.categories[categoryIndex];
     const tag = category && category.tags[tagIndex];
     if (!tag) return;
+    preferencesEditRevision += 1;
+    preferencesInputRevision += 1;
 
     this.setData({
       [`categories[${categoryIndex}].tags[${tagIndex}].selected`]: !tag.selected,
@@ -137,6 +159,7 @@ Page({
 
   onCustomInput(event) {
     const categoryIndex = Number(event.currentTarget.dataset.categoryIndex);
+    preferencesInputRevision += 1;
     this.setData({
       [`categories[${categoryIndex}].customInput`]: event.detail.value || ''
     });
@@ -147,6 +170,8 @@ Page({
     const category = this.data.categories[categoryIndex];
     const label = String((category && category.customInput) || '').trim();
     if (!category || !label) return;
+    preferencesEditRevision += 1;
+    preferencesInputRevision += 1;
 
     const duplicateIndex = category.tags.findIndex((tag) => tag.label === label);
     if (duplicateIndex >= 0) {
@@ -171,6 +196,8 @@ Page({
 
   selectSpicy(event) {
     const spicyLevel = event.currentTarget.dataset.value || '';
+    preferencesEditRevision += 1;
+    preferencesInputRevision += 1;
     this.setData({
       spicyLevel,
       spicyLabel: spicyLabel(spicyLevel),
@@ -198,20 +225,29 @@ Page({
     this.setData({ saving: true });
 
     const payload = this.collectPreferences();
+    const editRevision = preferencesEditRevision;
+    const inputRevision = preferencesInputRevision;
+    const sessionScope = currentSessionScope();
     try {
       const response = await PreferencesService.updatePreferences(payload);
-      if (preferenceModel.hasPreferencePayload(response)) {
+      if (sessionScope !== currentSessionScope()) return;
+      if (editRevision !== preferencesEditRevision) return;
+      if (inputRevision !== preferencesInputRevision) {
+        // 保存期间继续输入的自定义标签只是草稿，不能被服务端响应清空。
+        this.setData({ dirty: false });
+      } else if (preferenceModel.hasPreferencePayload(response)) {
         this.applyPreferences(response);
       } else {
         this.setData({ dirty: false });
       }
       wx.showToast({ title: '偏好已保存', icon: 'success' });
     } catch (error) {
+      if (sessionScope !== currentSessionScope()) return;
       console.warn('保存口味偏好失败:', error);
       // 这是提醒配置，不因保存失败阻断预约或离开页面。
       wx.showToast({ title: '保存失败，可稍后重试', icon: 'none' });
     } finally {
-      this.setData({ saving: false });
+      if (sessionScope === currentSessionScope()) this.setData({ saving: false });
     }
   }
 });

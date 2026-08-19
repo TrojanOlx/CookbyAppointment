@@ -5,6 +5,14 @@ import { showSuccess, showError, showLoading, hideLoading, showToast } from '../
 import cnchar from 'cnchar';
 import 'cnchar-poly'; // 引入多音字功能
 
+let dishEditorLoadRequestId = 0;
+let dishEditorMutationRequestId = 0;
+
+const currentDishEditorScope = () => {
+  const family = wx.getStorageSync('active_family_id');
+  return `${String(wx.getStorageSync('token') || '')}|${JSON.stringify(family || '')}`;
+};
+
 // 生成唯一ID
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
@@ -65,19 +73,26 @@ Page({
     dishTypes: Object.values(DishType),
     spicyLevels: Object.values(SpicyLevel),
     safeAreaBottom: 0,
-    loading: false
+    loading: false,
+    isSubmitting: false
   },
 
   /**
    * 生命周期函数--监听页面加载
    */
   async onLoad(options) {
+    const requestId = ++dishEditorLoadRequestId;
+    const scope = currentDishEditorScope();
+    const isCurrentRequest = () => requestId === dishEditorLoadRequestId
+      && scope === currentDishEditorScope();
     if (options.id) {
       // 编辑现有菜品
       this.setData({ loading: true });
       showLoading('加载中');
       try {
         const dish = await DishService.getDishDetail(options.id);
+        if (!isCurrentRequest()) return;
+        (this as any)._originalDish = JSON.parse(JSON.stringify(dish));
         this.setData({
           isEdit: true,
           dish
@@ -86,14 +101,17 @@ Page({
           title: '编辑菜品'
         });
       } catch (error) {
+        if (!isCurrentRequest()) return;
         console.error('获取菜品详情失败:', error);
         showToast('获取菜品详情失败');
         setTimeout(() => {
-          wx.navigateBack();
+          if (isCurrentRequest()) wx.navigateBack();
         }, 1500);
       } finally {
-        hideLoading();
-        this.setData({ loading: false });
+        if (isCurrentRequest()) {
+          hideLoading();
+          this.setData({ loading: false });
+        }
       }
     } else {
       // 添加新菜品，创建一个空的食材项和步骤项
@@ -101,6 +119,11 @@ Page({
       this.addStep();
     }
     this.setSafeArea();
+  },
+
+  onUnload() {
+    dishEditorLoadRequestId += 1;
+    dishEditorMutationRequestId += 1;
   },
 
   /**
@@ -266,8 +289,10 @@ Page({
 
   // 提交表单
   async submitForm(e: any) {
+    if (this.data.isSubmitting) return;
+
     const formData = e.detail.value;
-    const { dish } = this.data;
+    const dish = JSON.parse(JSON.stringify(this.data.dish)) as Dish;
 
     // 验证必填字段
     if (!formData.name) {
@@ -299,7 +324,12 @@ Page({
       return;
     }
 
+    const requestId = ++dishEditorMutationRequestId;
+    const scope = currentDishEditorScope();
+    const isCurrentRequest = () => requestId === dishEditorMutationRequestId
+      && scope === currentDishEditorScope();
     try {
+      this.setData({ isSubmitting: true });
       showLoading('处理图片中...');
       
       // 获取菜品名称的拼音首字母（小写）
@@ -308,11 +338,17 @@ Page({
       const pinyinInitials = Array.isArray(pinyinResult) ? pinyinResult.join('') : pinyinResult;
       console.log('菜品拼音首字母:', pinyinInitials);
       
-      // 处理并上传图片
-      let uploadedImages: string[] = [];
-      if (dish.images && dish.images.length > 0) {
+      // 只上传本次新增的本地图片；已保存的图片保留稳定文件引用。
+      const originalDish = (this as any)._originalDish as Dish | undefined;
+      const imagesChanged = !originalDish || JSON.stringify(dish.images || []) !== JSON.stringify(originalDish.images || []);
+      let uploadedImages: string[] = dish.images || [];
+      if ((!this.data.isEdit || imagesChanged) && dish.images && dish.images.length > 0) {
         const uploadPromises = dish.images.map(async (tempFilePath, index) => {
           try {
+            if (/^https?:\/\//i.test(tempFilePath) || tempFilePath.startsWith('/api/file/download')) {
+              const fileId = tempFilePath.match(/[?&]id=([^&#]+)/i);
+              return fileId ? `/api/file/download?id=${fileId[1]}` : tempFilePath;
+            }
             // 提取原始文件扩展名
             const fileExt = tempFilePath.substring(tempFilePath.lastIndexOf('.')).toLowerCase();
             
@@ -345,6 +381,7 @@ Page({
         
         // 等待所有图片上传完成
         const results = await Promise.all(uploadPromises);
+        if (!isCurrentRequest()) return;
         uploadedImages = results.filter(url => url !== null) as string[];
         
         console.log('成功上传图片数量:', uploadedImages.length);
@@ -374,23 +411,46 @@ Page({
       
       // 保存或更新菜品
       if (this.data.isEdit) {
-        await DishService.updateDish(saveDish);
+        const update: Partial<Dish> & { expectedUpdateTime?: number } = {
+          id: saveDish.id,
+          expectedUpdateTime: originalDish?.updateTime
+        };
+        const comparableFields: Array<keyof Dish> = [
+          'name', 'type', 'spicy', 'ingredients', 'steps', 'notice', 'remark', 'reference'
+        ];
+        for (const field of comparableFields) {
+          if (!originalDish || JSON.stringify(saveDish[field]) !== JSON.stringify(originalDish[field])) {
+            (update as any)[field] = saveDish[field];
+          }
+        }
+        if (imagesChanged) update.images = saveDish.images;
+        if (Object.keys(update).every(key => key === 'id' || key === 'expectedUpdateTime')) {
+          hideLoading();
+          showToast('没有需要保存的修改');
+          return;
+        }
+        await DishService.updateDish(update);
+        if (!isCurrentRequest()) return;
         hideLoading();
         showSuccess('菜品更新成功');
       } else {
         await DishService.addDish(saveDish);
+        if (!isCurrentRequest()) return;
         hideLoading();
         showSuccess('菜品添加成功');
       }
 
       // 返回上一页
       setTimeout(() => {
-        wx.navigateBack();
+        if (isCurrentRequest()) wx.navigateBack();
       }, 1500);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       hideLoading();
       console.error(this.data.isEdit ? '更新菜品失败:' : '添加菜品失败:', error);
       showToast(this.data.isEdit ? '更新菜品失败' : '添加菜品失败');
+    } finally {
+      if (isCurrentRequest()) this.setData({ isSubmitting: false });
     }
   }
-}); 
+});

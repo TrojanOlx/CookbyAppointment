@@ -6,6 +6,7 @@ const http = require('../../../services/http');
 const MEAL_TYPES = ['早餐', '午餐', '晚餐'];
 
 let bookingLoadRequestId = 0;
+let bookingPreviewRequestId = 0;
 
 const todayString = () => {
   const date = new Date();
@@ -87,6 +88,7 @@ Page({
     selectedMealType: '午餐',
     editMode: false,
     appointmentId: '',
+    appointmentUpdateTime: null,
     members: [],
     selectedDinerIds: [],
     selectedDinerMap: {},
@@ -131,6 +133,7 @@ Page({
     const familyId = String(FamilyService.getActiveFamilyId() || '');
     if (familyId === this.data.familyId) return;
     bookingLoadRequestId += 1;
+    bookingPreviewRequestId += 1;
     this.setData({
       familyId,
       members: [],
@@ -142,6 +145,7 @@ Page({
       selectedDinerMap: {},
       selectedDishIds: [],
       selectedDishMap: {},
+      appointmentUpdateTime: null,
       searchKeyword: '',
       loading: true,
       loadingMembers: true,
@@ -213,6 +217,9 @@ Page({
         searchKeyword: '',
         selectedDishIds,
         selectedDishMap: selectionMap(selectedDishIds),
+        appointmentUpdateTime: appointment && Number.isFinite(Number(appointment.updateTime))
+          ? Number(appointment.updateTime)
+          : null,
         loading: false,
         loadingMembers: false,
         loadingDishes: false,
@@ -306,18 +313,21 @@ Page({
   },
 
   invalidatePreview() {
+    bookingPreviewRequestId += 1;
     this.setData({
       previewReady: false,
       previewSignature: '',
       preview: null,
       warnings: [],
       previewError: '',
-      confirmed: false
+      confirmed: false,
+      isPreviewing: false
     });
   },
 
   async requestPreview() {
     if (!this.hasCurrentFamilyContext()) return null;
+    if (this.data.isPreviewing) return null;
     const dishIds = this.data.selectedDishIds;
     const dinerIds = this.data.selectedDinerIds;
     if (!dishIds.length) {
@@ -330,18 +340,25 @@ Page({
     }
 
     const signature = this.getPreviewSignature();
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const requestId = ++bookingPreviewRequestId;
     const samePreview = this.data.previewReady && this.data.previewSignature === signature;
     this.setData({
       isPreviewing: true,
       previewError: '',
       confirmed: samePreview ? this.data.confirmed : false
     });
+    const isCurrentRequest = () => requestId === bookingPreviewRequestId
+      && familyId === String(FamilyService.getActiveFamilyId() || '')
+      && familyId === this.data.familyId
+      && signature === this.getPreviewSignature();
     try {
       const result = await http.request({
         url: '/api/appointment/preview',
         method: 'POST',
         data: { dishIds, dinerIds }
       });
+      if (!isCurrentRequest()) return null;
       const warnings = Array.isArray(result && result.warnings) ? result.warnings : [];
       this.setData({
         preview: result || {},
@@ -351,6 +368,7 @@ Page({
       });
       return result || {};
     } catch (error) {
+      if (!isCurrentRequest()) return null;
       console.error('获取口味提醒失败:', error);
       this.setData({
         previewReady: false,
@@ -360,7 +378,7 @@ Page({
       wx.showToast({ title: this.data.previewError, icon: 'none' });
       return null;
     } finally {
-      this.setData({ isPreviewing: false });
+      if (requestId === bookingPreviewRequestId) this.setData({ isPreviewing: false });
     }
   },
 
@@ -408,7 +426,12 @@ Page({
       remarks: this.data.remarks,
       warningsAcknowledged: true
     };
-    if (this.data.editMode) payload.id = this.data.appointmentId;
+    if (this.data.editMode) {
+      payload.id = this.data.appointmentId;
+      if (Number.isFinite(this.data.appointmentUpdateTime)) {
+        payload.expectedUpdateTime = this.data.appointmentUpdateTime;
+      }
+    }
 
     this.setData({ saving: true });
     wx.showLoading({ title: this.data.editMode ? '更新中...' : '创建中...', mask: true });

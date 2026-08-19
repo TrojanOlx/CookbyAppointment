@@ -12,6 +12,7 @@ export interface AppointmentCompletionDeduction {
 export interface AppointmentCompletionOptions {
   confirmDeduction?: boolean;
   deductions?: AppointmentCompletionDeduction[];
+  expectedUpdateTime?: number;
 }
 
 export interface AppointmentCompletionResponse {
@@ -20,6 +21,10 @@ export interface AppointmentCompletionResponse {
   deductions?: AppointmentCompletionDeduction[];
   unresolved?: Array<Record<string, unknown>>;
   [key: string]: unknown;
+}
+
+export interface AppointmentUpdate extends Partial<Appointment> {
+  expectedUpdateTime?: number;
 }
 
 // 预约服务类
@@ -63,7 +68,7 @@ export class AppointmentService {
   }
 
   // 更新预约
-  static async updateAppointment(appointment: Partial<Appointment>): Promise<Appointment> {
+  static async updateAppointment(appointment: AppointmentUpdate): Promise<Appointment> {
     return put<Appointment>('/api/appointment/update', appointment);
   }
 
@@ -86,6 +91,7 @@ export class AppointmentService {
     const payload: Record<string, unknown> = { id };
     if (options.confirmDeduction !== undefined) payload.confirmDeduction = options.confirmDeduction;
     if (options.deductions !== undefined) payload.deductions = options.deductions;
+    if (options.expectedUpdateTime !== undefined) payload.expectedUpdateTime = options.expectedUpdateTime;
     return put<AppointmentCompletionResponse>('/api/appointment/complete', payload);
   }
 
