@@ -22,9 +22,9 @@
             type="nickname"
             class="nickname-input"
             placeholder="请输入昵称"
-            value="{{userInfo.nickName}}"
+            value="{{editingNickNameValue}}"
             focus="true"
-            bind:change="onInputChange"
+            bind:input="onNickNameInput"
             bind:blur="onNickNameConfirm"
             bind:confirm="onNickNameConfirm"
           />

@@ -15,6 +15,8 @@ interface IPageData {
   openid: string | null;
   isLoggingIn: boolean;
   editingNickName?: boolean;
+  editingNickNameValue: string;
+  nickNameSavePending: boolean;
   version: string;
   currentFamilyName: string;
   currentFamilyRole: string;
@@ -48,7 +50,6 @@ Page<IPageData, IPageMethods & {
   onNickNameInput: (e: any) => void;
   onNickNameConfirm: (e: any) => void;
   saveAvatar: (filePath: string) => Promise<void>;
-  onInputChange: (e: any) => void;
 }>({
   data: {
     userInfo: null,
@@ -57,6 +58,8 @@ Page<IPageData, IPageMethods & {
     openid: null,
     isLoggingIn: false,
     editingNickName: false,
+    editingNickNameValue: '',
+    nickNameSavePending: false,
     version: '',
     currentFamilyName: '',
     currentFamilyRole: '',
@@ -509,7 +512,10 @@ Page<IPageData, IPageMethods & {
    * 点击昵称，直接进入编辑状态
    */
   onNickNameEdit() {
-    this.setData({ editingNickName: true });
+    this.setData({
+      editingNickName: true,
+      editingNickNameValue: this.data.userInfo?.nickName || ''
+    });
   },
 
   /**
@@ -517,15 +523,26 @@ Page<IPageData, IPageMethods & {
    */
   saveNickName(nickName: string) {
     const normalizedNickName = nickName.trim();
-    if (!normalizedNickName) return;
+    if (!normalizedNickName) {
+      this.setData({
+        editingNickName: false,
+        editingNickNameValue: this.data.userInfo?.nickName || ''
+      });
+      return;
+    }
     if (normalizedNickName === '微信用户') {
       showToast('请手动输入昵称');
       return;
     }
+    if (this.data.nickNameSavePending) return;
     if (normalizedNickName === this.data.userInfo?.nickName) {
-      this.setData({ editingNickName: false });
+      this.setData({
+        editingNickName: false,
+        editingNickNameValue: normalizedNickName
+      });
       return;
     }
+    this.setData({ nickNameSavePending: true });
     showLoading('更新昵称...');
     UserService.updateUserInfo({ nickName: normalizedNickName })
       .then(updatedUser => {
@@ -533,7 +550,9 @@ Page<IPageData, IPageMethods & {
         this.setData({
           userInfo: updatedUser,
           editingNickName: false,
-          hasUserInfo: this.isUserInfoComplete()
+          editingNickNameValue: updatedUser.nickName,
+          nickNameSavePending: false,
+          hasUserInfo: Boolean(updatedUser.nickName && updatedUser.avatarUrl)
         });
         hideLoading();
         showToast('昵称已更新');
@@ -541,7 +560,11 @@ Page<IPageData, IPageMethods & {
       .catch(() => {
         hideLoading();
         showToast('昵称更新失败');
-        this.setData({ editingNickName: false });
+        this.setData({
+          editingNickName: false,
+          editingNickNameValue: this.data.userInfo?.nickName || '',
+          nickNameSavePending: false
+        });
       });
   },
 
@@ -549,9 +572,14 @@ Page<IPageData, IPageMethods & {
    * 昵称输入完成（失焦或回车）
    */
   onNickNameConfirm(e) {
-    const nickName = e.detail.value;
+    const nickName = typeof e.detail?.value === 'string'
+      ? e.detail.value
+      : this.data.editingNickNameValue;
     if (!nickName) {
-      this.setData({ editingNickName: false });
+      this.setData({
+        editingNickName: false,
+        editingNickNameValue: this.data.userInfo?.nickName || ''
+      });
       return;
     }
     (this as any).saveNickName(nickName);
@@ -562,15 +590,7 @@ Page<IPageData, IPageMethods & {
    */
   onNickNameInput(e) {
     const nickName = e.detail.value;
-    this.setData({
-      'userInfo.nickName': nickName
-    });
-  },
-
-  onInputChange(e: any) {
-    // 仅更新本地状态，不保存到服务端（blur/confirm 时统一保存，避免双重调用）
-    const nickName = e.detail.value;
-    this.setData({ 'userInfo.nickName': nickName });
+    this.setData({ editingNickNameValue: nickName });
   },
 
   // 清除缓存
@@ -592,7 +612,9 @@ Page<IPageData, IPageMethods & {
                 hasUserInfo: false,
                 openid: null,
                 isLoggingIn: false,
-                editingNickName: false
+                editingNickName: false,
+                editingNickNameValue: '',
+                nickNameSavePending: false
               });
 
               // 显示成功提示
