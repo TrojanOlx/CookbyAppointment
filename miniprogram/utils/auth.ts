@@ -163,48 +163,6 @@ export const getOpenId = (): string | null => {
 };
 
 /**
- * 获取用户信息
- * 【注意】: 此函数必须由用户点击事件直接触发，不能在onLoad等生命周期函数中自动调用
- * 微信规定wx.getUserProfile必须由用户点击操作触发，如按钮的bindtap事件
- * 
- * 使用示例:
- * <button bindtap="getUserProfile">获取用户信息</button>
- * 
- * 在Page中的方法:
- * getUserProfile() {
- *   getUserProfile().then(userInfo => {
- *     // 处理用户信息
- *   }).catch(err => {
- *     console.error(err);
- *   });
- * }
- * 
- * @returns Promise<UserInfo> 用户信息
- */
-export const getUserProfile = (): Promise<UserInfo> => {
-  return new Promise((resolve, reject) => {
-    // 必须在用户点击按钮等主动操作后调用
-    wx.getUserProfile({
-      desc: '用于完善用户资料', // 声明获取用户信息后的用途
-      success: (res) => {
-        console.log('获取用户信息成功:', res.userInfo);
-        // 将用户信息存储到本地
-        wx.setStorageSync(USER_INFO_KEY, res.userInfo);
-        resolve(res.userInfo);
-      },
-      fail: (err) => {
-        console.error('获取用户信息失败:', err);
-        wx.showToast({
-          title: '获取用户信息失败',
-          icon: 'none'
-        });
-        reject(err);
-      }
-    });
-  });
-};
-
-/**
  * 检查是否已有用户信息
  * @returns boolean 是否已有用户信息
  */

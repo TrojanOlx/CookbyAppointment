@@ -12,7 +12,6 @@ interface IPageData {
   userInfo: User | null;
   isAdmin: boolean;
   hasUserInfo: boolean;
-  canIUseGetUserProfile: boolean;
   openid: string | null;
   isLoggingIn: boolean;
   editingNickName?: boolean;
@@ -27,13 +26,10 @@ interface IPageData {
 
 // 页面方法接口
 interface IPageMethods {
-  onGetUserInfo: (e: any) => void;
   checkAdminStatus: () => void;
   navigateTo: (e: WechatMiniprogram.TouchEvent) => void;
   doLogin: () => Promise<void>;
   doLogout: () => void;
-  getUserProfile: () => void;
-  showLoginOptions: () => void;
   getPhoneNumber: (e: WechatMiniprogram.ButtonGetPhoneNumber) => void;
   fetchUserInfo: () => Promise<void>;
   isUserInfoComplete: () => boolean;
@@ -58,7 +54,6 @@ Page<IPageData, IPageMethods & {
     userInfo: null,
     isAdmin: false,
     hasUserInfo: false,
-    canIUseGetUserProfile: false,
     openid: null,
     isLoggingIn: false,
     editingNickName: false,
@@ -79,13 +74,6 @@ Page<IPageData, IPageMethods & {
       this.setData({ version: ver || '开发版' });
     } catch (e) {
       this.setData({ version: '开发版' });
-    }
-
-    // 检查是否可以使用getUserProfile接口
-    if (typeof wx.getUserProfile === 'function') {
-      this.setData({
-        canIUseGetUserProfile: true
-      });
     }
 
     // 检查是否已登录
@@ -236,42 +224,6 @@ Page<IPageData, IPageMethods & {
     }
   },
 
-  // 显示登录选项菜单
-  showLoginOptions() {
-    wx.showActionSheet({
-      itemList: ['授权登录', '获取用户资料', '获取手机号'],
-      success: (res) => {
-        switch (res.tapIndex) {
-          case 0: // 授权登录
-            this.doLogin();
-            break;
-          case 1: // 获取用户资料
-            this.getUserProfile();
-            break;
-          case 2: // 获取手机号
-            // 由于获取手机号需要使用button组件，这里只能提示用户
-            wx.showModal({
-              title: '获取手机号',
-              content: '请使用设置页面的绑定手机号功能',
-              confirmText: '去设置',
-              cancelText: '取消',
-              success: (modalRes) => {
-                if (modalRes.confirm) {
-                  wx.navigateTo({
-                    url: '/pages/profile/settings/settings'
-                  });
-                }
-              }
-            });
-            break;
-        }
-      },
-      fail: (err) => {
-        console.error('显示操作菜单失败:', err);
-      }
-    });
-  },
-
   // 执行登录
   async doLogin() {
     try {
@@ -327,38 +279,13 @@ Page<IPageData, IPageMethods & {
       // 登录后立即同步家庭上下文，使零家庭入口无需重新进入“我的”页才出现。
       await this.syncFamilyContext();
 
-      // 检查用户信息是否完整
-      const isUserInfoComplete = this.isUserInfoComplete();
-
       // 获取重定向URL（如果有）
       const redirectUrl = wx.getStorageSync('redirectUrl');
 
-      // 如果用户信息不完整，先提示完善资料
-      if (!isUserInfoComplete) {
-        // 登录成功后，先弹出提示获取用户资料（昵称和头像）
-        wx.showModal({
-          title: '完善用户资料',
-          content: '是否授权获取您的昵称和头像等信息？',
-          confirmText: '立即获取',
-          cancelText: '暂不',
-          success: (modalRes) => {
-            if (modalRes.confirm) {
-              // 用户点击确认，触发获取用户资料
-              this.getUserProfile();
-
-              // 设置一个延时，在获取用户资料完成后检查是否需要重定向
-              setTimeout(() => {
-                this.checkAndRedirect(redirectUrl);
-              }, 2000);
-            } else {
-              this.checkAndRedirect(redirectUrl);
-            }
-          }
-        });
-      } else {
-        // 用户信息已完整，直接检查是否需要重定向
-        this.checkAndRedirect(redirectUrl);
+      if (!this.isUserInfoComplete()) {
+        showToast('请完善头像和昵称');
       }
+      this.checkAndRedirect(redirectUrl);
     } catch (error) {
       console.error('登录失败:', error);
       this.setData({ isLoggingIn: false });
@@ -443,60 +370,6 @@ Page<IPageData, IPageMethods & {
     showToast('已退出登录');
   },
 
-  // 获取用户信息 - 新版本API (wx.getUserProfile)
-  getUserProfile() {
-    // 这个方法必须由用户点击事件直接触发
-    wx.getUserProfile({
-      desc: '用于完善用户信息',
-      success: (res) => {
-        console.log("用户信息");
-        console.log(res);
-
-        // 没有获取到用户信息
-        if (!res.userInfo) {
-          showToast('获取用户信息失败');
-          return;
-        }
-
-        // 更新用户信息
-        const userInfo = {
-          ...this.data.userInfo,
-          nickName: res.userInfo.nickName,
-          avatarUrl: res.userInfo.avatarUrl,
-          gender: res.userInfo.gender,
-          country: res.userInfo.country,
-          province: res.userInfo.province,
-          city: res.userInfo.city
-        };
-
-        // 调用接口更新用户信息
-        showLoading('更新用户信息...');
-        UserService.updateUserInfo(userInfo)
-          .then(updatedUser => {
-            wx.setStorageSync('userInfo', updatedUser);
-            this.setData({
-              userInfo: updatedUser,
-              hasUserInfo: true
-            });
-            this.checkAdminStatus();
-            hideLoading();
-
-            // 显示成功提示
-            showToast('资料获取成功');
-          })
-          .catch(err => {
-            console.error('更新用户信息失败:', err);
-            hideLoading();
-            showToast('更新用户信息失败');
-          });
-      },
-      fail: (err) => {
-        console.error('获取用户信息失败:', err);
-        showToast('获取用户信息失败');
-      }
-    });
-  },
-
   // 获取手机号码（需要在wxml的button组件上设置open-type="getPhoneNumber"）
   getPhoneNumber(e: WechatMiniprogram.ButtonGetPhoneNumber) {
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
@@ -507,19 +380,9 @@ Page<IPageData, IPageMethods & {
       // 调用UserService获取手机号
       showLoading('获取手机号中...');
       UserService.getPhoneNumber(code)
-        .then(result => {
+        .then(async result => {
           console.log('手机号信息:', result);
-
-          // 更新用户信息中的手机号
-          const userInfo = {
-            ...this.data.userInfo,
-            phoneNumber: result.phoneNumber
-          };
-
-          // 调用接口更新用户信息
-          return UserService.updateUserInfo(userInfo);
-        })
-        .then(updatedUser => {
+          const updatedUser = await UserService.getUserInfo();
           wx.setStorageSync('userInfo', updatedUser);
           this.setData({
             userInfo: updatedUser
@@ -537,40 +400,6 @@ Page<IPageData, IPageMethods & {
       console.error('获取手机号失败:', e.detail.errMsg);
       showToast('获取手机号失败');
     }
-  },
-
-  // 获取用户信息
-  onGetUserInfo(e: any) {
-    // 先执行登录流程
-    this.doLogin().then(() => {
-      // 登录成功后，如果按钮方式获取了用户信息
-      if (e && e.detail && e.detail.userInfo) {
-        const userInfo = {
-          ...this.data.userInfo,
-          nickName: e.detail.userInfo.nickName,
-          avatarUrl: e.detail.userInfo.avatarUrl,
-          gender: e.detail.userInfo.gender,
-          country: e.detail.userInfo.country,
-          province: e.detail.userInfo.province,
-          city: e.detail.userInfo.city
-        };
-
-        // 调用接口更新用户信息
-        UserService.updateUserInfo(userInfo)
-          .then(updatedUser => {
-            wx.setStorageSync('userInfo', updatedUser);
-            this.setData({
-              userInfo: updatedUser,
-              hasUserInfo: true
-            });
-            this.checkAdminStatus();
-          })
-          .catch(err => {
-            console.error('更新用户信息失败:', err);
-            showToast('更新用户信息失败');
-          });
-      }
-    });
   },
 
   // 检查管理员状态
@@ -660,13 +489,9 @@ Page<IPageData, IPageMethods & {
    * 保存头像到用户信息
    */
   async saveAvatar(filePath: string) {
-    const userInfo = {
-      ...this.data.userInfo,
-      avatarUrl: filePath
-    };
     showLoading('更新头像...');
     try {
-      const updatedUser = await UserService.updateUserInfo(userInfo);
+      const updatedUser = await UserService.updateUserInfo({ avatarUrl: filePath });
       wx.setStorageSync('userInfo', updatedUser);
       this.setData({
         userInfo: updatedUser,
@@ -691,13 +516,18 @@ Page<IPageData, IPageMethods & {
    * 保存昵称到后端
    */
   saveNickName(nickName: string) {
-    if (!nickName) return;
-    const userInfo = {
-      ...this.data.userInfo,
-      nickName
-    };
+    const normalizedNickName = nickName.trim();
+    if (!normalizedNickName) return;
+    if (normalizedNickName === '微信用户') {
+      showToast('请手动输入昵称');
+      return;
+    }
+    if (normalizedNickName === this.data.userInfo?.nickName) {
+      this.setData({ editingNickName: false });
+      return;
+    }
     showLoading('更新昵称...');
-    UserService.updateUserInfo(userInfo)
+    UserService.updateUserInfo({ nickName: normalizedNickName })
       .then(updatedUser => {
         wx.setStorageSync('userInfo', updatedUser);
         this.setData({

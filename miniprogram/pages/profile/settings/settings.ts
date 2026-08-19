@@ -1,6 +1,5 @@
 // pages/profile/settings/settings.ts
 import { showToast } from '../../../utils/util';
-import { getUserProfile } from '../../../utils/auth';
 import { UserService } from '../../../services/userService';
 import { ImageCacheService } from '../../../utils/imageCache';
 
@@ -14,7 +13,7 @@ interface IPageData {
 // 页面方法接口
 interface IPageMethods {
   getPhoneNumber: (e: WechatMiniprogram.ButtonGetPhoneNumber) => void;
-  updateUserInfo: () => void;
+  editProfile: () => void;
   switchChange: (e: WechatMiniprogram.SwitchChange) => void;
   clearCache: () => void;
   navigateTo: (e: WechatMiniprogram.TouchEvent) => void;
@@ -166,14 +165,8 @@ Page<IPageData, IPageMethods>({
     }
   },
 
-  // 更新用户信息
-  updateUserInfo() {
-    getUserProfile().then(userInfo => {
-      showToast('用户信息更新成功');
-    }).catch(err => {
-      console.error('更新用户信息失败:', err);
-      showToast('更新用户信息失败');
-    });
+  editProfile() {
+    wx.switchTab({ url: '/pages/profile/profile' });
   },
 
   // 开关切换
