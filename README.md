@@ -7,7 +7,7 @@
 - 前端：微信小程序原生框架 + TypeScript，入口在 `miniprogram/`。
 - 后端：Cloudflare Workers，入口在 `cloudflareWorkes/worker.js`。
 - API 地址：前端统一请求地址写在 `miniprogram/services/http.ts`，当前为 `https://wx.oulongxing.com`。
-- 小程序 AppID：`project.config.json` 中配置为 `wxabc39c01a21a60a8`。
+- 小程序 AppID：`project.config.json` 中配置为 `wx5c11e8a22aedd370`。
 - GitNexus：已在本机安装并完成本仓库索引，详见“GitNexus 代码索引”。
 
 ## 主要功能
