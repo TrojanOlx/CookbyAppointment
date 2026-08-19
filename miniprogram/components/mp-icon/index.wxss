@@ -1,0 +1,287 @@
+.mp-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+.glyph {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  color: inherit;
+}
+
+.glyph::before,
+.glyph::after,
+.glyph-detail,
+.glyph-detail::before,
+.glyph-detail::after {
+  position: absolute;
+  box-sizing: border-box;
+  content: '';
+}
+
+.glyph-add::before,
+.glyph-add::after,
+.glyph-close::before,
+.glyph-close::after {
+  top: 45%;
+  left: 14%;
+  width: 72%;
+  height: 10%;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.glyph-add::after {
+  transform: rotate(90deg);
+}
+
+.glyph-close::before {
+  transform: rotate(45deg);
+}
+
+.glyph-close::after {
+  transform: rotate(-45deg);
+}
+
+.glyph-arrow::before {
+  top: 28%;
+  left: 22%;
+  width: 44%;
+  height: 44%;
+  border-top: max(1.5px, 10%) solid currentColor;
+  border-right: max(1.5px, 10%) solid currentColor;
+  border-radius: 2px;
+  transform: rotate(45deg);
+}
+
+.glyph-done::before {
+  top: 23%;
+  left: 18%;
+  width: 66%;
+  height: 40%;
+  border-bottom: max(1.5px, 10%) solid currentColor;
+  border-left: max(1.5px, 10%) solid currentColor;
+  border-radius: 2px;
+  transform: rotate(-45deg);
+}
+
+.glyph-search::before {
+  top: 7%;
+  left: 7%;
+  width: 64%;
+  height: 64%;
+  border: max(1.5px, 9%) solid currentColor;
+  border-radius: 50%;
+}
+
+.glyph-search::after {
+  right: 8%;
+  bottom: 12%;
+  width: 36%;
+  height: 9%;
+  border-radius: 999px;
+  background: currentColor;
+  transform: rotate(45deg);
+  transform-origin: right center;
+}
+
+.glyph-delete::before {
+  top: 28%;
+  left: 23%;
+  width: 54%;
+  height: 62%;
+  border: max(1.5px, 8%) solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 12% 12%;
+}
+
+.glyph-delete::after {
+  top: 17%;
+  left: 16%;
+  width: 68%;
+  height: 9%;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.glyph-delete .glyph-detail {
+  top: 7%;
+  left: 37%;
+  width: 26%;
+  height: 14%;
+  border: max(1.5px, 18%) solid currentColor;
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+}
+
+.glyph-refresh::before {
+  top: 13%;
+  left: 13%;
+  width: 74%;
+  height: 74%;
+  border: max(1.5px, 9%) solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+}
+
+.glyph-refresh::after {
+  top: 7%;
+  right: 2%;
+  width: 0;
+  height: 0;
+  border-top: max(3px, 18%) solid transparent;
+  border-bottom: max(3px, 18%) solid transparent;
+  border-left: max(4px, 27%) solid currentColor;
+  transform: rotate(28deg);
+}
+
+.glyph-home::before {
+  top: 43%;
+  left: 23%;
+  width: 54%;
+  height: 43%;
+  border: max(1.5px, 8%) solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 7% 7%;
+}
+
+.glyph-home::after {
+  top: 17%;
+  left: 24%;
+  width: 52%;
+  height: 52%;
+  border-top: max(1.5px, 8%) solid currentColor;
+  border-left: max(1.5px, 8%) solid currentColor;
+  border-radius: 4% 0 0;
+  transform: rotate(45deg);
+}
+
+.glyph-me::before,
+.glyph-add-friends::before {
+  top: 8%;
+  left: 34%;
+  width: 32%;
+  height: 32%;
+  border: max(1.5px, 8%) solid currentColor;
+  border-radius: 50%;
+}
+
+.glyph-me::after,
+.glyph-add-friends::after {
+  left: 18%;
+  bottom: 7%;
+  width: 64%;
+  height: 42%;
+  border: max(1.5px, 8%) solid currentColor;
+  border-radius: 50% 50% 16% 16%;
+}
+
+.glyph-add-friends .glyph-detail::before,
+.glyph-add-friends .glyph-detail::after {
+  right: 0;
+  bottom: 19%;
+  width: 34%;
+  height: 8%;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.glyph-add-friends .glyph-detail::after {
+  transform: rotate(90deg);
+}
+
+.glyph-shop::before {
+  left: 17%;
+  bottom: 9%;
+  width: 66%;
+  height: 51%;
+  border: max(1.5px, 8%) solid currentColor;
+  border-radius: 9% 9% 18% 18%;
+}
+
+.glyph-shop::after {
+  top: 13%;
+  left: 31%;
+  width: 38%;
+  height: 42%;
+  border: max(1.5px, 8%) solid currentColor;
+  border-bottom: 0;
+  border-radius: 50% 50% 0 0;
+}
+
+.glyph-shop .glyph-detail::before,
+.glyph-shop .glyph-detail::after {
+  top: 55%;
+  width: 8%;
+  height: 24%;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.glyph-shop .glyph-detail::before {
+  left: 37%;
+}
+
+.glyph-shop .glyph-detail::after {
+  right: 37%;
+}
+
+.glyph-report-problem {
+  clip-path: polygon(50% 4%, 98% 92%, 2% 92%);
+  background: currentColor;
+}
+
+.glyph-report-problem::before {
+  top: 29%;
+  left: 46%;
+  width: 8%;
+  height: 34%;
+  border-radius: 999px;
+  background: #fff9e8;
+}
+
+.glyph-report-problem::after {
+  left: 45%;
+  bottom: 20%;
+  width: 10%;
+  height: 10%;
+  border-radius: 50%;
+  background: #fff9e8;
+}
+
+.glyph-qr-code::before {
+  top: 8%;
+  left: 8%;
+  width: 32%;
+  height: 32%;
+  border: max(1.5px, 8%) solid currentColor;
+}
+
+.glyph-qr-code::after {
+  right: 8%;
+  bottom: 8%;
+  width: 32%;
+  height: 32%;
+  border: max(1.5px, 8%) solid currentColor;
+}
+
+.glyph-qr-code .glyph-detail {
+  top: 8%;
+  right: 8%;
+  width: 32%;
+  height: 32%;
+  border: max(1.5px, 8%) solid currentColor;
+}
+
+.glyph-qr-code .glyph-detail::before {
+  left: -163%;
+  bottom: -163%;
+  width: 100%;
+  height: 100%;
+  border: max(1.5px, 24%) solid currentColor;
+}

@@ -2,7 +2,7 @@
   "navigationBarTitleText": "用户预约",
   "usingComponents": {
     "calendar": "@lspriv/wx-calendar",
-    "mp-icon": "/miniprogram_npm/weui-miniprogram/icon/icon"
+    "mp-icon": "/components/mp-icon/index"
   },
   "disableScroll": true,
   "backgroundColor": "#a8d8b9",

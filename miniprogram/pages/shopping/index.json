@@ -1,7 +1,7 @@
 {
   "navigationBarTitleText": "家庭采购",
   "usingComponents": {
-    "mp-icon": "/miniprogram_npm/weui-miniprogram/icon/icon"
+    "mp-icon": "/components/mp-icon/index"
   },
   "disableScroll": true,
   "backgroundColor": "#a8d8b9",

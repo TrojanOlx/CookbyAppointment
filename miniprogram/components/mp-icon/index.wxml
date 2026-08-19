@@ -1,0 +1,9 @@
+<view
+  class="mp-icon {{extClass}}"
+  style="width: {{size}}px; height: {{size}}px; color: {{color}};"
+  aria-hidden="true"
+>
+  <view class="glyph glyph-{{icon}}">
+    <view class="glyph-detail"></view>
+  </view>
+</view>
