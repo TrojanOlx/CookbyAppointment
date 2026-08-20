@@ -88,7 +88,7 @@
               <view class="inventory-item" bindtap="editItem" data-id="{{item.id}}">
                 <!-- 左侧图片区域 -->
                 <view class="item-image">
-                  <image referrerPolicy="no-referrer" src="{{item.cachedImage || item.image || '/images/default-dish.png'}}" mode="aspectFill"></image>
+                  <image referrerPolicy="no-referrer" src="{{item.cachedImage || item.image || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
                 </view>
                 
                 <view class="item-body">

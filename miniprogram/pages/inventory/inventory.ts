@@ -318,14 +318,14 @@ Page({
     };
 
     const sampleItems: Partial<InventoryItem>[] = [
-      { name: '鸡蛋', amount: '10个', category: InventoryCategory.Dairy, putInDate: dateByOffset(-2), expiryDate: dateByOffset(10), image: '/images/default-dish.png' },
-      { name: '西红柿', amount: '5个', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-1), expiryDate: dateByOffset(6), image: '/images/default-dish.png' },
-      { name: '豆腐', amount: '2块', category: InventoryCategory.Other, putInDate: dateByOffset(-1), expiryDate: dateByOffset(2), image: '/images/default-dish.png' },
-      { name: '排骨', amount: '500g', category: InventoryCategory.Meat, putInDate: dateByOffset(-3), expiryDate: dateByOffset(1), image: '/images/default-dish.png' },
-      { name: '油麦菜', amount: '1把', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-2), expiryDate: dateByOffset(0), image: '/images/default-dish.png' },
-      { name: '葱', amount: '5根', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-6), expiryDate: dateByOffset(-1), image: '/images/default-dish.png' },
-      { name: '牛肉', amount: '300g', category: InventoryCategory.Meat, putInDate: dateByOffset(-1), expiryDate: dateByOffset(3), image: '/images/default-dish.png' },
-      { name: '大米', amount: '5kg', category: InventoryCategory.Grain, putInDate: dateByOffset(-60), expiryDate: dateByOffset(300), image: '/images/default-dish.png' }
+      { name: '鸡蛋', amount: '10个', category: InventoryCategory.Dairy, putInDate: dateByOffset(-2), expiryDate: dateByOffset(10), image: '/images/default-dish.jpg' },
+      { name: '西红柿', amount: '5个', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-1), expiryDate: dateByOffset(6), image: '/images/default-dish.jpg' },
+      { name: '豆腐', amount: '2块', category: InventoryCategory.Other, putInDate: dateByOffset(-1), expiryDate: dateByOffset(2), image: '/images/default-dish.jpg' },
+      { name: '排骨', amount: '500g', category: InventoryCategory.Meat, putInDate: dateByOffset(-3), expiryDate: dateByOffset(1), image: '/images/default-dish.jpg' },
+      { name: '油麦菜', amount: '1把', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-2), expiryDate: dateByOffset(0), image: '/images/default-dish.jpg' },
+      { name: '葱', amount: '5根', category: InventoryCategory.Vegetable, putInDate: dateByOffset(-6), expiryDate: dateByOffset(-1), image: '/images/default-dish.jpg' },
+      { name: '牛肉', amount: '300g', category: InventoryCategory.Meat, putInDate: dateByOffset(-1), expiryDate: dateByOffset(3), image: '/images/default-dish.jpg' },
+      { name: '大米', amount: '5kg', category: InventoryCategory.Grain, putInDate: dateByOffset(-60), expiryDate: dateByOffset(300), image: '/images/default-dish.jpg' }
     ];
 
     showLoading('添加示例中');

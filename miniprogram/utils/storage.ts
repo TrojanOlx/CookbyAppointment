@@ -1,4 +1,6 @@
-import { Dish, Appointment, InventoryItem, DishType, SpicyLevel, MealType, AppointmentStatus, InventoryCategory, InventoryStatus } from '../utils/model';
+import { Dish, DishType, SpicyLevel } from '../models/dish';
+import { Appointment, MealType } from '../models/appointment';
+import { InventoryItem } from '../models/inventory';
 
 // 内存中存储数据的变量
 let memoryDishes: Dish[] = [];
@@ -67,7 +69,7 @@ export function initTestData(): void {
       name: '西红柿炒鸡蛋',
       type: DishType.Stir,
       spicy: SpicyLevel.None,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         enhanceIngredient({ id: 'ing1', name: '西红柿', amount: '2个' }, 'test-dish1'),
         enhanceIngredient({ id: 'ing2', name: '鸡蛋', amount: '3个' }, 'test-dish1'),
@@ -94,7 +96,7 @@ export function initTestData(): void {
       name: '麻婆豆腐',
       type: DishType.Stir,
       spicy: SpicyLevel.Medium,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         enhanceIngredient({ id: 'ing5', name: '豆腐', amount: '1块' }, 'test-dish2'),
         enhanceIngredient({ id: 'ing6', name: '肉末', amount: '100g' }, 'test-dish2'),
@@ -124,7 +126,7 @@ export function initTestData(): void {
       name: '清炒油麦菜',
       type: DishType.Vegetable,
       spicy: SpicyLevel.None,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         enhanceIngredient({ id: 'ing10', name: '油麦菜', amount: '1把' }, 'test-dish3'),
         enhanceIngredient({ id: 'ing11', name: '蒜', amount: '2瓣' }, 'test-dish3'),
@@ -149,7 +151,7 @@ export function initTestData(): void {
       name: '排骨冬瓜汤',
       type: DishType.Soup,
       spicy: SpicyLevel.None,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         enhanceIngredient({ id: 'ing13', name: '排骨', amount: '300g' }, 'test-dish4'),
         enhanceIngredient({ id: 'ing14', name: '冬瓜', amount: '半个' }, 'test-dish4'),
@@ -177,7 +179,7 @@ export function initTestData(): void {
       name: '水煮鱼',
       type: DishType.Stir,
       spicy: SpicyLevel.Hot,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         enhanceIngredient({ id: 'ing17', name: '草鱼', amount: '1条' }, 'test-dish5'),
         enhanceIngredient({ id: 'ing18', name: '豆芽', amount: '适量' }, 'test-dish5'),
@@ -207,7 +209,7 @@ export function initTestData(): void {
       name: '宫保鸡丁',
       type: DishType.Stir,
       spicy: SpicyLevel.Medium,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         enhanceIngredient({ id: 'ing22', name: '鸡胸肉', amount: '300g' }, 'test-dish6'),
         enhanceIngredient({ id: 'ing23', name: '花生', amount: '50g' }, 'test-dish6'),
@@ -242,7 +244,7 @@ export function initTestData(): void {
       name: '红烧肉',
       type: DishType.Stew,
       spicy: SpicyLevel.None,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         { id: 'ing30', name: '五花肉', amount: '500g' },
         { id: 'ing31', name: '姜', amount: '5片' },
@@ -274,7 +276,7 @@ export function initTestData(): void {
       name: '糖醋里脊',
       type: DishType.Stir,
       spicy: SpicyLevel.None,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         { id: 'ing38', name: '猪里脊肉', amount: '300g' },
         { id: 'ing39', name: '淀粉', amount: '适量' },
@@ -302,7 +304,7 @@ export function initTestData(): void {
       name: '鱼香茄子',
       type: DishType.Stir,
       spicy: SpicyLevel.Medium,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         { id: 'ing45', name: '长茄子', amount: '2根' },
         { id: 'ing46', name: '肉末', amount: '100g' },
@@ -333,7 +335,7 @@ export function initTestData(): void {
       name: '蒜蓉蒸虾',
       type: DishType.Steam,
       spicy: SpicyLevel.None,
-      images: ['/images/default-dish.png'],
+      images: ['/images/default-dish.jpg'],
       ingredients: [
         { id: 'ing53', name: '大虾', amount: '500g' },
         { id: 'ing54', name: '蒜', amount: '1整头' },
@@ -401,7 +403,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)), // 前天
       expiryDate: formatDateStr(new Date(today.getTime() + 10 * 24 * 60 * 60 * 1000)), // 10天后
       createTime: Date.now() - 100000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv2',
@@ -410,7 +412,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(today),
       expiryDate: formatDateStr(new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)), // 7天后
       createTime: Date.now() - 200000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv3',
@@ -419,7 +421,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(yesterday),
       expiryDate: formatDateStr(new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)), // 3天后
       createTime: Date.now() - 300000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv4',
@@ -428,7 +430,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000)),
       expiryDate: formatDateStr(new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000)), // 2天后
       createTime: Date.now() - 400000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv5',
@@ -437,7 +439,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(yesterday),
       expiryDate: formatDateStr(today), // 今天到期
       createTime: Date.now() - 500000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv6',
@@ -446,7 +448,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000)),
       expiryDate: formatDateStr(new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000)), // 昨天过期
       createTime: Date.now() - 600000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv7',
@@ -455,7 +457,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(new Date(today.getTime() - 4 * 24 * 60 * 60 * 1000)),
       expiryDate: formatDateStr(new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000)), // 5天后
       createTime: Date.now() - 700000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv8',
@@ -464,7 +466,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(yesterday),
       expiryDate: formatDateStr(new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000)), // 3天后
       createTime: Date.now() - 800000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv9',
@@ -473,7 +475,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)),
       expiryDate: formatDateStr(new Date(today.getTime() + 180 * 24 * 60 * 60 * 1000)), // 半年后
       createTime: Date.now() - 900000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv10',
@@ -482,7 +484,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(today),
       expiryDate: formatDateStr(new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000)), // 明天到期
       createTime: Date.now() - 1000000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv11',
@@ -491,7 +493,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(new Date(today.getTime() - 60 * 24 * 60 * 60 * 1000)),
       expiryDate: formatDateStr(new Date(today.getTime() + 300 * 24 * 60 * 60 * 1000)), // 300天后
       createTime: Date.now() - 1100000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     },
     {
       id: 'test-inv12',
@@ -500,7 +502,7 @@ export function initTestData(): void {
       putInDate: formatDateStr(new Date(today.getTime() - 90 * 24 * 60 * 60 * 1000)),
       expiryDate: formatDateStr(new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000)), // 前天过期
       createTime: Date.now() - 1200000,
-      image: '/images/default-dish.png'
+      image: '/images/default-dish.jpg'
     }
   ];
   
@@ -766,4 +768,4 @@ export const inventoryService = {
     }
     return false;
   }
-}; 
+};

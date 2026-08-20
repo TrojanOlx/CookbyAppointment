@@ -109,7 +109,7 @@ Page({
     const recommendations = this.data.recommendations.map(item => {
       if (String(item.id) !== dishId) return item;
       const images = Array.isArray(item.images) ? item.images.slice() : [];
-      images[0] = '/images/default-dish.png';
+      images[0] = '/images/default-dish.jpg';
       return { ...item, images };
     });
     this.setData({ recommendations });

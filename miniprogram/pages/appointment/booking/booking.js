@@ -455,7 +455,7 @@ Page({
     const dishId = String(event.currentTarget.dataset.id || '');
     const current = this.data.filteredDishes[index];
     if (!Number.isInteger(index) || !current || !dishId || String(current.id) !== dishId) return;
-    const fallback = '/images/default-dish.png';
+    const fallback = '/images/default-dish.jpg';
     this.setData({
       dishes: this.data.dishes.map(item => String(item.id) === dishId ? { ...item, cachedImage: fallback } : item),
       filteredDishes: this.data.filteredDishes.map(item => String(item.id) === dishId ? { ...item, cachedImage: fallback } : item)

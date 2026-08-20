@@ -108,7 +108,7 @@
           data-id="{{item.id}}"
           bindtap="toggleSelectDish"
         >
-          <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || item.images[0] || '/images/default-dish.png'}}" mode="aspectFill"></image>
+          <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || item.images[0] || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
           <view class="dish-info">
             <view class="dish-name">{{item.name}}</view>
             <view class="dish-tags">

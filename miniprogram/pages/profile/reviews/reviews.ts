@@ -73,7 +73,7 @@ Page({
         const rawDishImage = item.dishImage || nestedDishImages[0] || '';
         const dishImage = rawDishImage
           ? (rawDishImage.startsWith('http') ? rawDishImage : `${BASE_URL}/${rawDishImage.replace(/^\/+/, '')}`)
-          : '/images/default-dish.png';
+          : '/images/default-dish.jpg';
         const stars = Array.from({ length: 5 }, (_, i) => i < item.rating);
         const createTimeStr = item.createTime
           ? new Date(item.createTime).toLocaleDateString('zh-CN')

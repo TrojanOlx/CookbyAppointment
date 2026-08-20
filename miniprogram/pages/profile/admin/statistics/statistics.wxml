@@ -79,7 +79,7 @@
     <view class="rank-list">
       <view class="rank-row" wx:for="{{topDishes}}" wx:key="dishId">
         <view class="rank-badge rank-{{index < 3 ? index + 1 : 'other'}}">{{index + 1}}</view>
-        <image referrerPolicy="no-referrer" class="rank-img" src="{{item.cachedImage || item.image || '/images/default-dish.png'}}" mode="aspectFill" wx:if="{{item.image}}"></image>
+        <image referrerPolicy="no-referrer" class="rank-img" src="{{item.cachedImage || item.image || '/images/default-dish.jpg'}}" mode="aspectFill" wx:if="{{item.image}}"></image>
         <text class="rank-name">{{item.name}}</text>
         <view class="rank-bar-wrap">
           <view class="rank-bar" style="width:{{item.pct}}%"></view>
@@ -98,7 +98,7 @@
     <view class="rank-list">
       <view class="rank-row" wx:for="{{userRanking}}" wx:key="userId">
         <view class="rank-badge rank-{{index < 3 ? index + 1 : 'other'}}">{{index + 1}}</view>
-        <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.cachedAvatar || item.avatarUrl || '/images/default-dish.png'}}" mode="aspectFill"></image>
+        <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.cachedAvatar || item.avatarUrl || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
         <text class="rank-name">{{item.nickName}}</text>
         <view class="rank-bar-wrap">
           <view class="rank-bar user-bar" style="width:{{item.pct}}%"></view>

@@ -25,11 +25,11 @@
     <view class="review-card" wx:for="{{reviews}}" wx:key="id">
       <!-- 头部信息 -->
       <view class="card-header" bindtap="toggleExpand" data-id="{{item.id}}">
-        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedDishImage || item.dishImage || '/images/default-dish.png'}}" mode="aspectFill"></image>
+        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedDishImage || item.dishImage || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
         <view class="card-meta">
           <text class="dish-name">{{item.dishName}}</text>
           <view class="user-row">
-            <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.cachedUserAvatar || item.userAvatar || '/images/default-dish.png'}}" mode="aspectFill"></image>
+            <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.cachedUserAvatar || item.userAvatar || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
             <text class="user-name">{{item.userName}}</text>
           </view>
           <view class="bottom-row">

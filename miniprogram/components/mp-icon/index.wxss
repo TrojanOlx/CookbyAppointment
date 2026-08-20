@@ -232,26 +232,26 @@
 }
 
 .glyph-report-problem {
-  clip-path: polygon(50% 4%, 98% 92%, 2% 92%);
-  background: currentColor;
+  border: 2px solid currentColor;
+  border-radius: 50%;
 }
 
 .glyph-report-problem::before {
-  top: 29%;
+  top: 20%;
   left: 46%;
   width: 8%;
-  height: 34%;
+  height: 40%;
   border-radius: 999px;
-  background: #fff9e8;
+  background: currentColor;
 }
 
 .glyph-report-problem::after {
   left: 45%;
-  bottom: 20%;
+  bottom: 16%;
   width: 10%;
   height: 10%;
   border-radius: 50%;
-  background: #fff9e8;
+  background: currentColor;
 }
 
 .glyph-qr-code::before {

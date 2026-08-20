@@ -86,7 +86,7 @@
           </view>
           <view wx:else class="dish-check-list">
             <view wx:for="{{filteredDishes}}" wx:key="id" wx:for-index="dishIndex" class="dish-check-item {{selectedDishMap[item.id] ? 'is-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleDish">
-              <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedImage || (item.images && item.images.length ? item.images[0] : '/images/default-dish.png')}}" mode="aspectFill" data-index="{{dishIndex}}" data-id="{{item.id}}" binderror="onDishImageError"></image>
+              <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedImage || (item.images && item.images.length ? item.images[0] : '/images/default-dish.jpg')}}" mode="aspectFill" data-index="{{dishIndex}}" data-id="{{item.id}}" binderror="onDishImageError"></image>
               <view class="dish-copy">
                 <view class="dish-name">{{item.name}}</view>
                 <view class="dish-meta">{{item.type}}<text wx:if="{{item.spicy && item.spicy !== '不辣'}}"> · {{item.spicy}}</text></view>

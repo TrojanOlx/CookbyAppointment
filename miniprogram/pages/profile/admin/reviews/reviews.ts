@@ -69,7 +69,7 @@ Page({
         return {
           ...item,
           dishName: item.dishName || (item.dish && item.dish.name) || '未知菜品',
-          dishImage: item.dishImage || item.image || '/images/default-dish.png',
+          dishImage: item.dishImage || item.image || '/images/default-dish.jpg',
           userName: item.userName || item.nickName || '家庭成员',
           userAvatar: item.userAvatar || item.avatarUrl || '',
           images,

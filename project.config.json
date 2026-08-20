@@ -25,7 +25,7 @@
     ],
     "ignoreUploadUnusedFiles": true,
     "compileHotReLoad": false,
-    "skylineRenderEnable": true,
+    "skylineRenderEnable": false,
     "condition": false,
     "es6": true,
     "compileWorklet": false,

@@ -27,7 +27,7 @@
       </swiper-item>
     </block>
     <swiper-item wx:else class="swiper-item">
-      <image referrerPolicy="no-referrer" src="/images/default-dish.png" mode="aspectFill" class="swiper-image"></image>
+      <image referrerPolicy="no-referrer" src="/images/default-dish.jpg" mode="aspectFill" class="swiper-image"></image>
     </swiper-item>
   </swiper>
 
