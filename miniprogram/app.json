@@ -5,6 +5,7 @@
     "pages/menu/menu",
     "pages/menu/add/add",
     "pages/menu/detail/detail",
+    "pages/menu/templates/templates",
     "pages/appointment/appointment",
     "pages/inventory/inventory",
     "pages/inventory/add/add",

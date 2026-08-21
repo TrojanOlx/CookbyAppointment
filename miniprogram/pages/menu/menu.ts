@@ -259,9 +259,21 @@ Page({
    * 跳转到添加菜品页
    */
   goToAdd() {
-    wx.navigateTo({
-      url: './add/add'
+    wx.showActionSheet({
+      itemList: ['从公共模板添加', '手动新建菜品'],
+      success: (result) => {
+        if (result.tapIndex === 0) this.goToTemplates();
+        if (result.tapIndex === 1) wx.navigateTo({ url: './add/add' });
+      }
     });
+  },
+
+  goToTemplates() {
+    wx.navigateTo({ url: '/pages/menu/templates/templates' });
+  },
+
+  goToManualAdd() {
+    wx.navigateTo({ url: './add/add' });
   },
 
   goToRecommend() {

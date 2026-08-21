@@ -48,9 +48,7 @@ Page({
           if (requestId === createFamilyRequestId) this.setData({ saving: false });
           return;
         }
-        const pages = getCurrentPages();
-        if (pages.length > 1) wx.navigateBack();
-        else wx.redirectTo({ url: '/pages/family/index/index' });
+        wx.redirectTo({ url: '/pages/menu/templates/templates?setup=1' });
         this.setData({ saving: false });
       }, 500);
     } catch (error) {

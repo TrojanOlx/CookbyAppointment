@@ -43,4 +43,30 @@ export interface Dish {
   creatorId?: string;   // 创建者ID（可选）
   creatorOpenid?: string; // 创建者openid（可选）
   updateTime?: number;  // 更新时间（可选）
-} 
+}
+
+// 公共菜谱模板。模板只读展示，导入后会复制成当前家庭自己的菜品。
+export interface DishTemplate {
+  id: string;
+  name: string;
+  type: DishType | string;
+  spicy: SpicyLevel | string;
+  images: string[];
+  ingredients: Ingredient[];
+  steps: string[];
+  notice?: string;
+  imported?: boolean;
+}
+
+export interface DishTemplateListResponse {
+  total: number;
+  list: DishTemplate[];
+  page: number;
+  pageSize: number;
+}
+
+export interface DishTemplateImportResponse {
+  count: number;
+  imported: Array<{ templateId: string; dishId: string }>;
+  alreadyImported: string[];
+}

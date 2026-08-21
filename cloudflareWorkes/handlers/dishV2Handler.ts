@@ -29,6 +29,29 @@ interface DishInput {
   ingredients?: unknown;
 }
 
+interface RecipeTemplateRow extends Record<string, unknown> {
+  id: string;
+  name: string;
+  type: string;
+  spicy: string;
+  images: string;
+  steps: string;
+  notice: string;
+  remark: string;
+  reference: string;
+}
+
+interface RecipeTemplateIngredientRow extends Record<string, unknown> {
+  id: string;
+  templateId: string;
+  ingredientId: string | null;
+  name: string;
+  amount: string;
+  quantity: number | null;
+  unit: string | null;
+  legacyAmount: string | null;
+}
+
 function withDishLock<T>(env: Env, familyId: string, dishId: string, execute: () => Promise<T>): Promise<T> {
   return withOperationLock(env, `dish:${familyId}:${dishId}`, execute);
 }
@@ -45,6 +68,24 @@ function stringList(value: unknown, maxItems: number, maxLength: number): string
 
 function mapDish(row: Record<string, unknown>, env: Env): Record<string, unknown> {
   return { ...row, images: normalizeImageList(row.images, env), steps: parseJsonField(row.steps, []) };
+}
+
+function templateDishId(familyId: string, templateId: string): string {
+  return `template-copy:${familyId}:${templateId}`;
+}
+
+function mapRecipeTemplate(
+  row: RecipeTemplateRow,
+  ingredients: RecipeTemplateIngredientRow[],
+): Record<string, unknown> {
+  const images = parseJsonField<unknown[]>(row.images, []).filter((item): item is string => typeof item === 'string');
+  return {
+    ...row,
+    imported: Number(row.imported || 0) === 1,
+    images,
+    steps: parseJsonField<string[]>(row.steps, []),
+    ingredients,
+  };
 }
 
 async function resolveCatalog(env: Env, name: string, requestedId?: unknown): Promise<string> {
@@ -129,6 +170,141 @@ async function listDishes(request: Request, env: Env): Promise<Response> {
   return json({
     total: Number((count.results[0] as { total?: unknown } | undefined)?.total || 0),
     list: (rows.results as Array<Record<string, unknown>>).map(row => mapDish(row, env)), page, pageSize,
+  });
+}
+
+async function listRecipeTemplates(request: Request, env: Env): Promise<Response> {
+  const context = await requireFamilyContext(request, env);
+  const url = new URL(request.url);
+  const { page, pageSize, offset } = pagination(url);
+  const type = url.searchParams.get('type');
+  const conditions = ["status = 'active'"];
+  const countBindings: unknown[] = [];
+  const rowBindings: unknown[] = [context.familyId, context.familyId];
+  if (type) {
+    conditions.push('type = ?');
+    countBindings.push(type);
+    rowBindings.push(type);
+  }
+  const where = conditions.join(' AND ');
+  const [countResult, templateResult] = await env.DB.batch([
+    env.DB.prepare(`SELECT COUNT(*) AS total FROM recipe_templates WHERE ${where}`).bind(...countBindings),
+    env.DB.prepare(`
+      SELECT t.*,
+        EXISTS (
+          SELECT 1 FROM dishes d
+          WHERE d.id = 'template-copy:' || ? || ':' || t.id AND d.familyId = ?
+        ) AS imported
+      FROM recipe_templates t
+      WHERE ${where}
+      ORDER BY t.sortOrder ASC, t.createdAt ASC
+      LIMIT ? OFFSET ?
+    `).bind(...rowBindings, pageSize, offset),
+  ]);
+  const templates = templateResult.results as RecipeTemplateRow[];
+  if (!templates.length) {
+    return json({ total: Number((countResult.results[0] as { total?: unknown } | undefined)?.total || 0), list: [], page, pageSize });
+  }
+  const placeholders = templates.map(() => '?').join(',');
+  const ingredientResult = await env.DB.prepare(`
+    SELECT * FROM recipe_template_ingredients
+    WHERE templateId IN (${placeholders})
+    ORDER BY templateId ASC, sortOrder ASC
+  `).bind(...templates.map(template => template.id)).all<RecipeTemplateIngredientRow>();
+  return json({
+    total: Number((countResult.results[0] as { total?: unknown } | undefined)?.total || 0),
+    list: templates.map(template => mapRecipeTemplate(
+      template,
+      ingredientResult.results.filter(item => item.templateId === template.id),
+    )),
+    page,
+    pageSize,
+  });
+}
+
+async function importRecipeTemplates(request: Request, env: Env): Promise<Response> {
+  const context = await requireFamilyContext(request, env);
+  requireCapability(context, 'dish.manage');
+  const body = await readJson<{ templateIds?: unknown }>(request);
+  if (!Array.isArray(body.templateIds) || !body.templateIds.length || body.templateIds.length > 50) {
+    throw new ApiError(400, 'VALIDATION_ERROR', '请选择 1 至 50 个菜谱模板');
+  }
+  const templateIds = Array.from(new Set(body.templateIds.map(value => requiredString(value, '模板ID', 100))));
+
+  return withOperationLock(env, `family:${context.familyId}:template-import`, async () => {
+    const placeholders = templateIds.map(() => '?').join(',');
+    const templateResult = await env.DB.prepare(`
+      SELECT * FROM recipe_templates WHERE id IN (${placeholders}) AND status = 'active'
+      ORDER BY sortOrder ASC, createdAt ASC
+    `).bind(...templateIds).all<RecipeTemplateRow>();
+    const templates = templateResult.results;
+    if (templates.length !== templateIds.length) {
+      const found = new Set(templates.map(template => template.id));
+      throw new ApiError(404, 'RECIPE_TEMPLATE_NOT_FOUND', '部分菜谱模板不存在或已下架', {
+        templateIds: templateIds.filter(id => !found.has(id)),
+      });
+    }
+
+    const dishIds = templates.map(template => templateDishId(context.familyId, template.id));
+    const existingResult = await env.DB.prepare(`
+      SELECT id FROM dishes WHERE familyId = ? AND id IN (${dishIds.map(() => '?').join(',')})
+    `).bind(context.familyId, ...dishIds).all<{ id: string }>();
+    const existingDishIds = new Set(existingResult.results.map(row => row.id));
+    const alreadyImported = templates
+      .filter(template => existingDishIds.has(templateDishId(context.familyId, template.id)))
+      .map(template => template.id);
+    const pendingTemplates = templates.filter(template => !existingDishIds.has(templateDishId(context.familyId, template.id)));
+    if (!pendingTemplates.length) return json({ count: 0, imported: [], alreadyImported });
+
+    const pendingIds = pendingTemplates.map(template => template.id);
+    const ingredientResult = await env.DB.prepare(`
+      SELECT * FROM recipe_template_ingredients
+      WHERE templateId IN (${pendingIds.map(() => '?').join(',')})
+      ORDER BY templateId ASC, sortOrder ASC
+    `).bind(...pendingIds).all<RecipeTemplateIngredientRow>();
+    const now = Date.now();
+    const statements: D1PreparedStatement[] = [];
+    for (const template of pendingTemplates) {
+      const dishId = templateDishId(context.familyId, template.id);
+      statements.push(env.DB.prepare(`
+        INSERT OR IGNORE INTO dishes (
+          id, name, type, spicy, images, steps, notice, remark, reference,
+          creatorId, creatorOpenid, createTime, updateTime, familyId
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        dishId, template.name, template.type, template.spicy, template.images, template.steps,
+        template.notice, template.remark, template.reference,
+        context.user.id, context.user.openid, now, now, context.familyId,
+      ));
+      for (const item of ingredientResult.results.filter(row => row.templateId === template.id)) {
+        statements.push(env.DB.prepare(`
+          INSERT OR IGNORE INTO ingredients (
+            id, dishId, name, amount, createTime, updateTime, ingredientId, quantity, unit, legacyAmount
+          ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+          WHERE EXISTS (SELECT 1 FROM dishes WHERE id = ? AND familyId = ?)
+        `).bind(
+          `template-copy-ingredient:${context.familyId}:${item.id}`,
+          dishId, item.name, item.amount, now, now, item.ingredientId, item.quantity, item.unit, item.legacyAmount,
+          dishId, context.familyId,
+        ));
+      }
+    }
+    statements.push(env.DB.prepare(`
+      INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, details, createdAt)
+      VALUES (?, ?, ?, 'recipe_templates.imported', 'family', ?, ?, ?)
+    `).bind(
+      crypto.randomUUID(), context.familyId, context.user.id, context.familyId,
+      JSON.stringify({ templateIds: pendingIds }), now,
+    ));
+    await env.DB.batch(statements);
+    return json({
+      count: pendingTemplates.length,
+      imported: pendingTemplates.map(template => ({
+        templateId: template.id,
+        dishId: templateDishId(context.familyId, template.id),
+      })),
+      alreadyImported,
+    }, 201);
   });
 }
 
@@ -297,9 +473,15 @@ async function deleteDish(request: Request, env: Env): Promise<Response> {
     WHERE ad.dishId = ? AND a.familyId = ? AND a.status NOT IN ('已取消', 'cancelled') LIMIT 1
   `).bind(id, context.familyId).first();
   if (used) throw new ApiError(409, 'DISH_IN_USE', '菜品仍被预约使用，不能删除');
-  const result = await env.DB.prepare('DELETE FROM dishes WHERE id = ? AND familyId = ?').bind(id, context.familyId).run();
-  if (!result.meta.changes) throw new ApiError(404, 'DISH_NOT_FOUND', '菜品不存在');
-  await env.DB.prepare('DELETE FROM ingredients WHERE dishId = ?').bind(id).run();
+  const results = await env.DB.batch([
+    env.DB.prepare(`
+      DELETE FROM ingredients WHERE dishId = ? AND EXISTS (
+        SELECT 1 FROM dishes WHERE id = ? AND familyId = ?
+      )
+    `).bind(id, id, context.familyId),
+    env.DB.prepare('DELETE FROM dishes WHERE id = ? AND familyId = ?').bind(id, context.familyId),
+  ]);
+  if (!results[1].meta.changes) throw new ApiError(404, 'DISH_NOT_FOUND', '菜品不存在');
   await writeAudit(env, context, 'dish.deleted', 'dish', id);
     return json({ success: true });
   });
@@ -504,6 +686,8 @@ async function recommend(request: Request, env: Env): Promise<Response> {
 
 export async function handleDishV2(request: Request, env: Env, path: string): Promise<Response> {
   switch (`${request.method} ${path}`) {
+    case 'GET /api/dish/templates': return listRecipeTemplates(request, env);
+    case 'POST /api/dish/templates/import': return importRecipeTemplates(request, env);
     case 'GET /api/dish/list':
     case 'GET /api/dish/search': return listDishes(request, env);
     case 'GET /api/dish/detail': return getDish(request, env);

@@ -1,0 +1,132 @@
+<view class="template-page">
+  <view class="fixed-page-bg"></view>
+
+  <view class="template-header">
+    <view class="template-header-row">
+      <view class="template-heading">
+        <view class="template-kicker">RECIPE LIBRARY</view>
+        <view class="template-title">挑选家常菜</view>
+        <view class="template-subtitle">从公共模板中选择，复制后就是你家庭的专属菜谱</view>
+      </view>
+      <button class="template-close" bindtap="goBack" aria-label="关闭">
+        <mp-icon icon="close" size="18" color="#725d42"></mp-icon>
+      </button>
+    </view>
+    <view class="template-note">
+      <image class="template-note-icon" src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <text>导入后的菜谱可以自由修改或删除，不会影响公共模板。</text>
+    </view>
+  </view>
+
+  <scroll-view
+    class="template-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+    lower-threshold="80"
+    bindscrolltolower="onScrollToLower"
+    refresher-enabled="true"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onPullDownRefresh"
+  >
+    <view class="filter-panel">
+      <view class="filter-heading">
+        <view class="filter-title">按类型挑选</view>
+        <button class="select-all-button" bindtap="toggleSelectAll">
+          <mp-icon ext-class="select-all-icon" icon="done" size="14" color="#0f8f85"></mp-icon>
+          <text>{{allSelected ? '取消已加载' : '全选已加载'}}</text>
+        </button>
+      </view>
+      <scroll-view class="type-scroll" scroll-x="true" enhanced="true" show-scrollbar="false" enable-flex="true">
+        <view class="type-row">
+          <view class="type-pill {{selectedType === '' ? 'is-active' : ''}}" data-type="" bindtap="selectType">全部</view>
+          <view wx:for="{{dishTypes}}" wx:key="*this" class="type-pill {{selectedType === item ? 'is-active' : ''}}" data-type="{{item}}" bindtap="selectType">{{item}}</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="selection-summary">
+      <view class="selection-summary-title">精选家常菜</view>
+      <view class="selection-summary-copy">已选 {{selectedCount}} 道<text wx:if="{{total}}"> · 共 {{total}} 道模板</text></view>
+    </view>
+
+    <view wx:if="{{loading && !templates.length}}" class="state-card">
+      <island-loading text="正在读取菜谱模板..."></island-loading>
+    </view>
+
+    <view wx:elif="{{error && !templates.length}}" class="state-card error-state">
+      <view class="state-icon error-icon"><mp-icon icon="report-problem" size="24" color="#e05a5a"></mp-icon></view>
+      <view class="state-title">模板暂时无法加载</view>
+      <view class="state-copy">{{error}}</view>
+      <button class="state-retry" bindtap="retry">重新加载</button>
+    </view>
+
+    <view wx:elif="{{!loading && !error && !templates.length}}" class="state-card empty-state">
+      <island-empty title="暂时没有菜谱模板" hint="稍后再来看看，或先创建自己的菜谱"></island-empty>
+    </view>
+
+    <view wx:else class="template-list">
+      <view wx:if="{{loading && templates.length}}" class="inline-loading">
+        <island-loading text="正在更新模板..."></island-loading>
+      </view>
+      <view wx:if="{{error}}" class="inline-error">
+        <text>{{error}}</text>
+        <button bindtap="retry">重新加载</button>
+      </view>
+
+      <view
+        wx:for="{{templates}}"
+        wx:key="id"
+        class="template-card {{item.selected ? 'is-selected' : ''}} {{item.imported ? 'is-imported' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="toggleTemplate"
+      >
+        <view class="template-check {{item.selected ? 'is-checked' : ''}} {{item.imported ? 'is-disabled' : ''}}">
+          <mp-icon wx:if="{{item.selected || item.imported}}" icon="done" size="13" color="#fff9e8"></mp-icon>
+        </view>
+        <image
+          class="template-image"
+          src="{{item.images && item.images.length ? item.images[0] : '/images/default-dish.jpg'}}"
+          mode="aspectFill"
+          lazy-load="true"
+          data-id="{{item.id}}"
+          binderror="onTemplateImageError"
+        ></image>
+        <view class="template-card-copy">
+          <view class="template-card-title-row">
+            <text class="template-card-title">{{item.name}}</text>
+            <view wx:if="{{item.imported}}" class="imported-tag">已在菜单</view>
+          </view>
+          <view class="template-tags">
+            <view class="template-tag type-tag">{{item.type}}</view>
+            <view class="template-tag spicy-tag">{{item.spicy}}</view>
+          </view>
+          <view class="ingredient-summary">
+            <text class="ingredient-label">食材</text>
+            <text class="ingredient-copy">{{item.ingredientSummary}}</text>
+          </view>
+          <view class="template-meta">
+            <text>{{item.steps.length}} 步骤</text>
+            <text wx:if="{{!item.imported}}">可加入家庭菜单</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{loadingMore}}" class="list-loading">
+        <island-loading text="正在加载更多..."></island-loading>
+      </view>
+      <view wx:elif="{{!hasMore && templates.length}}" class="list-end">已经看到全部模板了</view>
+    </view>
+
+    <view class="template-scroll-spacer" aria-hidden="true"></view>
+  </scroll-view>
+
+  <view class="template-bottom-fixed">
+    <view class="template-bottom-dock"></view>
+    <view class="template-actions">
+      <button class="template-skip-button" bindtap="goBack">{{setupMode ? '暂时跳过' : '返回'}}</button>
+      <button class="template-import-button" loading="{{importing}}" disabled="{{!selectedCount || importing}}" bindtap="importSelected">导入 {{selectedCount}} 道</button>
+    </view>
+    <view class="template-safe-area"></view>
+  </view>
+</view>

@@ -1,6 +1,11 @@
 // 菜品服务
 import { get, post, put, del } from './http';
-import { Dish, Ingredient } from '../models/dish';
+import {
+  Dish,
+  DishTemplateImportResponse,
+  DishTemplateListResponse,
+  Ingredient
+} from '../models/dish';
 
 // 菜品服务类
 export class DishService {
@@ -48,6 +53,24 @@ export class DishService {
       page,
       pageSize
     });
+  }
+
+  // 获取公共菜谱模板（模板只读，导入后归当前家庭所有）
+  static async getDishTemplates(
+    type?: string,
+    page: number = 1,
+    pageSize: number = 20
+  ): Promise<DishTemplateListResponse> {
+    return get<DishTemplateListResponse>('/api/dish/templates', {
+      type,
+      page,
+      pageSize
+    });
+  }
+
+  // 将公共菜谱模板复制到当前家庭
+  static async importDishTemplates(templateIds: string[]): Promise<DishTemplateImportResponse> {
+    return post<DishTemplateImportResponse>('/api/dish/templates/import', { templateIds });
   }
 
   // 根据用餐成员的口味偏好推荐菜品

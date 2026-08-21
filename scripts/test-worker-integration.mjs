@@ -27,6 +27,7 @@ function assert(condition, message, details) {
   if (!condition) throw new Error(`${message}: ${JSON.stringify(details)}`);
 }
 
+run('npx', ['wrangler', 'd1', 'migrations', 'apply', 'cookby_appointment', '--local', '--config', config]);
 run('npx', ['wrangler', 'd1', 'execute', 'cookby_appointment', '--local', '--file', seed, '--config', config]);
 
 const worker = spawn('npx', [
@@ -61,6 +62,75 @@ try {
 
   const ownerFamilies = await api('/api/family/list', 'token-owner-a');
   assert(ownerFamilies.status === 200 && ownerFamilies.data.list.some(item => item.id === 'it-family-a'), 'owner family list failed', ownerFamilies);
+
+  const createdTemplateFamily = await api('/api/family/create', 'token-starter-owner', undefined, {
+    method: 'POST', body: JSON.stringify({ name: '模板测试家庭' }),
+  });
+  assert(
+    createdTemplateFamily.status === 201
+      && createdTemplateFamily.data.id
+      && createdTemplateFamily.data.needsRecipeSetup === true,
+    'new family did not expose the recipe-template setup flow',
+    createdTemplateFamily,
+  );
+  const templateFamilyId = createdTemplateFamily.data.id;
+  const recipeTemplates = await api('/api/dish/templates?pageSize=20', 'token-starter-owner', templateFamilyId);
+  assert(
+    recipeTemplates.status === 200
+      && recipeTemplates.data.total === 10
+      && new Set(recipeTemplates.data.list.map(item => item.type)).size === 5
+      && recipeTemplates.data.list.every(item => item.imported === false && item.ingredients.length >= 2),
+    'public recipe templates were not listed with complete content',
+    recipeTemplates,
+  );
+  const selectedTemplateIds = recipeTemplates.data.list.slice(0, 3).map(item => item.id);
+  const importedTemplates = await api('/api/dish/templates/import', 'token-starter-owner', templateFamilyId, {
+    method: 'POST', body: JSON.stringify({ templateIds: selectedTemplateIds }),
+  });
+  const repeatedImport = await api('/api/dish/templates/import', 'token-starter-owner', templateFamilyId, {
+    method: 'POST', body: JSON.stringify({ templateIds: selectedTemplateIds }),
+  });
+  assert(
+    importedTemplates.status === 201
+      && importedTemplates.data.count === 3
+      && repeatedImport.status === 200
+      && repeatedImport.data.count === 0
+      && repeatedImport.data.alreadyImported.length === 3,
+    'recipe template import was not idempotent',
+    { importedTemplates, repeatedImport },
+  );
+  const importedDishId = importedTemplates.data.imported[0].dishId;
+  const importedDish = await api(`/api/dish/detail?id=${encodeURIComponent(importedDishId)}`, 'token-starter-owner', templateFamilyId);
+  const editedImportedDish = await api('/api/dish/update', 'token-starter-owner', templateFamilyId, {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: importedDishId,
+      name: '我家的做法',
+      expectedUpdateTime: importedDish.data.updateTime,
+    }),
+  });
+  const templatesAfterEdit = await api('/api/dish/templates?pageSize=20', 'token-starter-owner', templateFamilyId);
+  const sourceTemplateAfterEdit = templatesAfterEdit.data.list.find(item => item.id === selectedTemplateIds[0]);
+  assert(
+    importedDish.status === 200
+      && importedDish.data.ingredients.length >= 2
+      && editedImportedDish.status === 200
+      && editedImportedDish.data.name === '我家的做法'
+      && sourceTemplateAfterEdit.name !== '我家的做法'
+      && sourceTemplateAfterEdit.imported === true,
+    'editing an imported recipe changed the public template or lost its ingredients',
+    { importedDish, editedImportedDish, sourceTemplateAfterEdit },
+  );
+  const crossFamilyTemplateCopy = await api(
+    `/api/dish/detail?id=${encodeURIComponent(importedDishId)}`,
+    'token-owner-a',
+    'it-family-a',
+  );
+  assert(
+    crossFamilyTemplateCopy.status === 404,
+    'an imported template copy leaked into another family',
+    crossFamilyTemplateCopy,
+  );
 
   const rejoinInvite = await api('/api/family/invite', 'token-owner-a', 'it-family-a', {
     method: 'POST', body: JSON.stringify({ role: 'member' }),
@@ -760,7 +830,7 @@ try {
   const revokedSession = await api('/api/user/export', 'token-member-a');
   assert(revokedSession.status === 401, 'deleted account session remained active', revokedSession);
 
-  console.log('Worker+D1 integration checks passed (53 assertions).');
+  console.log('Worker+D1 integration checks passed (58 assertions).');
 } finally {
   worker.kill('SIGTERM');
   await delay(200);

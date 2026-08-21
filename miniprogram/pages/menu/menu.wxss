@@ -278,9 +278,49 @@ page {
   padding: 120rpx 40rpx;
   gap: 16rpx;
 }
+.empty-image {
+  width: 176rpx;
+  height: 176rpx;
+}
+.empty-title {
+  color: var(--text-color);
+  font-size: 32rpx;
+  font-weight: 900;
+}
 .empty-text {
-  font-size: 30rpx;
+  max-width: 520rpx;
+  font-size: 25rpx;
   color: var(--text-light);
+  line-height: 1.55;
+  text-align: center;
+}
+.empty-actions {
+  display: flex;
+  gap: 16rpx;
+  width: 100%;
+  max-width: 520rpx;
+  margin-top: 12rpx;
+}
+.empty-primary,
+.empty-secondary {
+  flex: 1;
+  min-width: 0;
+  height: 76rpx;
+  margin: 0;
+  border-radius: var(--radius-full);
+  font-size: 26rpx;
+  font-weight: 900;
+  line-height: 72rpx;
+}
+.empty-primary {
+  color: #fff9e8;
+  background: var(--primary-color);
+  box-shadow: 0 6rpx 0 var(--primary-dark);
+}
+.empty-secondary {
+  color: var(--text-secondary);
+  background: var(--card-bg-light);
+  border: 3rpx solid var(--border-color);
 }
 
 /* ── 加载状态 ── */

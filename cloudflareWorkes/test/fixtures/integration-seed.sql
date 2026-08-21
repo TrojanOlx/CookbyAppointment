@@ -1,5 +1,15 @@
 PRAGMA foreign_keys = ON;
 
+DELETE FROM ingredients
+WHERE dishId IN (
+  SELECT d.id FROM dishes d JOIN families f ON f.id = d.familyId
+  WHERE f.createdBy = 'it-template-owner'
+);
+DELETE FROM dishes
+WHERE familyId IN (SELECT id FROM families WHERE createdBy = 'it-template-owner');
+DELETE FROM audit_events WHERE actorUserId = 'it-template-owner';
+DELETE FROM families WHERE createdBy = 'it-template-owner';
+
 DELETE FROM operation_locks WHERE scope LIKE '%it-%';
 DELETE FROM idempotency_keys WHERE familyId LIKE 'it-%';
 DELETE FROM family_invitations WHERE familyId LIKE 'it-%';
@@ -44,7 +54,8 @@ VALUES
   ('it-dissolved', 'openid-dissolved', '已解散家庭成员', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
   ('it-limit-owner', 'openid-limit-owner', '人数上限家庭主', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
   ('it-limit-a', 'openid-limit-a', '人数上限成员A', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
-  ('it-limit-b', 'openid-limit-b', '人数上限成员B', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000);
+  ('it-limit-b', 'openid-limit-b', '人数上限成员B', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
+  ('it-template-owner', 'openid-template-owner', '模板家庭主', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000);
 
 INSERT OR REPLACE INTO families (id, name, timezone, memberLimit, status, createdBy, createdAt, updatedAt)
 VALUES
@@ -75,7 +86,8 @@ VALUES
   ('it-session-dissolved', 'it-dissolved', 'a3be1c0d4b2121e9ba6ba73e4ecb211158d5ed4668b34922c5a96e39f9ba4510', 1700000000000, 4102444800000, 1700000000000),
   ('it-session-limit-owner', 'it-limit-owner', '8d42bc3f3207d45c93f236536ea146ee8ec06e6b6ec9e109ade3ff7f70ac303b', 1700000000000, 4102444800000, 1700000000000),
   ('it-session-limit-a', 'it-limit-a', '24faa8803ad1e4b946e3ad04996e2d3f3ec5d8374376b62cc35233114c67dc1a', 1700000000000, 4102444800000, 1700000000000),
-  ('it-session-limit-b', 'it-limit-b', '8e99ef794b674cb18ac511a29eaa81ae101df622ab1bf66c325fb9acb3b6fea6', 1700000000000, 4102444800000, 1700000000000);
+  ('it-session-limit-b', 'it-limit-b', '8e99ef794b674cb18ac511a29eaa81ae101df622ab1bf66c325fb9acb3b6fea6', 1700000000000, 4102444800000, 1700000000000),
+  ('it-session-template-owner', 'it-template-owner', 'ada1b880ce16d7fac762838d387a0d2113db44ed1aad1e263d712a91ec7563a9', 1700000000000, 4102444800000, 1700000000000);
 
 INSERT INTO family_invitations (id, familyId, role, tokenHash, createdBy, createdAt, expiresAt)
 VALUES (

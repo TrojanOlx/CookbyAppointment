@@ -57,7 +57,7 @@ async function createFamily(request: Request, env: Env): Promise<Response> {
         VALUES (?, ?, ?, 'family.created', 'family', ?, ?)
       `).bind(crypto.randomUUID(), id, auth.user.id, id, now),
     ]);
-    return json({ id, name, timezone, memberLimit: memberLimit(env), role: 'owner' }, 201);
+    return json({ id, name, timezone, memberLimit: memberLimit(env), role: 'owner', needsRecipeSetup: true }, 201);
   });
 }
 

@@ -1,0 +1,11 @@
+{
+  "navigationBarTitleText": "选择菜谱",
+  "usingComponents": {
+    "island-empty": "/components/island-empty/index",
+    "island-loading": "/components/island-loading/index",
+    "mp-icon": "/components/mp-icon/index"
+  },
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark",
+  "disableScroll": true
+}

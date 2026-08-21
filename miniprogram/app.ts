@@ -10,6 +10,7 @@ const VERSION_CHECK_INTERVAL = 5 * 60 * 1000;
 // 需要登录才能访问的页面路径（必须与 app.json 中注册的页面路径一致）
 const needLoginPages = [
   "pages/menu/add/add",
+  "pages/menu/templates/templates",
   "pages/appointment/appointment",
   "pages/appointment/select/select",
   "pages/appointment/booking/booking",

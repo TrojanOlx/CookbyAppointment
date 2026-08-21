@@ -66,16 +66,33 @@ const counts = db.prepare(`
     (SELECT COUNT(*) FROM family_members) AS members,
     (SELECT COUNT(*) FROM shopping_lists WHERE status = 'active') AS shoppingLists,
     (SELECT COUNT(*) FROM dishes) AS dishes,
-    (SELECT COUNT(*) FROM ingredients) AS ingredients
+    (SELECT COUNT(*) FROM ingredients) AS ingredients,
+    (SELECT COUNT(*) FROM recipe_templates WHERE status = 'active') AS recipeTemplates,
+    (SELECT COUNT(*) FROM recipe_template_ingredients) AS templateIngredients
 `).get();
 assert(
   counts.families === 2
     && counts.members === 3
     && counts.shoppingLists === 2
     && counts.dishes === 2
-    && counts.ingredients === 2,
+    && counts.ingredients === 2
+    && counts.recipeTemplates === 10
+    && counts.templateIngredients === 31,
   'legacy backfill counts are incorrect',
   counts,
+);
+
+const templateCoverage = db.prepare(`
+  SELECT type, COUNT(*) AS count
+  FROM recipe_templates
+  WHERE status = 'active'
+  GROUP BY type
+  ORDER BY type
+`).all();
+assert(
+  templateCoverage.length === 5 && templateCoverage.every(row => row.count === 2),
+  'public recipe templates do not cover every menu category evenly',
+  templateCoverage,
 );
 
 const sharedMembers = db.prepare(`
@@ -190,4 +207,4 @@ assert(
 const foreignKeyViolations = db.prepare('PRAGMA foreign_key_check').all();
 assert(foreignKeyViolations.length === 0, 'migration introduced foreign key violations', foreignKeyViolations);
 
-console.log('Production-style migration backfill checks passed (7 assertions).');
+console.log('Production-style migration backfill checks passed (8 assertions).');

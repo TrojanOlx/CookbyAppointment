@@ -66,7 +66,13 @@
       </view>
     </block>
     <view class="empty-tip" wx:else>
-      <view class="empty-text">暂无菜品，请添加</view>
+      <image class="empty-image" src="/images/island/empty-bowl.svg" mode="aspectFit"></image>
+      <view class="empty-title">家庭菜单还是空的</view>
+      <view class="empty-text">可以从公共模板挑选家常菜，也可以自己创建</view>
+      <view class="empty-actions" wx:if="{{canManageMenu}}">
+        <button class="empty-primary" bindtap="goToTemplates">从模板选择</button>
+        <button class="empty-secondary" bindtap="goToManualAdd">手动创建</button>
+      </view>
     </view>
   </scroll-view>
 
