@@ -5,6 +5,7 @@ import { handleDishV2 } from './handlers/dishV2Handler';
 import { handleFamilyV2 } from './handlers/familyV2Handler';
 import { decorateFamilyFileReferences, handleFileV2 } from './handlers/fileV2Handler';
 import { handleInventoryV2 } from './handlers/inventoryV2Handler';
+import { handlePlatformV2 } from './handlers/platformV2Handler';
 import { handlePreferenceV2 } from './handlers/preferenceV2Handler';
 import { handleReviewV2 } from './handlers/reviewV2Handler';
 import { handleShoppingV2 } from './handlers/shoppingV2Handler';
@@ -48,6 +49,10 @@ function requireSupportedClient(request: Request, env: Env, path: string): void 
     const url = new URL(request.url);
     if (url.searchParams.has('id') && url.searchParams.has('expires') && url.searchParams.has('signature')) return;
   }
+  if (path.startsWith('/api/platform/template-assets/')) {
+    const url = new URL(request.url);
+    if (url.searchParams.has('expires') && url.searchParams.has('signature')) return;
+  }
   const current = request.headers.get('X-App-Version')?.trim() || '';
   if (!current || versionIsOlder(current, minimum)) {
     throw new ApiError(
@@ -61,8 +66,10 @@ function requireSupportedClient(request: Request, env: Env, path: string): void 
 
 export function isV2Path(path: string, env: Env): boolean {
   if (path === '/api/user/profile' || path === '/api/user/phone/wx') return true;
+  if (path.startsWith('/api/platform/')) return true;
   if (!familyModeEnabled(env)) return path.startsWith('/api/family/') || path === '/api/user/preferences';
-  return USER_V2_PATHS.has(path) || path === '/api/user/preferences' || FAMILY_PREFIXES.some(prefix => path.startsWith(prefix));
+  return USER_V2_PATHS.has(path) || path === '/api/user/preferences'
+    || FAMILY_PREFIXES.some(prefix => path.startsWith(prefix));
 }
 
 export async function tryHandleV2(request: Request, env: Env): Promise<Response | null> {
@@ -73,7 +80,8 @@ export async function tryHandleV2(request: Request, env: Env): Promise<Response 
   try {
     requireSupportedClient(request, env, path);
     let response: Response;
-    if (path.startsWith('/api/family/')) response = await handleFamilyV2(request, env, path);
+    if (path.startsWith('/api/platform/')) response = await handlePlatformV2(request, env, path);
+    else if (path.startsWith('/api/family/')) response = await handleFamilyV2(request, env, path);
     else if (path === '/api/user/preferences') response = await handlePreferenceV2(request, env);
     else if (path.startsWith('/api/user/')) response = await handleUserV2(request, env, path);
     else if (path.startsWith('/api/inventory/')) response = await handleInventoryV2(request, env, path);

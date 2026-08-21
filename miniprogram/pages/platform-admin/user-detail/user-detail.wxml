@@ -1,0 +1,76 @@
+<view class="platform-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="platform-scroll detail-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <view class="platform-header">
+      <view class="platform-heading">
+        <view class="platform-kicker">ACCOUNT REVIEW</view>
+        <view class="platform-title">用户详情</view>
+        <view class="platform-subtitle">仅维护账号状态和会话，不修改用户资料或家庭内容</view>
+      </view>
+      <button class="platform-back" bindtap="goBack">返回</button>
+    </view>
+
+    <view wx:if="{{loading && !detail}}" class="state-card">
+      <image class="state-icon" src="/images/island/icon-user.svg" mode="aspectFit"></image>
+      <view class="state-title">正在读取用户详情</view>
+    </view>
+    <view wx:elif="{{error && !detail}}" class="state-card">
+      <image class="state-icon error" src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <view class="state-title">用户详情暂时无法加载</view>
+      <view class="state-copy">{{error}}</view>
+      <button class="state-action" bindtap="retry">重新加载</button>
+    </view>
+
+    <block wx:elif="{{detail}}">
+      <view class="platform-card">
+        <view class="detail-user">
+          <image wx:if="{{detail.avatarUrl}}" class="detail-avatar" src="{{detail.avatarUrl}}" mode="aspectFill" referrerPolicy="no-referrer"></image>
+          <view wx:else class="detail-avatar initials-avatar">{{detail.initials}}</view>
+          <view class="detail-user-copy">
+            <text class="detail-user-name">{{detail.nickName}}</text>
+            <text class="detail-user-id">用户 ID：{{detail.id}}</text>
+            <text class="status-badge {{detail.status}}">{{detail.statusLabel}}</text>
+          </view>
+        </view>
+        <view class="detail-block">
+          <text class="detail-label">注册时间</text>
+          <text class="detail-value">{{detail.createTimeLabel}}</text>
+        </view>
+        <view class="detail-block">
+          <text class="detail-label">最近活动</text>
+          <text class="detail-value">{{detail.lastSession ? detail.lastActiveLabel : '暂无会话记录'}}</text>
+          <text class="detail-label">{{detail.sessionCountLabel}}</text>
+        </view>
+        <view wx:if="{{detail.suspendReason}}" class="blocked-copy">停用原因：{{detail.suspendReason}}</view>
+        <view wx:if="{{detail.blockedReason}}" class="blocked-copy">{{detail.blockedReason}}</view>
+      </view>
+
+      <view class="platform-card">
+        <view class="section-title">名下家庭</view>
+        <view wx:if="{{!detail.families.length}}" class="list-empty">该用户暂无家庭记录</view>
+        <view wx:else class="row-list">
+          <view wx:for="{{detail.families}}" wx:key="id" class="family-summary">
+            <view class="family-summary-head">
+              <text class="family-summary-name">{{item.name}}</text>
+              <text class="status-badge {{item.status}}">{{item.status === 'active' ? '正常' : item.status}}</text>
+            </view>
+            <text class="family-summary-meta">{{item.ownerLabel}} · {{item.metricsLabel}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{detail.status === 'active' && detail.canSuspend}}" class="platform-card">
+        <view class="section-title">停用说明</view>
+        <view class="section-copy">停用会撤销账号全部登录会话；恢复账号后，用户仍需重新登录。</view>
+        <textarea class="reason-input" maxlength="200" placeholder="填写停用原因（必填）" value="{{reason}}" bindinput="onReasonInput"></textarea>
+      </view>
+    </block>
+    <view class="footer-pad"></view>
+  </scroll-view>
+
+  <view wx:if="{{detail}}" class="bottom-actions">
+    <button class="bottom-button" bindtap="onRevokeSessions" loading="{{actionLoading}}" disabled="{{actionLoading || !detail.canRevoke}}">撤销会话</button>
+    <button wx:if="{{detail.status === 'suspended'}}" class="bottom-button primary" bindtap="onRestore" loading="{{actionLoading}}" disabled="{{actionLoading}}">恢复账号</button>
+    <button wx:elif="{{detail.canSuspend}}" class="bottom-button danger" bindtap="onSuspend" loading="{{actionLoading}}" disabled="{{actionLoading}}">停用账号</button>
+  </view>
+</view>

@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "食材目录",
+  "usingComponents": {
+    "mp-icon": "/components/mp-icon/index"
+  },
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark",
+  "disableScroll": true
+}

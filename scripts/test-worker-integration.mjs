@@ -23,6 +23,16 @@ async function api(path, token, familyId, init = {}) {
   return { status: response.status, data };
 }
 
+async function apiForm(path, token, form) {
+  const headers = new Headers({
+    Authorization: `Bearer ${token}`,
+    'X-App-Version': '2.1.0-test',
+  });
+  const response = await fetch(`${origin}${path}`, { method: 'POST', headers, body: form });
+  const data = await response.json();
+  return { status: response.status, data };
+}
+
 function assert(condition, message, details) {
   if (!condition) throw new Error(`${message}: ${JSON.stringify(details)}`);
 }
@@ -58,6 +68,61 @@ try {
     outdatedClient.status === 426 && outdatedClient.data.code === 'CLIENT_UPDATE_REQUIRED',
     'outdated client was not rejected with the version-gate contract',
     outdatedClient,
+  );
+
+  const regularPlatformStatus = await api('/api/platform/status', 'token-owner-a');
+  const adminPlatformStatus = await api('/api/platform/status', 'token-platform-admin');
+  const forbiddenPlatformOverview = await api('/api/platform/overview', 'token-owner-a');
+  const platformOverview = await api('/api/platform/overview', 'token-platform-admin');
+  assert(
+    regularPlatformStatus.status === 200
+      && regularPlatformStatus.data.isPlatformAdmin === false
+      && adminPlatformStatus.status === 200
+      && adminPlatformStatus.data.isPlatformAdmin === true
+      && adminPlatformStatus.data.userId === 'it-platform-admin'
+      && forbiddenPlatformOverview.status === 403
+      && forbiddenPlatformOverview.data.code === 'PLATFORM_ADMIN_REQUIRED'
+      && platformOverview.status === 200
+      && Number(platformOverview.data.ingredients?.total || 0) > 0,
+    'platform administrator boundary failed',
+    { regularPlatformStatus, adminPlatformStatus, forbiddenPlatformOverview, platformOverview },
+  );
+
+  const platformUsers = await api('/api/platform/users?pageSize=50', 'token-platform-admin');
+  const platformFamilies = await api('/api/platform/families?pageSize=50', 'token-platform-admin');
+  const exposedUser = platformUsers.data.list?.find(item => item.id === 'it-owner-a');
+  assert(
+    platformUsers.status === 200
+      && exposedUser
+      && !Object.prototype.hasOwnProperty.call(exposedUser, 'openid')
+      && !Object.prototype.hasOwnProperty.call(exposedUser, 'phoneNumber')
+      && platformFamilies.status === 200
+      && platformFamilies.data.list.every(item => !Object.prototype.hasOwnProperty.call(item, 'dishes')),
+    'platform metadata endpoints leaked private business or identity fields',
+    { platformUsers, platformFamilies },
+  );
+
+  const blockedOwnerSuspension = await api('/api/platform/users/it-owner-a/suspend', 'token-platform-admin', undefined, {
+    method: 'POST', body: JSON.stringify({ reason: '集成测试' }),
+  });
+  const suspendedTarget = await api('/api/platform/users/it-platform-target/suspend', 'token-platform-admin', undefined, {
+    method: 'POST', body: JSON.stringify({ reason: '集成测试停用' }),
+  });
+  const revokedSuspendedSession = await api('/api/platform/status', 'token-platform-target');
+  const restoredTarget = await api('/api/platform/users/it-platform-target/restore', 'token-platform-admin', undefined, {
+    method: 'POST',
+  });
+  const oldSessionAfterRestore = await api('/api/platform/status', 'token-platform-target');
+  assert(
+    blockedOwnerSuspension.status === 409
+      && blockedOwnerSuspension.data.code === 'ACTIVE_FAMILY_OWNER'
+      && suspendedTarget.status === 200
+      && revokedSuspendedSession.status === 403
+      && revokedSuspendedSession.data.code === 'ACCOUNT_SUSPENDED'
+      && restoredTarget.status === 200
+      && oldSessionAfterRestore.status === 401,
+    'platform suspension, owner protection, or session revocation failed',
+    { blockedOwnerSuspension, suspendedTarget, revokedSuspendedSession, restoredTarget, oldSessionAfterRestore },
   );
 
   const ownerFamilies = await api('/api/family/list', 'token-owner-a');
@@ -130,6 +195,156 @@ try {
     crossFamilyTemplateCopy.status === 404,
     'an imported template copy leaked into another family',
     crossFamilyTemplateCopy,
+  );
+
+  const assetForm = new FormData();
+  assetForm.append('file', new File([new Uint8Array([255, 216, 255, 217])], 'template.jpg', { type: 'image/jpeg' }));
+  const uploadedTemplateAsset = await apiForm('/api/platform/template-assets', 'token-platform-admin', assetForm);
+  const forbiddenAssetForm = new FormData();
+  forbiddenAssetForm.append('file', new File([new Uint8Array([255, 216, 255, 217])], 'forbidden.jpg', { type: 'image/jpeg' }));
+  const forbiddenTemplateAsset = await apiForm('/api/platform/template-assets', 'token-owner-a', forbiddenAssetForm);
+  assert(
+    uploadedTemplateAsset.status === 201
+      && uploadedTemplateAsset.data.filePath?.startsWith('/api/platform/template-assets/')
+      && forbiddenTemplateAsset.status === 403,
+    'platform template asset upload permissions failed',
+    { uploadedTemplateAsset, forbiddenTemplateAsset },
+  );
+
+  const createdPlatformTemplate = await api('/api/platform/recipe-templates', 'token-platform-admin', undefined, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: '平台测试菜谱', type: '炒菜', spicy: '不辣', images: [uploadedTemplateAsset.data.filePath],
+      steps: ['准备食材', '下锅炒熟'], notice: '', remark: '', reference: '', sortOrder: 999,
+      ingredients: [{ name: '平台测试食材', amount: '100g' }],
+    }),
+  });
+  const publishedPlatformTemplate = await api(
+    `/api/platform/recipe-templates/${encodeURIComponent(createdPlatformTemplate.data.id)}/publish`,
+    'token-platform-admin', undefined, {
+      method: 'POST',
+      body: JSON.stringify({ expectedUpdatedAt: createdPlatformTemplate.data.updatedAt }),
+    },
+  );
+  const publicTemplatesAfterPublish = await api('/api/dish/templates?pageSize=50', 'token-starter-owner', templateFamilyId);
+  const publishedTemplate = publicTemplatesAfterPublish.data.list?.find(item => item.id === createdPlatformTemplate.data.id);
+  const signedTemplateAssetUrl = new URL(publishedTemplate?.images?.[0] || `${origin}/missing`);
+  const signedTemplateAssetResponse = await fetch(`${origin}${signedTemplateAssetUrl.pathname}${signedTemplateAssetUrl.search}`);
+  assert(
+    createdPlatformTemplate.status === 201
+      && createdPlatformTemplate.data.status === 'archived'
+      && publishedPlatformTemplate.status === 200
+      && publishedTemplate?.name === '平台测试菜谱'
+      && !Object.prototype.hasOwnProperty.call(publishedTemplate, 'createdBy')
+      && signedTemplateAssetResponse.status === 200,
+    'platform recipe template creation or publication failed',
+    { createdPlatformTemplate, publishedPlatformTemplate, publishedTemplate },
+  );
+
+  const importedPlatformTemplate = await api('/api/dish/templates/import', 'token-starter-owner', templateFamilyId, {
+    method: 'POST', body: JSON.stringify({ templateIds: [createdPlatformTemplate.data.id] }),
+  });
+  const platformTemplateDetail = await api(
+    `/api/platform/recipe-templates/${encodeURIComponent(createdPlatformTemplate.data.id)}`,
+    'token-platform-admin',
+  );
+  const updatedPlatformTemplate = await api(
+    `/api/platform/recipe-templates/${encodeURIComponent(createdPlatformTemplate.data.id)}`,
+    'token-platform-admin', undefined, {
+      method: 'PUT',
+      body: JSON.stringify({
+        ...platformTemplateDetail.data,
+        name: '平台测试菜谱新版',
+        images: [],
+        expectedUpdatedAt: platformTemplateDetail.data.updatedAt,
+      }),
+    },
+  );
+  const importedPlatformDish = await api(
+    `/api/dish/detail?id=${encodeURIComponent(importedPlatformTemplate.data.imported[0].dishId)}`,
+    'token-starter-owner', templateFamilyId,
+  );
+  const deletedPlatformAsset = await api(
+    `/api/platform/template-assets/${encodeURIComponent(uploadedTemplateAsset.data.id)}`,
+    'token-platform-admin', undefined, { method: 'DELETE' },
+  );
+  const importedFamilyImageUrl = importedPlatformDish.data.images?.[0] || '';
+  const importedFamilyImageLocation = importedFamilyImageUrl ? new URL(importedFamilyImageUrl) : null;
+  const importedFamilyImage = importedFamilyImageLocation
+    ? await fetch(`${origin}${importedFamilyImageLocation.pathname}${importedFamilyImageLocation.search}`)
+    : null;
+  const stalePlatformTemplateArchive = await api(
+    `/api/platform/recipe-templates/${encodeURIComponent(createdPlatformTemplate.data.id)}/archive`,
+    'token-platform-admin', undefined, {
+      method: 'POST',
+      body: JSON.stringify({ expectedUpdatedAt: createdPlatformTemplate.data.updatedAt }),
+    },
+  );
+  const archivedPlatformTemplate = await api(
+    `/api/platform/recipe-templates/${encodeURIComponent(createdPlatformTemplate.data.id)}/archive`,
+    'token-platform-admin', undefined, {
+      method: 'POST',
+      body: JSON.stringify({ expectedUpdatedAt: updatedPlatformTemplate.data.updatedAt }),
+    },
+  );
+  const publicTemplatesAfterArchive = await api('/api/dish/templates?pageSize=50', 'token-starter-owner', templateFamilyId);
+  assert(
+    importedPlatformTemplate.status === 201
+      && updatedPlatformTemplate.status === 200
+      && updatedPlatformTemplate.data.name === '平台测试菜谱新版'
+      && importedPlatformDish.status === 200
+      && importedPlatformDish.data.name === '平台测试菜谱'
+      && importedFamilyImageLocation?.pathname === '/api/file/download'
+      && deletedPlatformAsset.status === 200
+      && importedFamilyImage?.status === 200
+      && stalePlatformTemplateArchive.status === 409
+      && archivedPlatformTemplate.status === 200
+      && !publicTemplatesAfterArchive.data.list.some(item => item.id === createdPlatformTemplate.data.id),
+    'template editing or archiving changed an imported family copy',
+    {
+      importedPlatformTemplate,
+      updatedPlatformTemplate,
+      importedPlatformDish,
+      deletedPlatformAsset,
+      importedFamilyImageStatus: importedFamilyImage?.status,
+      workerLogs: logs.slice(-4000),
+      stalePlatformTemplateArchive,
+      archivedPlatformTemplate,
+    },
+  );
+
+  const createdCatalogIngredient = await api('/api/platform/ingredients', 'token-platform-admin', undefined, {
+    method: 'POST',
+    body: JSON.stringify({ canonicalName: '平台目录食材', category: '测试', defaultUnit: 'g', aliases: ['目录别名'] }),
+  });
+  const updatedPlatformCatalogIngredient = await api(
+    `/api/platform/ingredients/${encodeURIComponent(createdCatalogIngredient.data.id)}`,
+    'token-platform-admin', undefined, {
+      method: 'PUT',
+      body: JSON.stringify({
+        canonicalName: '平台目录食材', category: '蔬菜', defaultUnit: 'kg', aliases: ['目录别名'],
+        expectedUpdatedAt: createdCatalogIngredient.data.updatedAt,
+      }),
+    },
+  );
+  const platformAudit = await api('/api/platform/audit?pageSize=100', 'token-platform-admin');
+  const filteredPlatformAudit = await api(
+    `/api/platform/audit?pageSize=100&actorUserId=it-platform-admin&action=platform.ingredient.updated&from=${Date.now() - 86_400_000}&to=${Date.now() + 86_400_000}`,
+    'token-platform-admin',
+  );
+  assert(
+    createdCatalogIngredient.status === 201
+      && updatedPlatformCatalogIngredient.status === 200
+      && updatedPlatformCatalogIngredient.data.category === '蔬菜'
+      && platformAudit.status === 200
+      && platformAudit.data.list.some(item => item.action === 'platform.recipe_template.updated')
+      && platformAudit.data.list.every(item => !Object.prototype.hasOwnProperty.call(item, 'familyId'))
+      && filteredPlatformAudit.status === 200
+      && filteredPlatformAudit.data.list.length === 1
+      && filteredPlatformAudit.data.list[0].actorUserId === 'it-platform-admin'
+      && filteredPlatformAudit.data.list[0].action === 'platform.ingredient.updated',
+    'platform ingredient maintenance or audit trail failed',
+    { createdCatalogIngredient, updatedPlatformCatalogIngredient, platformAudit, filteredPlatformAudit },
   );
 
   const rejoinInvite = await api('/api/family/invite', 'token-owner-a', 'it-family-a', {
@@ -830,7 +1045,7 @@ try {
   const revokedSession = await api('/api/user/export', 'token-member-a');
   assert(revokedSession.status === 401, 'deleted account session remained active', revokedSession);
 
-  console.log('Worker+D1 integration checks passed (58 assertions).');
+  console.log('Worker+D1 integration checks passed (65 assertions).');
 } finally {
   worker.kill('SIGTERM');
   await delay(200);

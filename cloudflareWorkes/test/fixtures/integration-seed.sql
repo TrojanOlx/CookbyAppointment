@@ -1,5 +1,10 @@
 PRAGMA foreign_keys = ON;
 
+DELETE FROM recipe_templates WHERE createdBy = 'it-platform-admin';
+DELETE FROM platform_files WHERE uploadedBy = 'it-platform-admin';
+DELETE FROM audit_events WHERE actorUserId IN ('it-platform-admin', 'it-platform-target');
+DELETE FROM ingredient_catalog WHERE canonicalName IN ('平台测试食材', '平台目录食材');
+
 DELETE FROM ingredients
 WHERE dishId IN (
   SELECT d.id FROM dishes d JOIN families f ON f.id = d.familyId
@@ -55,7 +60,12 @@ VALUES
   ('it-limit-owner', 'openid-limit-owner', '人数上限家庭主', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
   ('it-limit-a', 'openid-limit-a', '人数上限成员A', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
   ('it-limit-b', 'openid-limit-b', '人数上限成员B', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
-  ('it-template-owner', 'openid-template-owner', '模板家庭主', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000);
+  ('it-template-owner', 'openid-template-owner', '模板家庭主', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
+  ('it-platform-admin', 'openid-platform-admin', '平台管理员', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000),
+  ('it-platform-target', 'openid-platform-target', '平台测试用户', '', 0, '', '', '', 'zh_CN', 0, 1700000000000, 1700000000000);
+
+INSERT OR REPLACE INTO platform_admins (userId, role, status, createdAt, updatedAt)
+VALUES ('it-platform-admin', 'super_admin', 'active', 1700000000000, 1700000000000);
 
 INSERT OR REPLACE INTO families (id, name, timezone, memberLimit, status, createdBy, createdAt, updatedAt)
 VALUES
@@ -87,7 +97,9 @@ VALUES
   ('it-session-limit-owner', 'it-limit-owner', '8d42bc3f3207d45c93f236536ea146ee8ec06e6b6ec9e109ade3ff7f70ac303b', 1700000000000, 4102444800000, 1700000000000),
   ('it-session-limit-a', 'it-limit-a', '24faa8803ad1e4b946e3ad04996e2d3f3ec5d8374376b62cc35233114c67dc1a', 1700000000000, 4102444800000, 1700000000000),
   ('it-session-limit-b', 'it-limit-b', '8e99ef794b674cb18ac511a29eaa81ae101df622ab1bf66c325fb9acb3b6fea6', 1700000000000, 4102444800000, 1700000000000),
-  ('it-session-template-owner', 'it-template-owner', 'ada1b880ce16d7fac762838d387a0d2113db44ed1aad1e263d712a91ec7563a9', 1700000000000, 4102444800000, 1700000000000);
+  ('it-session-template-owner', 'it-template-owner', 'ada1b880ce16d7fac762838d387a0d2113db44ed1aad1e263d712a91ec7563a9', 1700000000000, 4102444800000, 1700000000000),
+  ('it-session-platform-admin', 'it-platform-admin', 'a458de5e8f8e54aff8dfd351fd6302d31afe4323570ea897c9ce73ce26d2be48', 1700000000000, 4102444800000, 1700000000000),
+  ('it-session-platform-target', 'it-platform-target', '3555832d5ae57f724a7abd546fb640a1e8b48ed212de5dedba41dda0c8c36519', 1700000000000, 4102444800000, 1700000000000);
 
 INSERT INTO family_invitations (id, familyId, role, tokenHash, createdBy, createdAt, expiresAt)
 VALUES (

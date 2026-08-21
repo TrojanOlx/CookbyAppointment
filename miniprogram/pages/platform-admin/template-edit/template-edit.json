@@ -1,0 +1,9 @@
+{
+  "navigationBarTitleText": "编辑公共模板",
+  "usingComponents": {
+    "mp-icon": "/components/mp-icon/index"
+  },
+  "backgroundColor": "#a8d8b9",
+  "backgroundTextStyle": "dark",
+  "disableScroll": true
+}

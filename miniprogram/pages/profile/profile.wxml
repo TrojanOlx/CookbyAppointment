@@ -88,9 +88,9 @@
       </view>
     </view>
 
-    <!-- 管理员功能 -->
+    <!-- 家庭管理 -->
     <view class="menu-section" wx:if="{{isAdmin || canManageFamily}}">
-      <view class="menu-title">管理员功能</view>
+      <view class="menu-title">家庭管理</view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/menu/menu">
         <image class="menu-icon-img" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
         <text class="menu-text">编辑菜单</text>
@@ -114,6 +114,15 @@
       <view wx:if="{{isAdmin}}" class="menu-item" bindtap="navigateTo" data-url="/pages/profile/admin/files/files">
         <image class="menu-icon-img" src="/images/island/icon-file.svg" mode="aspectFit"></image>
         <text class="menu-text">文件管理</text>
+        <text class="menu-arrow">></text>
+      </view>
+    </view>
+
+    <view class="menu-section" wx:if="{{isPlatformAdmin}}">
+      <view class="menu-title">平台维护</view>
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/platform-admin/index/index">
+        <image class="menu-icon-img" src="/images/island/icon-stats.svg" mode="aspectFit"></image>
+        <text class="menu-text">平台管理</text>
         <text class="menu-arrow">></text>
       </view>
     </view>

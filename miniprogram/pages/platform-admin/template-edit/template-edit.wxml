@@ -1,0 +1,108 @@
+<view class="editor-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="editor-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <view class="editor-heading">
+      <view class="heading-kicker">{{isEdit ? 'EDIT TEMPLATE' : 'NEW TEMPLATE'}}</view>
+      <view class="heading-row">
+        <view class="heading-copy">
+          <view class="heading-title">{{isEdit ? '编辑公共模板' : '新建公共模板'}}</view>
+          <view class="heading-subtitle">保存后先保持未上架，确认内容完整后再发布</view>
+        </view>
+        <button class="heading-close" bindtap="closeEditor" disabled="{{saving}}" aria-label="关闭">
+          <mp-icon icon="close" size="20" color="#725d42"></mp-icon>
+        </button>
+      </view>
+    </view>
+
+    <view wx:if="{{loading}}" class="state-card">
+      <view class="state-spinner"></view><text>正在加载模板</text>
+    </view>
+    <view wx:elif="{{loadError}}" class="state-card">
+      <view class="state-mark">!</view><text>{{loadError}}</text>
+      <button class="state-button" bindtap="retryLoad">重新加载</button>
+    </view>
+    <block wx:else>
+      <view class="editor-card">
+        <view class="section-title">基本信息</view>
+        <view class="field-group">
+          <view class="field-label required">菜品名称</view>
+          <input class="field-input" placeholder="例如：番茄炒蛋" value="{{template.name}}" maxlength="40" bindinput="nameInput" />
+        </view>
+        <view class="field-row">
+          <view class="field-group field-half">
+            <view class="field-label required">菜品类型</view>
+            <picker mode="selector" range="{{typeOptions}}" value="{{typeIndex}}" bindchange="typeChange">
+              <view class="field-picker">{{template.type || '请选择'}}<text>⌄</text></view>
+            </picker>
+          </view>
+          <view class="field-group field-half">
+            <view class="field-label">辣度</view>
+            <picker mode="selector" range="{{spicyOptions}}" value="{{spicyIndex}}" bindchange="spicyChange">
+              <view class="field-picker">{{template.spicy || '不辣'}}<text>⌄</text></view>
+            </picker>
+          </view>
+        </view>
+      </view>
+
+      <view class="editor-card">
+        <view class="section-heading-row"><view class="section-title">菜品图片</view><text class="section-count">{{template.images.length}} / 6</text></view>
+        <view class="image-grid">
+          <view wx:for="{{template.images}}" wx:key="*this" class="image-item">
+            <image class="dish-image" src="{{item}}" mode="aspectFill"></image>
+            <view class="image-delete" catchtap="deleteImage" data-index="{{index}}">×</view>
+          </view>
+          <view wx:if="{{template.images.length < 6}}" class="image-add" bindtap="chooseImage">
+            <view class="image-plus"></view><text>{{uploadingImage ? '上传中' : '添加图片'}}</text>
+          </view>
+        </view>
+        <view class="section-hint">仅支持 JPG、PNG、WebP，单张不超过 5 MB</view>
+      </view>
+
+      <view class="editor-card">
+        <view class="section-heading-row"><view class="section-title">食材清单</view><text class="section-count">{{template.ingredients.length}} 项</text></view>
+        <view class="ingredient-list">
+          <view wx:for="{{template.ingredients}}" wx:key="localKey" class="ingredient-row">
+            <view class="ingredient-index">{{index + 1}}</view>
+            <view class="ingredient-fields">
+              <input class="ingredient-name" placeholder="食材名称" value="{{item.name}}" data-index="{{index}}" bindinput="ingredientNameInput" />
+              <view class="ingredient-measure-row">
+                <input class="ingredient-amount" placeholder="用量" value="{{item.amount}}" data-index="{{index}}" bindinput="ingredientAmountInput" />
+                <input class="ingredient-unit" placeholder="单位" value="{{item.unit}}" data-index="{{index}}" bindinput="ingredientUnitInput" />
+              </view>
+            </view>
+            <button class="row-delete" catchtap="deleteIngredient" data-index="{{index}}" aria-label="删除食材">×</button>
+          </view>
+        </view>
+        <button class="inline-add" bindtap="addIngredient"><text>＋</text>添加食材</button>
+      </view>
+
+      <view class="editor-card">
+        <view class="section-heading-row"><view class="section-title">制作步骤</view><text class="section-count">{{template.steps.length}} 步</text></view>
+        <view class="step-list">
+          <view wx:for="{{template.steps}}" wx:key="index" class="step-row">
+            <view class="step-index">{{index + 1}}</view>
+            <textarea class="step-input" placeholder="写下这一步怎么做" maxlength="500" value="{{item}}" data-index="{{index}}" bindinput="stepInput" auto-height="true"></textarea>
+            <button class="row-delete step-delete" catchtap="deleteStep" data-index="{{index}}" aria-label="删除步骤">×</button>
+          </view>
+        </view>
+        <button class="inline-add" bindtap="addStep"><text>＋</text>添加步骤</button>
+      </view>
+
+      <view class="editor-card">
+        <view class="section-title">补充说明</view>
+        <textarea class="note-input" placeholder="可填写烹饪提醒、适合人数等信息" maxlength="300" value="{{template.notice}}" bindinput="noticeInput" auto-height="true"></textarea>
+        <view class="reference-field"><view class="field-label">参考链接（可选）</view><input class="field-input" placeholder="https://" value="{{template.reference}}" maxlength="300" bindinput="referenceInput" /></view>
+      </view>
+      <view class="editor-bottom-space"></view>
+    </block>
+  </scroll-view>
+
+  <view class="editor-bottom-fixed">
+    <view class="editor-bottom-dock"></view>
+    <view class="editor-actions">
+      <button class="cancel-button" bindtap="closeEditor" disabled="{{saving}}">取消</button>
+      <button class="save-button" bindtap="saveTemplate" loading="{{saving}}" disabled="{{saving || loading || uploadingImage}}">{{saving ? '保存中' : '保存模板'}}</button>
+    </view>
+    <view class="editor-safe-area"></view>
+  </view>
+</view>

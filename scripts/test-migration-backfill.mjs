@@ -68,7 +68,9 @@ const counts = db.prepare(`
     (SELECT COUNT(*) FROM dishes) AS dishes,
     (SELECT COUNT(*) FROM ingredients) AS ingredients,
     (SELECT COUNT(*) FROM recipe_templates WHERE status = 'active') AS recipeTemplates,
-    (SELECT COUNT(*) FROM recipe_template_ingredients) AS templateIngredients
+    (SELECT COUNT(*) FROM recipe_template_ingredients) AS templateIngredients,
+    (SELECT COUNT(*) FROM platform_admins WHERE userId = 'e57743c5-7d24-4435-97eb-9a6d0dfffd23' AND status = 'active') AS platformAdmins,
+    (SELECT COUNT(*) FROM users WHERE status = 'active') AS activeUsers
 `).get();
 assert(
   counts.families === 2
@@ -77,7 +79,9 @@ assert(
     && counts.dishes === 2
     && counts.ingredients === 2
     && counts.recipeTemplates === 10
-    && counts.templateIngredients === 31,
+    && counts.templateIngredients === 31
+    && counts.platformAdmins === 1
+    && counts.activeUsers === 3,
   'legacy backfill counts are incorrect',
   counts,
 );
@@ -207,4 +211,4 @@ assert(
 const foreignKeyViolations = db.prepare('PRAGMA foreign_key_check').all();
 assert(foreignKeyViolations.length === 0, 'migration introduced foreign key violations', foreignKeyViolations);
 
-console.log('Production-style migration backfill checks passed (8 assertions).');
+console.log('Production-style migration backfill checks passed (10 assertions).');

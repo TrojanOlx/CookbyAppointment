@@ -1,0 +1,20 @@
+@import "../platform-admin.wxss";
+
+.detail-scroll {
+  padding-bottom: calc(190rpx + env(safe-area-inset-bottom));
+}
+
+.initials-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-dark);
+  font-size: 42rpx;
+  font-weight: 900;
+}
+
+.detail-user-copy .status-badge {
+  margin-top: 12rpx;
+}
+
+.footer-pad { height: 40rpx; }

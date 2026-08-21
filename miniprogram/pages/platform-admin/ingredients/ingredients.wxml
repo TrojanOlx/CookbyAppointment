@@ -1,0 +1,47 @@
+<view class="catalog-page">
+  <view class="fixed-page-bg"></view>
+  <view class="catalog-header">
+    <view class="header-kicker">INGREDIENT CATALOG</view>
+    <view class="header-row">
+      <view class="header-copy"><view class="header-title">食材目录</view><view class="header-subtitle">统一菜谱和库存里的食材名称与单位</view></view>
+      <button class="header-close" bindtap="goBack" aria-label="返回"><mp-icon ext-class="back-icon" icon="arrow" size="20" color="#725d42"></mp-icon></button>
+    </view>
+  </view>
+
+  <scroll-view class="catalog-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="refresh" bindscrolltolower="loadMore">
+    <view class="search-card">
+      <view class="search-wrap"><mp-icon icon="search" size="17" color="#8c806d"></mp-icon><input class="search-input" placeholder="搜索标准名称或别名" value="{{keyword}}" bindinput="keywordInput" confirm-type="search" bindconfirm="submitSearch" /><view wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">×</view></view>
+      <scroll-view class="category-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="category-row"><view wx:for="{{categoryOptions}}" wx:key="*this" class="category-pill {{category === item ? 'active' : ''}}" data-value="{{item}}" bindtap="selectCategory">{{item || '全部分类'}}</view></view>
+      </scroll-view>
+    </view>
+
+    <view class="catalog-summary"><view class="summary-title">标准食材</view><view class="summary-count">{{total}} 项</view></view>
+    <view wx:if="{{loading && !ingredients.length}}" class="state-card"><view class="state-spinner"></view><text>正在加载目录</text></view>
+    <view wx:elif="{{error && !ingredients.length}}" class="state-card"><view class="state-mark">!</view><text>{{error}}</text><button class="state-button" bindtap="retry">重新加载</button></view>
+    <view wx:elif="{{!loading && !ingredients.length}}" class="state-card"><view class="state-mark state-mark-soft">○</view><text>还没有食材目录</text><view class="state-hint">新建标准名称后，模板和库存可以共用它</view><button class="state-button" bindtap="openCreate">添加食材</button></view>
+    <view wx:else class="ingredient-list">
+      <view wx:if="{{loading && ingredients.length}}" class="inline-loading">正在更新…</view>
+      <view wx:for="{{ingredients}}" wx:key="id" class="ingredient-card">
+        <view class="ingredient-card-copy"><view class="ingredient-name">{{item.canonicalName}}</view><view class="ingredient-meta"><text>{{item.category || '未分类'}}</text><text class="meta-dot">·</text><text>默认单位 {{item.defaultUnit || '未设置'}}</text></view><view wx:if="{{item.aliasText}}" class="alias-copy">别名：{{item.aliasText}}</view></view>
+        <button class="edit-icon" bindtap="openEdit" data-id="{{item.id}}" aria-label="编辑食材"><text>改</text></button>
+      </view>
+      <view wx:if="{{loadingMore}}" class="inline-loading">正在加载更多…</view>
+      <view wx:elif="{{!hasMore}}" class="list-end">已显示全部目录</view>
+    </view>
+    <view class="scroll-bottom-space"></view>
+  </scroll-view>
+
+  <view class="catalog-fab-wrap"><button class="catalog-fab" bindtap="openCreate"><text class="fab-plus">+</text><text>添加食材</text></button></view>
+
+  <view wx:if="{{editorVisible}}" class="editor-overlay" catchtap="closeEditor">
+    <view class="editor-sheet" catchtap="stopPropagation">
+      <view class="sheet-heading"><view><view class="sheet-kicker">{{editingId ? 'EDIT ITEM' : 'NEW ITEM'}}</view><view class="sheet-title">{{editingId ? '编辑食材' : '添加食材'}}</view></view><button class="sheet-close" bindtap="closeEditor" aria-label="关闭"><mp-icon icon="close" size="19" color="#725d42"></mp-icon></button></view>
+      <view class="sheet-field"><view class="field-label required">标准名称</view><input class="field-input" placeholder="例如：西红柿" value="{{form.canonicalName}}" maxlength="30" bindinput="canonicalNameInput" /></view>
+      <view class="sheet-row"><view class="sheet-field sheet-half"><view class="field-label">分类</view><input class="field-input" placeholder="例如：蔬菜" value="{{form.category}}" maxlength="20" bindinput="categoryInput" /></view><view class="sheet-field sheet-half"><view class="field-label">默认单位</view><input class="field-input" placeholder="例如：g / 个" value="{{form.defaultUnit}}" maxlength="10" bindinput="defaultUnitInput" /></view></view>
+      <view class="sheet-field"><view class="field-label">别名</view><input class="field-input" placeholder="多个别名用逗号分隔" value="{{form.aliasesText}}" maxlength="120" bindinput="aliasesInput" /><view class="field-hint">用于识别菜谱中常见的叫法，不会替换标准名称</view></view>
+      <view class="sheet-actions"><button class="sheet-cancel" bindtap="closeEditor">取消</button><button class="sheet-save" bindtap="saveIngredient" loading="{{saving}}" disabled="{{saving}}">保存</button></view>
+      <view class="sheet-safe-area"></view>
+    </view>
+  </view>
+</view>

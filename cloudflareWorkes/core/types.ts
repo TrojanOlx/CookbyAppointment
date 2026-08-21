@@ -43,6 +43,7 @@ export interface UserRow {
   nickName: string | null;
   avatarUrl: string | null;
   phoneNumber: string | null;
+  status: 'active' | 'suspended';
 }
 
 export interface AuthContext {

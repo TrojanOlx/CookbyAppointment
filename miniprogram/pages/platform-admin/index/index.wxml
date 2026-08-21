@@ -1,0 +1,110 @@
+<view class="platform-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="platform-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{loading}}" bindrefresherrefresh="onPullDownRefresh">
+    <view class="platform-header">
+      <view class="platform-heading">
+        <view class="platform-kicker">PLATFORM CONTROL</view>
+        <view class="platform-title">平台管理</view>
+        <view class="platform-subtitle">维护公共能力，查看系统运行状态</view>
+      </view>
+      <button class="platform-back" bindtap="goBack">返回</button>
+    </view>
+
+    <view wx:if="{{loading && !error}}" class="state-card">
+      <image class="state-icon" src="/images/island/icon-stats.svg" mode="aspectFit"></image>
+      <view class="state-title">正在读取平台数据</view>
+      <view class="state-copy">请稍候，平台状态和概览即将显示。</view>
+    </view>
+
+    <view wx:elif="{{error}}" class="state-card">
+      <image class="state-icon error" src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <view class="state-title">平台数据暂时无法加载</view>
+      <view class="state-copy">{{error}}</view>
+      <button class="state-action" bindtap="retry">重新加载</button>
+    </view>
+
+    <view wx:elif="{{!isPlatformAdmin}}" class="permission-card">
+      <image class="state-icon error" src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <view class="state-title">没有平台管理权限</view>
+      <view class="state-copy">此页面仅对平台维护人员开放，家庭管理员权限不包含平台管理。</view>
+    </view>
+
+    <block wx:elif="{{isPlatformAdmin}}">
+      <view class="platform-card">
+        <view class="section-title">平台概览</view>
+        <view class="section-copy">数据仅用于平台运维统计，不展示家庭内的具体内容。</view>
+        <view class="stat-grid">
+          <view class="stat-card mint">
+            <text class="stat-number">{{overview.totalUsers}}</text>
+            <text class="stat-label">注册用户</text>
+          </view>
+          <view class="stat-card">
+            <text class="stat-number">{{overview.totalFamilies}}</text>
+            <text class="stat-label">家庭总数</text>
+          </view>
+          <view class="stat-card orange">
+            <text class="stat-number">{{overview.totalRecipeTemplates}}</text>
+            <text class="stat-label">公共菜谱模板</text>
+          </view>
+          <view class="stat-card coral">
+            <text class="stat-number">{{overview.suspendedUsers}}</text>
+            <text class="stat-label">已停用用户</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="platform-card">
+        <view class="section-title">平台维护</view>
+        <view class="section-copy">进入对应模块进行查看和处理，所有操作都会留下审计记录。</view>
+        <view class="quick-list">
+          <view class="quick-item" bindtap="openUsers">
+            <image class="quick-icon" src="/images/island/icon-user.svg" mode="aspectFit"></image>
+            <view class="quick-copy">
+              <text class="quick-title">注册用户</text>
+              <text class="quick-subtitle">{{overview.activeUsers}} 位正常使用</text>
+            </view>
+            <text class="quick-arrow">›</text>
+          </view>
+          <view class="quick-item" bindtap="openFamilies">
+            <image class="quick-icon" src="/images/icons/icon-home.svg" mode="aspectFit"></image>
+            <view class="quick-copy">
+              <text class="quick-title">家庭巡检</text>
+              <text class="quick-subtitle">{{overview.activeFamilies}} 个活跃家庭</text>
+            </view>
+            <text class="quick-arrow">›</text>
+          </view>
+          <view class="quick-item" bindtap="openAudit">
+            <image class="quick-icon" src="/images/island/icon-file.svg" mode="aspectFit"></image>
+            <view class="quick-copy">
+              <text class="quick-title">审计日志</text>
+              <text class="quick-subtitle">追踪平台关键操作</text>
+            </view>
+            <text class="quick-arrow">›</text>
+          </view>
+          <view class="quick-item" bindtap="openTemplates">
+            <image class="quick-icon" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
+            <view class="quick-copy">
+              <text class="quick-title">菜谱模板</text>
+              <text class="quick-subtitle">维护 {{overview.totalRecipeTemplates}} 份公共菜谱</text>
+            </view>
+            <text class="quick-arrow">›</text>
+          </view>
+          <view class="quick-item" bindtap="openIngredients">
+            <image class="quick-icon" src="/images/island/icon-basket.svg" mode="aspectFit"></image>
+            <view class="quick-copy">
+              <text class="quick-title">食材目录</text>
+              <text class="quick-subtitle">维护 {{overview.totalIngredients}} 项标准食材</text>
+            </view>
+            <text class="quick-arrow">›</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="platform-card">
+        <view class="section-title">操作边界</view>
+        <view class="section-copy">平台管理只维护公共资源和账号状态，不进入家庭菜谱、预约、库存等私有内容。</view>
+      </view>
+    </block>
+    <view class="footer-pad"></view>
+  </scroll-view>
+</view>

@@ -1,0 +1,11 @@
+@import "../platform-admin.wxss";
+
+.footer-pad { height: 40rpx; }
+.audit-row { align-items: flex-start; }
+.audit-row .row-avatar { margin-top: 4rpx; padding: 12rpx; }
+.audit-actor-input { width: 100%; height: 72rpx; box-sizing: border-box; margin-bottom: 14rpx; padding: 0 20rpx; color: var(--text-color); background: var(--input-bg); border: 3rpx solid var(--border-color); border-radius: var(--radius-sm); font-size: 24rpx; }
+.audit-date-row { display: flex; align-items: center; gap: 10rpx; min-width: 0; margin-bottom: 16rpx; }
+.audit-date-picker { min-width: 0; flex: 1; }
+.audit-date-value { height: 66rpx; box-sizing: border-box; padding: 0 14rpx; overflow: hidden; color: var(--text-secondary); background: var(--input-bg); border: 2rpx solid rgba(159,146,125,0.26); border-radius: var(--radius-sm); font-size: 22rpx; line-height: 62rpx; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.audit-date-separator { flex: 0 0 auto; color: var(--text-light); font-size: 22rpx; }
+.audit-clear { flex: 0 0 auto; height: 66rpx; margin: 0; padding: 0 18rpx; color: var(--text-secondary); background: var(--card-bg-light); border: 2rpx solid rgba(159,146,125,0.28); border-radius: var(--radius-sm); font-size: 22rpx; line-height: 62rpx; }

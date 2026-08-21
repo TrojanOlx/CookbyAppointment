@@ -43,6 +43,19 @@
         "statistics/statistics",
         "files/files"
       ]
+    },
+    {
+      "root": "pages/platform-admin",
+      "pages": [
+        "index/index",
+        "users/users",
+        "user-detail/user-detail",
+        "families/families",
+        "templates/templates",
+        "template-edit/template-edit",
+        "ingredients/ingredients",
+        "audit/audit"
+      ]
     }
   ],
   "window": {

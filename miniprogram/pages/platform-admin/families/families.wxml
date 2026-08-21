@@ -1,0 +1,53 @@
+<view class="platform-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="platform-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onPullDownRefresh" lower-threshold="100" bindscrolltolower="onScrollToLower">
+    <view class="platform-header">
+      <view class="platform-heading">
+        <view class="platform-kicker">FAMILY OVERVIEW</view>
+        <view class="platform-title">家庭巡检</view>
+        <view class="platform-subtitle">只查看家庭元数据，不进入家庭内的菜谱、预约、库存或文件</view>
+      </view>
+      <button class="platform-back" bindtap="goBack">返回</button>
+    </view>
+
+    <view class="platform-card">
+      <view class="search-row">
+        <input class="search-input" value="{{keyword}}" placeholder="搜索家庭名称或 ID" confirm-type="search" bindinput="onKeywordInput" bindconfirm="onKeywordConfirm"></input>
+        <button class="search-button" bindtap="search">搜索</button>
+      </view>
+      <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="filter-row">
+          <view wx:for="{{statusFilters}}" wx:key="value" class="filter-pill {{status === item.value ? 'active' : ''}}" data-status="{{item.value}}" bindtap="selectStatus">{{item.label}}</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="platform-card">
+      <view class="list-head">
+        <view class="section-title">家庭列表</view>
+        <text class="list-count">共 {{total}} 个</text>
+      </view>
+      <view wx:if="{{loading && !families.length}}" class="list-loading">正在读取家庭...</view>
+      <view wx:elif="{{error && !families.length}}">
+        <view class="list-error">{{error}}</view>
+        <button class="state-action" bindtap="retry">重新加载</button>
+      </view>
+      <view wx:elif="{{!loading && !error && !families.length}}" class="list-empty">没有符合条件的家庭</view>
+      <view wx:else class="row-list">
+        <view wx:for="{{families}}" wx:key="id" class="data-row family-row">
+          <image class="row-avatar" src="/images/icons/icon-home.svg" mode="aspectFit"></image>
+          <view class="row-main">
+            <text class="row-title">{{item.name}}</text>
+            <text class="row-meta">家庭主：{{item.ownerLabel}} · {{item.memberCount}} 位成员 · 创建于 {{item.createTimeLabel}}</text>
+            <text class="row-meta">菜谱 {{item.recipeCount}} · 预约 {{item.appointmentCount}} · 库存 {{item.inventoryCount}} · 采购 {{item.shoppingItemCount}}</text>
+          </view>
+          <view class="row-side">
+            <text class="status-badge {{item.status}}">{{item.statusLabel}}</text>
+          </view>
+        </view>
+        <button wx:if="{{hasMore}}" class="load-more" bindtap="onScrollToLower" loading="{{loadingMore}}">{{loadingMore ? '正在加载...' : '加载更多'}}</button>
+      </view>
+    </view>
+    <view class="footer-pad"></view>
+  </scroll-view>
+</view>

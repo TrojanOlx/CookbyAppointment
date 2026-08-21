@@ -30,6 +30,14 @@ const needLoginPages = [
   "pages/profile/admin/reviews/reviews",
   "pages/profile/admin/statistics/statistics",
   "pages/profile/admin/files/files",
+  "pages/platform-admin/index/index",
+  "pages/platform-admin/users/users",
+  "pages/platform-admin/user-detail/user-detail",
+  "pages/platform-admin/families/families",
+  "pages/platform-admin/templates/templates",
+  "pages/platform-admin/template-edit/template-edit",
+  "pages/platform-admin/ingredients/ingredients",
+  "pages/platform-admin/audit/audit",
   "pages/profile/reviews/reviews",
   "pages/review/review"
 ];

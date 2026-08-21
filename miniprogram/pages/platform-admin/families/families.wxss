@@ -1,0 +1,7 @@
+@import "../platform-admin.wxss";
+
+.footer-pad { height: 40rpx; }
+
+.family-row { align-items: flex-start; }
+.family-row .row-avatar { margin-top: 4rpx; padding: 12rpx; }
+.family-row .row-side { padding-top: 4rpx; }

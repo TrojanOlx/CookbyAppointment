@@ -3,6 +3,7 @@ import { collectPreferenceWarnings, compareRecommendations, normalizeIngredientN
 import { ApiError, json, pagination, parseJsonField, readJson, requiredString } from '../core/http';
 import { normalizeImageList } from '../core/media';
 import { withOperationLock } from '../core/operationLock';
+import { platformAssetIdFromUrl, resolvePlatformAssetUrls } from '../core/platformAssets';
 import type { Env, FamilyContext } from '../core/types';
 
 interface IngredientInput {
@@ -74,15 +75,122 @@ function templateDishId(familyId: string, templateId: string): string {
   return `template-copy:${familyId}:${templateId}`;
 }
 
-function mapRecipeTemplate(
+interface PlatformFileCopyRow {
+  id: string;
+  objectKey: string;
+  name: string;
+  contentType: string;
+  size: number;
+}
+
+interface PreparedTemplateAssetCopies {
+  paths: Map<string, string>;
+  statements: D1PreparedStatement[];
+  copiedObjectKeys: string[];
+}
+
+function templateFamilyFileId(familyId: string, platformFileId: string): string {
+  return `template-copy-file:${familyId}:${platformFileId}`;
+}
+
+function stableFamilyFilePath(fileId: string): string {
+  return `/api/file/download?id=${encodeURIComponent(fileId)}`;
+}
+
+async function prepareTemplateAssetCopies(
+  env: Env,
+  context: FamilyContext,
+  templates: RecipeTemplateRow[],
+): Promise<PreparedTemplateAssetCopies> {
+  const platformFileIds = Array.from(new Set(templates.flatMap(template =>
+    parseJsonField<string[]>(template.images, [])
+      .map(platformAssetIdFromUrl)
+      .filter((id): id is string => Boolean(id)),
+  )));
+  if (!platformFileIds.length) return { paths: new Map(), statements: [], copiedObjectKeys: [] };
+
+  const placeholders = platformFileIds.map(() => '?').join(',');
+  const platformFiles = await env.DB.prepare(`
+    SELECT id, objectKey, name, contentType, size
+    FROM platform_files WHERE deletedAt IS NULL AND id IN (${placeholders})
+  `).bind(...platformFileIds).all<PlatformFileCopyRow>();
+  const foundIds = new Set(platformFiles.results.map(file => file.id));
+  const missingIds = platformFileIds.filter(id => !foundIds.has(id));
+  if (missingIds.length) {
+    throw new ApiError(409, 'TEMPLATE_ASSET_MISSING', '模板图片已失效，请联系平台管理员更新模板', { fileIds: missingIds });
+  }
+
+  const targetIds = platformFiles.results.map(file => templateFamilyFileId(context.familyId, file.id));
+  const existing = await env.DB.prepare(`
+    SELECT id, deletedAt FROM family_files
+    WHERE familyId = ? AND id IN (${targetIds.map(() => '?').join(',')})
+  `).bind(context.familyId, ...targetIds).all<{ id: string; deletedAt: number | null }>();
+  const activeTargetIds = new Set(existing.results.filter(file => file.deletedAt === null).map(file => file.id));
+  const filesToCopy = platformFiles.results.filter(file => !activeTargetIds.has(templateFamilyFileId(context.familyId, file.id)));
+  const usedBytes = await env.DB.prepare(`
+    SELECT COALESCE(SUM(size), 0) AS used FROM family_files WHERE familyId = ? AND deletedAt IS NULL
+  `).bind(context.familyId).first<number>('used');
+  const additionalBytes = filesToCopy.reduce((total, file) => total + Number(file.size || 0), 0);
+  const maxUploadBytes = Math.max(1024, Number(env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024));
+  const quota = Math.max(maxUploadBytes, Number(env.FAMILY_STORAGE_QUOTA_BYTES || 200 * 1024 * 1024));
+  if ((usedBytes || 0) + additionalBytes > quota) {
+    throw new ApiError(413, 'FAMILY_STORAGE_QUOTA', '家庭文件空间不足，无法导入模板图片');
+  }
+
+  const copiedObjectKeys: string[] = [];
+  const statements: D1PreparedStatement[] = [];
+  const now = Date.now();
+  try {
+    for (const file of filesToCopy) {
+      const source = await env.FILE_BUCKET.get(file.objectKey);
+      if (!source?.body) {
+        throw new ApiError(409, 'TEMPLATE_ASSET_MISSING', '模板图片文件不存在，请联系平台管理员更新模板', { fileId: file.id });
+      }
+      const extensionMatch = file.objectKey.match(/\.[a-zA-Z0-9]{1,8}$/);
+      const objectKey = `families/${context.familyId}/recipe-template-copies/${file.id}${extensionMatch?.[0] || ''}`;
+      await env.FILE_BUCKET.put(objectKey, source.body, { httpMetadata: { contentType: file.contentType } });
+      copiedObjectKeys.push(objectKey);
+      const familyFileId = templateFamilyFileId(context.familyId, file.id);
+      statements.push(env.DB.prepare(`
+        INSERT INTO family_files (id, familyId, objectKey, name, contentType, size, purpose, uploadedBy, createdAt, deletedAt)
+        VALUES (?, ?, ?, ?, ?, ?, 'recipe-template-copy', ?, ?, NULL)
+        ON CONFLICT(id) DO UPDATE SET objectKey = excluded.objectKey, name = excluded.name,
+          contentType = excluded.contentType, size = excluded.size, purpose = excluded.purpose,
+          uploadedBy = excluded.uploadedBy, createdAt = excluded.createdAt, deletedAt = NULL
+      `).bind(
+        familyFileId, context.familyId, objectKey, file.name, file.contentType,
+        file.size, context.user.id, now,
+      ));
+    }
+  } catch (error) {
+    await Promise.all(copiedObjectKeys.map(objectKey => env.FILE_BUCKET.delete(objectKey)));
+    throw error;
+  }
+
+  const paths = new Map(platformFiles.results.map(file => {
+    const familyFileId = templateFamilyFileId(context.familyId, file.id);
+    return [file.id, stableFamilyFilePath(familyFileId)];
+  }));
+  return { paths, statements, copiedObjectKeys };
+}
+
+async function mapRecipeTemplate(
+  request: Request,
+  env: Env,
   row: RecipeTemplateRow,
   ingredients: RecipeTemplateIngredientRow[],
-): Record<string, unknown> {
+): Promise<Record<string, unknown>> {
   const images = parseJsonField<unknown[]>(row.images, []).filter((item): item is string => typeof item === 'string');
   return {
-    ...row,
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    spicy: row.spicy,
+    notice: row.notice,
+    remark: row.remark,
+    reference: row.reference,
     imported: Number(row.imported || 0) === 1,
-    images,
+    images: await resolvePlatformAssetUrls(request, env, images),
     steps: parseJsonField<string[]>(row.steps, []),
     ingredients,
   };
@@ -213,10 +321,12 @@ async function listRecipeTemplates(request: Request, env: Env): Promise<Response
   `).bind(...templates.map(template => template.id)).all<RecipeTemplateIngredientRow>();
   return json({
     total: Number((countResult.results[0] as { total?: unknown } | undefined)?.total || 0),
-    list: templates.map(template => mapRecipeTemplate(
+    list: await Promise.all(templates.map(template => mapRecipeTemplate(
+      request,
+      env,
       template,
       ingredientResult.results.filter(item => item.templateId === template.id),
-    )),
+    ))),
     page,
     pageSize,
   });
@@ -256,55 +366,67 @@ async function importRecipeTemplates(request: Request, env: Env): Promise<Respon
     const pendingTemplates = templates.filter(template => !existingDishIds.has(templateDishId(context.familyId, template.id)));
     if (!pendingTemplates.length) return json({ count: 0, imported: [], alreadyImported });
 
-    const pendingIds = pendingTemplates.map(template => template.id);
-    const ingredientResult = await env.DB.prepare(`
-      SELECT * FROM recipe_template_ingredients
-      WHERE templateId IN (${pendingIds.map(() => '?').join(',')})
-      ORDER BY templateId ASC, sortOrder ASC
-    `).bind(...pendingIds).all<RecipeTemplateIngredientRow>();
-    const now = Date.now();
-    const statements: D1PreparedStatement[] = [];
-    for (const template of pendingTemplates) {
-      const dishId = templateDishId(context.familyId, template.id);
-      statements.push(env.DB.prepare(`
-        INSERT OR IGNORE INTO dishes (
-          id, name, type, spicy, images, steps, notice, remark, reference,
-          creatorId, creatorOpenid, createTime, updateTime, familyId
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        dishId, template.name, template.type, template.spicy, template.images, template.steps,
-        template.notice, template.remark, template.reference,
-        context.user.id, context.user.openid, now, now, context.familyId,
-      ));
-      for (const item of ingredientResult.results.filter(row => row.templateId === template.id)) {
+    return withOperationLock(env, `family:${context.familyId}:storage`, async () => {
+      const pendingIds = pendingTemplates.map(template => template.id);
+      const ingredientResult = await env.DB.prepare(`
+        SELECT * FROM recipe_template_ingredients
+        WHERE templateId IN (${pendingIds.map(() => '?').join(',')})
+        ORDER BY templateId ASC, sortOrder ASC
+      `).bind(...pendingIds).all<RecipeTemplateIngredientRow>();
+      const assetCopies = await prepareTemplateAssetCopies(env, context, pendingTemplates);
+      const now = Date.now();
+      const statements: D1PreparedStatement[] = assetCopies.statements.slice();
+      for (const template of pendingTemplates) {
+        const dishId = templateDishId(context.familyId, template.id);
+        const images = parseJsonField<string[]>(template.images, []).map(image => {
+          const platformFileId = platformAssetIdFromUrl(image);
+          return platformFileId ? (assetCopies.paths.get(platformFileId) || '') : image;
+        }).filter(Boolean);
         statements.push(env.DB.prepare(`
-          INSERT OR IGNORE INTO ingredients (
-            id, dishId, name, amount, createTime, updateTime, ingredientId, quantity, unit, legacyAmount
-          ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-          WHERE EXISTS (SELECT 1 FROM dishes WHERE id = ? AND familyId = ?)
+          INSERT OR IGNORE INTO dishes (
+            id, name, type, spicy, images, steps, notice, remark, reference,
+            creatorId, creatorOpenid, createTime, updateTime, familyId
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
-          `template-copy-ingredient:${context.familyId}:${item.id}`,
-          dishId, item.name, item.amount, now, now, item.ingredientId, item.quantity, item.unit, item.legacyAmount,
-          dishId, context.familyId,
+          dishId, template.name, template.type, template.spicy, JSON.stringify(images), template.steps,
+          template.notice, template.remark, template.reference,
+          context.user.id, context.user.openid, now, now, context.familyId,
         ));
+        for (const item of ingredientResult.results.filter(row => row.templateId === template.id)) {
+          statements.push(env.DB.prepare(`
+            INSERT OR IGNORE INTO ingredients (
+              id, dishId, name, amount, createTime, updateTime, ingredientId, quantity, unit, legacyAmount
+            ) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            WHERE EXISTS (SELECT 1 FROM dishes WHERE id = ? AND familyId = ?)
+          `).bind(
+            `template-copy-ingredient:${context.familyId}:${item.id}`,
+            dishId, item.name, item.amount, now, now, item.ingredientId, item.quantity, item.unit, item.legacyAmount,
+            dishId, context.familyId,
+          ));
+        }
       }
-    }
-    statements.push(env.DB.prepare(`
-      INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, details, createdAt)
-      VALUES (?, ?, ?, 'recipe_templates.imported', 'family', ?, ?, ?)
-    `).bind(
-      crypto.randomUUID(), context.familyId, context.user.id, context.familyId,
-      JSON.stringify({ templateIds: pendingIds }), now,
-    ));
-    await env.DB.batch(statements);
-    return json({
-      count: pendingTemplates.length,
-      imported: pendingTemplates.map(template => ({
-        templateId: template.id,
-        dishId: templateDishId(context.familyId, template.id),
-      })),
-      alreadyImported,
-    }, 201);
+      statements.push(env.DB.prepare(`
+        INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, details, createdAt)
+        VALUES (?, ?, ?, 'recipe_templates.imported', 'family', ?, ?, ?)
+      `).bind(
+        crypto.randomUUID(), context.familyId, context.user.id, context.familyId,
+        JSON.stringify({ templateIds: pendingIds }), now,
+      ));
+      try {
+        await env.DB.batch(statements);
+      } catch (error) {
+        await Promise.all(assetCopies.copiedObjectKeys.map(objectKey => env.FILE_BUCKET.delete(objectKey)));
+        throw error;
+      }
+      return json({
+        count: pendingTemplates.length,
+        imported: pendingTemplates.map(template => ({
+          templateId: template.id,
+          dishId: templateDishId(context.familyId, template.id),
+        })),
+        alreadyImported,
+      }, 201);
+    });
   });
 }
 

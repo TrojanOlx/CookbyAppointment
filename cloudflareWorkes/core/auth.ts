@@ -26,12 +26,17 @@ export async function requireAuth(request: Request, env: Env): Promise<AuthConte
   const tokenHash = await sha256Hex(bearerToken(request));
   const now = Date.now();
   const row = await env.DB.prepare(`
-    SELECT s.id AS sessionId, u.id, u.openid, u.nickName, u.avatarUrl, u.phoneNumber
+    SELECT s.id AS sessionId, s.revokedAt, s.expiresAt,
+      u.id, u.openid, u.nickName, u.avatarUrl, u.phoneNumber, u.status
     FROM user_sessions s
     JOIN users u ON u.id = s.userId
-    WHERE s.tokenHash = ? AND s.revokedAt IS NULL AND s.expiresAt > ?
-  `).bind(tokenHash, now).first<UserRow & { sessionId: string }>();
+    WHERE s.tokenHash = ?
+  `).bind(tokenHash).first<UserRow & { sessionId: string; revokedAt: number | null; expiresAt: number }>();
   if (!row) throw new ApiError(401, 'SESSION_INVALID', '登录已过期，请重新登录');
+  if (row.status === 'suspended') throw new ApiError(403, 'ACCOUNT_SUSPENDED', '账号已停用，请联系平台管理员');
+  if (row.revokedAt !== null || row.expiresAt <= now) {
+    throw new ApiError(401, 'SESSION_INVALID', '登录已过期，请重新登录');
+  }
 
   await env.DB.prepare('UPDATE user_sessions SET lastSeenAt = ? WHERE id = ?')
     .bind(now, row.sessionId).run();
@@ -43,6 +48,7 @@ export async function requireAuth(request: Request, env: Env): Promise<AuthConte
       nickName: row.nickName,
       avatarUrl: row.avatarUrl,
       phoneNumber: row.phoneNumber,
+      status: row.status,
     },
   };
 }

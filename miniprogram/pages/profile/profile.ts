@@ -5,10 +5,12 @@ import { showToast, showLoading, hideLoading } from '../../utils/util';
 import { FileService } from '../../services/fileService';
 import { ImageCacheService } from '../../utils/imageCache';
 import { getAuthSessionGeneration, invalidateAuthSession } from '../../utils/auth';
+import { PlatformAdminService } from '../../services/platformAdminService';
 const { FamilyService } = require('../../services/family');
 const { canManageFamily } = require('../../services/familyRole');
 let userInfoRequestId = 0;
 let familyContextRequestId = 0;
+let platformStatusRequestId = 0;
 let profileSessionGeneration = 0;
 let profileViewGeneration = 0;
 
@@ -16,6 +18,7 @@ let profileViewGeneration = 0;
 interface IPageData {
   userInfo: User | null;
   isAdmin: boolean;
+  isPlatformAdmin: boolean;
   hasUserInfo: boolean;
   openid: string | null;
   isLoggingIn: boolean;
@@ -45,6 +48,7 @@ interface IPageMethods {
   saveAvatar: (filePath: string) => Promise<void>;
   clearCache: () => void;
   syncFamilyContext: () => Promise<void>;
+  syncPlatformAdminStatus: () => Promise<void>;
   openCreateFamily: () => void;
   openJoinFamily: () => void;
 }
@@ -59,6 +63,7 @@ Page<IPageData, IPageMethods & {
   data: {
     userInfo: null,
     isAdmin: false,
+    isPlatformAdmin: false,
     hasUserInfo: false,
     openid: null,
     isLoggingIn: false,
@@ -117,6 +122,7 @@ Page<IPageData, IPageMethods & {
         userInfo: null,
         hasUserInfo: false,
         isAdmin: false,
+        isPlatformAdmin: false,
         openid: null,
         isLoggingIn: false,
         currentFamilyName: '',
@@ -180,6 +186,25 @@ Page<IPageData, IPageMethods & {
         }, 500);
       }
     });
+    void this.syncPlatformAdminStatus();
+  },
+
+  async syncPlatformAdminStatus() {
+    const requestId = ++platformStatusRequestId;
+    const token = String(wx.getStorageSync('token') || '');
+    if (!token) {
+      this.setData({ isPlatformAdmin: false });
+      return;
+    }
+    try {
+      const status = await PlatformAdminService.getStatus();
+      if (requestId !== platformStatusRequestId || String(wx.getStorageSync('token') || '') !== token) return;
+      this.setData({ isPlatformAdmin: status.isPlatformAdmin });
+    } catch (error) {
+      if (requestId !== platformStatusRequestId || String(wx.getStorageSync('token') || '') !== token) return;
+      console.warn('同步平台管理员状态失败:', error);
+      this.setData({ isPlatformAdmin: false });
+    }
   },
 
   async syncFamilyContext() {
@@ -323,6 +348,7 @@ Page<IPageData, IPageMethods & {
 
       // 登录后立即同步家庭上下文，使零家庭入口无需重新进入“我的”页才出现。
       await this.syncFamilyContext();
+      await this.syncPlatformAdminStatus();
 
       // 获取重定向URL（如果有）
       const redirectUrl = wx.getStorageSync('redirectUrl');
@@ -395,6 +421,7 @@ Page<IPageData, IPageMethods & {
   doLogout() {
     userInfoRequestId += 1;
     familyContextRequestId += 1;
+    platformStatusRequestId += 1;
     profileSessionGeneration += 1;
     invalidateAuthSession();
     hideLoading();
@@ -413,6 +440,7 @@ Page<IPageData, IPageMethods & {
       userInfo: null,
       hasUserInfo: false,
       isAdmin: false,
+      isPlatformAdmin: false,
       openid: null,
       currentFamilyName: '',
       currentFamilyRole: '',
@@ -676,6 +704,7 @@ Page<IPageData, IPageMethods & {
           }
           userInfoRequestId += 1;
           familyContextRequestId += 1;
+          platformStatusRequestId += 1;
           profileSessionGeneration += 1;
           invalidateAuthSession();
           hideLoading();
@@ -693,6 +722,7 @@ Page<IPageData, IPageMethods & {
               this.setData({
                 userInfo: null,
                 isAdmin: false,
+                isPlatformAdmin: false,
                 hasUserInfo: false,
                 openid: null,
                 isLoggingIn: false,

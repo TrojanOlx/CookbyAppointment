@@ -1,0 +1,90 @@
+<view class="platform-page">
+  <view class="fixed-page-bg"></view>
+  <view class="platform-header">
+    <view class="header-kicker">PLATFORM LIBRARY</view>
+    <view class="header-row">
+      <view class="header-copy">
+        <view class="header-title">公共菜谱模板</view>
+        <view class="header-subtitle">维护家庭可以复制使用的家常菜内容</view>
+      </view>
+      <button class="header-close" bindtap="goBack" aria-label="返回">
+        <mp-icon ext-class="back-icon" icon="arrow" size="20" color="#725d42"></mp-icon>
+      </button>
+    </view>
+  </view>
+
+  <scroll-view
+    class="platform-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+    refresher-enabled="true"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="refresh"
+    bindscrolltolower="loadMore"
+  >
+    <view class="filter-card">
+      <view class="filter-title-row">
+        <view class="section-title">模板状态</view>
+        <button class="catalog-link" bindtap="goIngredients">食材目录 <text>›</text></button>
+      </view>
+      <scroll-view class="pill-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="pill-row">
+          <view wx:for="{{statusOptions}}" wx:key="value" class="filter-pill {{status === item.value ? 'active' : ''}}" data-value="{{item.value}}" bindtap="selectStatus">{{item.label}}</view>
+        </view>
+      </scroll-view>
+      <scroll-view class="pill-scroll type-filter" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="pill-row">
+          <view wx:for="{{typeOptions}}" wx:key="*this" class="filter-pill filter-pill-secondary {{type === item ? 'active' : ''}}" data-value="{{item}}" bindtap="selectType">{{item || '全部类型'}}</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view wx:if="{{loading && !templates.length}}" class="state-card">
+      <view class="state-spinner"></view>
+      <view class="state-copy">正在加载模板</view>
+    </view>
+    <view wx:elif="{{error && !templates.length}}" class="state-card">
+      <view class="state-mark">!</view>
+      <view class="state-copy">{{error}}</view>
+      <button class="state-button" bindtap="retry">重新加载</button>
+    </view>
+    <view wx:elif="{{!loading && !templates.length}}" class="state-card">
+      <view class="state-mark state-mark-soft">○</view>
+      <view class="state-copy">还没有符合条件的模板</view>
+      <view class="state-hint">新建一份家常菜，家庭成员就能直接复制使用</view>
+      <button class="state-button" bindtap="createTemplate">新建模板</button>
+    </view>
+    <view wx:else class="template-list">
+      <view wx:if="{{loading && templates.length}}" class="inline-loading">正在更新…</view>
+      <view wx:for="{{templates}}" wx:key="id" class="template-card">
+        <view class="template-card-main" bindtap="editTemplate" data-id="{{item.id}}">
+          <view class="template-image-wrap">
+            <image wx:if="{{item.images[0]}}" class="template-image" src="{{item.images[0]}}" mode="aspectFill" lazy-load="true"></image>
+            <view wx:else class="template-image-empty"><mp-icon icon="shop" size="28" color="#0f8f85"></mp-icon></view>
+          </view>
+          <view class="template-content">
+            <view class="template-title-row">
+              <text class="template-name">{{item.name || '未命名菜谱'}}</text>
+              <view class="status-badge status-{{item.status}}">{{getStatusText(item.status)}}</view>
+            </view>
+            <view class="template-meta"><text>{{item.type || '未分类'}}</text><text class="meta-dot">·</text><text>{{item.spicy || '不辣'}}</text></view>
+            <view class="template-ingredients">{{ingredientSummary(item.ingredients)}}</view>
+          </view>
+        </view>
+        <view class="template-actions">
+          <button class="card-action card-edit" bindtap="editTemplate" data-id="{{item.id}}">编辑</button>
+          <button wx:if="{{item.status !== 'active'}}" class="card-action card-publish" bindtap="changeStatus" data-id="{{item.id}}" data-status="publish">上架</button>
+          <button wx:if="{{item.status === 'active'}}" class="card-action card-archive" bindtap="changeStatus" data-id="{{item.id}}" data-status="archive">下架</button>
+        </view>
+      </view>
+      <view wx:if="{{loadingMore}}" class="inline-loading">正在加载更多…</view>
+      <view wx:elif="{{!hasMore}}" class="list-end">已显示全部 {{total}} 份模板</view>
+    </view>
+    <view class="scroll-bottom-space"></view>
+  </scroll-view>
+
+  <view class="platform-fab-wrap">
+    <button class="platform-fab" bindtap="createTemplate" aria-label="新建模板"><text class="fab-plus">+</text><text>新建模板</text></button>
+  </view>
+</view>

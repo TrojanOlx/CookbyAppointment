@@ -1,0 +1,62 @@
+<view class="platform-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="platform-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onPullDownRefresh" lower-threshold="100" bindscrolltolower="onScrollToLower">
+    <view class="platform-header">
+      <view class="platform-heading">
+        <view class="platform-kicker">PLATFORM AUDIT</view>
+        <view class="platform-title">审计日志</view>
+        <view class="platform-subtitle">记录平台账号维护和公共资源操作，帮助定位异常变更</view>
+      </view>
+      <button class="platform-back" bindtap="goBack">返回</button>
+    </view>
+
+    <view class="platform-card">
+      <view class="search-row">
+        <input class="search-input" value="{{action}}" placeholder="搜索操作类型，例如 platform.user.suspend" confirm-type="search" bindinput="onActionInput" bindconfirm="onActionConfirm"></input>
+        <button class="search-button" bindtap="search">搜索</button>
+      </view>
+      <input class="audit-actor-input" value="{{actorId}}" placeholder="操作者用户 ID" bindinput="onActorInput"></input>
+      <view class="audit-date-row">
+        <picker class="audit-date-picker" mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+          <view class="audit-date-value">{{startDate || '开始日期'}}</view>
+        </picker>
+        <text class="audit-date-separator">至</text>
+        <picker class="audit-date-picker" mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+          <view class="audit-date-value">{{endDate || '结束日期'}}</view>
+        </picker>
+        <button class="audit-clear" bindtap="clearFilters">清除</button>
+      </view>
+      <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="filter-row">
+          <view wx:for="{{actionFilters}}" wx:key="value" class="filter-pill {{queryAction === item.value ? 'active' : ''}}" data-action="{{item.value}}" bindtap="selectAction">{{item.label}}</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="platform-card">
+      <view class="list-head">
+        <view class="section-title">操作记录</view>
+        <text class="list-count">共 {{total}} 条</text>
+      </view>
+      <view wx:if="{{loading && !audit.length}}" class="list-loading">正在读取审计日志...</view>
+      <view wx:elif="{{error && !audit.length}}">
+        <view class="list-error">{{error}}</view>
+        <button class="state-action" bindtap="retry">重新加载</button>
+      </view>
+      <view wx:elif="{{!loading && !error && !audit.length}}" class="list-empty">没有符合条件的操作记录</view>
+      <view wx:else class="row-list">
+        <view wx:for="{{audit}}" wx:key="id" class="data-row audit-row">
+          <image class="row-avatar" src="/images/island/icon-file.svg" mode="aspectFit"></image>
+          <view class="row-main">
+            <text class="audit-action">{{item.action}}</text>
+            <text class="row-meta">{{item.actorLabel}} · {{item.createTimeLabel}} · {{item.scopeLabel}}</text>
+            <text wx:if="{{item.targetId}}" class="row-meta">目标：{{item.targetId}}</text>
+            <view wx:if="{{item.detailsLabel}}" class="audit-details">{{item.detailsLabel}}</view>
+          </view>
+        </view>
+        <button wx:if="{{hasMore}}" class="load-more" bindtap="onScrollToLower" loading="{{loadingMore}}">{{loadingMore ? '正在加载...' : '加载更多'}}</button>
+      </view>
+    </view>
+    <view class="footer-pad"></view>
+  </scroll-view>
+</view>

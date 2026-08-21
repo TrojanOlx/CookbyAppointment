@@ -1,0 +1,55 @@
+<view class="platform-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="platform-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="onPullDownRefresh" lower-threshold="100" bindscrolltolower="onScrollToLower">
+    <view class="platform-header">
+      <view class="platform-heading">
+        <view class="platform-kicker">USER DIRECTORY</view>
+        <view class="platform-title">注册用户</view>
+        <view class="platform-subtitle">查看账号状态和家庭数量，不展示微信敏感身份信息</view>
+      </view>
+      <button class="platform-back" bindtap="goBack">返回</button>
+    </view>
+
+    <view class="platform-card">
+      <view class="search-row">
+        <input class="search-input" value="{{keyword}}" placeholder="搜索昵称或用户 ID" confirm-type="search" bindinput="onKeywordInput" bindconfirm="onKeywordConfirm"></input>
+        <button class="search-button" bindtap="search">搜索</button>
+      </view>
+      <scroll-view class="filter-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
+        <view class="filter-row">
+          <view wx:for="{{statusFilters}}" wx:key="value" class="filter-pill {{status === item.value ? 'active' : ''}}" data-status="{{item.value}}" bindtap="selectStatus">{{item.label}}</view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <view class="platform-card">
+      <view class="list-head">
+        <view class="section-title">用户列表</view>
+        <text class="list-count">共 {{total}} 人</text>
+      </view>
+
+      <view wx:if="{{loading && !users.length}}" class="list-loading">正在读取用户...</view>
+      <view wx:elif="{{error && !users.length}}">
+        <view class="list-error">{{error}}</view>
+        <button class="state-action" bindtap="retry">重新加载</button>
+      </view>
+      <view wx:elif="{{!loading && !error && !users.length}}" class="list-empty">没有符合条件的用户</view>
+      <view wx:else class="row-list">
+        <view wx:for="{{users}}" wx:key="id" class="data-row" data-id="{{item.id}}" bindtap="openUser">
+          <image wx:if="{{item.avatarUrl}}" class="row-avatar" src="{{item.avatarUrl}}" mode="aspectFill" referrerPolicy="no-referrer"></image>
+          <view wx:else class="row-avatar initials-avatar">{{item.initials}}</view>
+          <view class="row-main">
+            <text class="row-title">{{item.nickName}}</text>
+            <text class="row-meta">{{item.familyCount || 0}} 个家庭 · 注册于 {{item.createTimeLabel}}</text>
+          </view>
+          <view class="row-side">
+            <text class="status-badge {{item.status}}">{{item.statusLabel}}</text>
+            <text class="row-arrow">›</text>
+          </view>
+        </view>
+        <button wx:if="{{hasMore}}" class="load-more" bindtap="onScrollToLower" loading="{{loadingMore}}">{{loadingMore ? '正在加载...' : '加载更多'}}</button>
+      </view>
+    </view>
+    <view class="footer-pad"></view>
+  </scroll-view>
+</view>

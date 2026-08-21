@@ -56,29 +56,36 @@ async function login(request: Request, env: Env): Promise<Response> {
   }
 
   const now = Date.now();
-  let user = await env.DB.prepare('SELECT id, openid, nickName, avatarUrl, phoneNumber FROM users WHERE openid = ?')
-    .bind(wxResult.openid).first<{ id: string; openid: string; nickName: string | null; avatarUrl: string | null; phoneNumber: string | null }>();
+  let user = await env.DB.prepare('SELECT id, openid, nickName, avatarUrl, phoneNumber, status FROM users WHERE openid = ?')
+    .bind(wxResult.openid).first<{ id: string; openid: string; nickName: string | null; avatarUrl: string | null; phoneNumber: string | null; status: string }>();
   if (!user) {
     const id = crypto.randomUUID();
     await env.DB.prepare(`
       INSERT INTO users (id, openid, nickName, avatarUrl, gender, country, province, city, language, isAdmin, createTime, updateTime)
       VALUES (?, ?, '', '', 0, '', '', '', 'zh_CN', 0, ?, ?)
     `).bind(id, wxResult.openid, now, now).run();
-    user = { id, openid: wxResult.openid, nickName: '', avatarUrl: '', phoneNumber: null };
+    user = { id, openid: wxResult.openid, nickName: '', avatarUrl: '', phoneNumber: null, status: 'active' };
   }
 
-  const token = generateSecret(32);
-  const tokenHash = await sha256Hex(token);
-  const sessionId = crypto.randomUUID();
-  const expiresAt = now + SESSION_TTL_MS;
-  await env.DB.prepare(`
-    INSERT INTO user_sessions (id, userId, tokenHash, createdAt, expiresAt, lastSeenAt, userAgent, appVersion)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    sessionId, user.id, tokenHash, now, expiresAt, now,
-    request.headers.get('User-Agent'), request.headers.get('X-App-Version'),
-  ).run();
-  return json({ openid: user.openid, token, expiresIn: SESSION_TTL_MS / 1000, user });
+  return withOperationLock(env, `user:${user.id}:session`, async () => {
+    const currentStatus = await env.DB.prepare('SELECT status FROM users WHERE id = ?')
+      .bind(user.id).first<string>('status');
+    if (currentStatus === 'suspended') {
+      throw new ApiError(403, 'ACCOUNT_SUSPENDED', '账号已停用，请联系平台管理员');
+    }
+    const token = generateSecret(32);
+    const tokenHash = await sha256Hex(token);
+    const sessionId = crypto.randomUUID();
+    const expiresAt = now + SESSION_TTL_MS;
+    await env.DB.prepare(`
+      INSERT INTO user_sessions (id, userId, tokenHash, createdAt, expiresAt, lastSeenAt, userAgent, appVersion)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      sessionId, user.id, tokenHash, now, expiresAt, now,
+      request.headers.get('User-Agent'), request.headers.get('X-App-Version'),
+    ).run();
+    return json({ openid: user.openid, token, expiresIn: SESSION_TTL_MS / 1000, user });
+  });
 }
 
 async function logout(request: Request, env: Env): Promise<Response> {
