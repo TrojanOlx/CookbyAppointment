@@ -43,7 +43,7 @@
       <view wx:else class="member-list">
         <view wx:for="{{members}}" wx:key="userId" class="member-item">
           <view class="member-avatar">
-            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+            <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" data-id="{{item.userId}}" data-index="{{index}}" binderror="onMemberImageError"></image>
             <text wx:else>{{item.initial}}</text>
           </view>
           <view class="member-copy">

@@ -3,9 +3,15 @@ import { DishService } from '../../../services/dishService';
 import { showSuccess, showConfirm, showLoading, hideLoading, showToast } from '../../../utils/util';
 import { UserService } from '../../../services/userService';
 import { FileService } from '../../../services/fileService';
-import cnchar from 'cnchar';
-import 'cnchar-poly'; // 引入多音字功能
+import { SessionCacheService } from '../../../utils/sessionCache';
+import { createUploadFileName } from '../../../utils/uploadFileName';
 const { getFamilyRoleContext } = require('../../../services/familyRole');
+const { FamilyService } = require('../../../services/family');
+
+let detailRequestId = 0;
+let detailRoleRequestId = 0;
+
+const currentDetailScope = () => `${String(wx.getStorageSync('token') || '')}|${String(FamilyService.getActiveFamilyId() || '')}`;
 
 // 从URL中提取路径部分的辅助函数
 function extractPathFromUrl(url: string): string {
@@ -54,14 +60,20 @@ Page({
     familyRole: '',
     isEdit: false,  // 是否处于编辑状态
     tempDish: {} as Dish, // 存储编辑时的临时数据
+    failedDishImages: {} as Record<string, boolean>,
+    failedEditImages: {} as Record<string, boolean>,
     dishTypes: Object.values(DishType),
     spicyLevels: Object.values(SpicyLevel)
   },
+
+  detailScope: '',
+  navigateBackTimer: null as ReturnType<typeof setTimeout> | null,
 
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad(options) {
+    this.detailScope = currentDetailScope();
     if (options.id) {
       this.setData({
         dishId: options.id
@@ -81,14 +93,27 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow() {
-    // 每次显示页面都重新加载数据，以便获取最新的编辑结果
-    if (this.data.dishId) {
+    const scope = currentDetailScope();
+    const scopeChanged = scope !== this.detailScope;
+    if (scopeChanged) {
+      this.detailScope = scope;
+      // Never leave the previous family's dish visible while the new scope
+      // is being fetched.
+      detailRequestId += 1;
+      this.setData({ dish: {} as Dish, loading: false });
+    }
+
+    // onLoad already starts the first request. Only revalidate when returning
+    // from a mutation or when the active account/family changed.
+    if (this.data.dishId && !this.data.isEdit && (scopeChanged || SessionCacheService.isDirty('dish'))) {
       this.loadDish();
     }
-    if (wx.getStorageSync('token')) {
-      this.checkAdminStatus();
-    } else {
-      this.setData({ isAdmin: false });
+    if (scopeChanged) {
+      if (wx.getStorageSync('token')) {
+        this.checkAdminStatus();
+      } else {
+        this.setData({ isAdmin: false, familyRole: '' });
+      }
     }
   },
 
@@ -96,6 +121,9 @@ Page({
    * 检查管理员状态
    */
   async checkAdminStatus() {
+    const requestId = ++detailRoleRequestId;
+    const token = String(wx.getStorageSync('token') || '');
+    const scope = currentDetailScope();
     if (!wx.getStorageSync('token')) {
       this.setData({ isAdmin: false, familyRole: '' });
       return;
@@ -110,6 +138,11 @@ Page({
     }
 
     const context = await getFamilyRoleContext();
+    if (
+      requestId !== detailRoleRequestId
+      || token !== String(wx.getStorageSync('token') || '')
+      || scope !== currentDetailScope()
+    ) return;
     this.setData({
       isAdmin: legacyAdmin || context.canManageMenu,
       familyRole: context.role
@@ -148,22 +181,38 @@ Page({
    */
   async loadDish() {
     if (this.data.loading) return;
-    
+
+    const requestId = ++detailRequestId;
+    const token = String(wx.getStorageSync('token') || '');
+    const scope = currentDetailScope();
+    const hasExistingDish = Boolean(this.data.dish && this.data.dish.id);
+    const isCurrentRequest = () => requestId === detailRequestId
+      && token === String(wx.getStorageSync('token') || '')
+      && scope === currentDetailScope();
+
     this.setData({ loading: true });
-    showLoading('加载中');
+    if (!hasExistingDish) showLoading('加载中');
     
     try {
       const dish = await DishService.getDishDetail(this.data.dishId);
-      this.setData({ dish });
+      if (!isCurrentRequest()) return;
+      this.setData({ dish, failedDishImages: {} });
     } catch (error) {
+      if (!isCurrentRequest()) return;
       console.error('获取菜品详情失败:', error);
       showToast('获取菜品详情失败');
-      setTimeout(() => {
-        wx.navigateBack();
-      }, 1500);
+      if (!hasExistingDish) {
+        if (this.navigateBackTimer) clearTimeout(this.navigateBackTimer);
+        this.navigateBackTimer = setTimeout(() => {
+          this.navigateBackTimer = null;
+          if (isCurrentRequest()) wx.navigateBack();
+        }, 1500);
+      }
     } finally {
-      hideLoading();
-      this.setData({ loading: false });
+      if (isCurrentRequest()) {
+        if (!hasExistingDish) hideLoading();
+        this.setData({ loading: false });
+      }
     }
   },
 
@@ -175,8 +224,19 @@ Page({
     const tempDish = JSON.parse(JSON.stringify(this.data.dish));
     this.setData({
       isEdit: true,
-      tempDish
+      tempDish,
+      failedEditImages: {}
     });
+  },
+
+  onDishImageError(event: WechatMiniprogram.TouchEvent) {
+    const index = Number(event.currentTarget.dataset.imageIndex);
+    const images = this.data.isEdit ? this.data.tempDish.images : this.data.dish.images;
+    if (!Number.isInteger(index) || !Array.isArray(images) || index < 0 || index >= images.length) return;
+    const key = this.data.isEdit ? `failedEditImages[${index}]` : `failedDishImages[${index}]`;
+    const failures = this.data.isEdit ? this.data.failedEditImages : this.data.failedDishImages;
+    if (failures[String(index)]) return;
+    this.setData({ [key]: true });
   },
 
   /**
@@ -225,21 +285,15 @@ Page({
       
       if (newImages.length > 0) {
         try {
-          // 获取菜品名称的拼音首字母（小写）
-          const dishName = tempDish.name.trim();
-          const pinyinResult = cnchar.spell(dishName, 'first', 'low');
-          const pinyinInitials = Array.isArray(pinyinResult) ? pinyinResult.join('') : pinyinResult;
-          
           // 处理并上传新图片
           showLoading('上传图片中...');
           const uploadPromises = newImages.map(async (tempFilePath, index) => {
             try {
-              // 提取原始文件扩展名
-              const fileExt = tempFilePath.substring(tempFilePath.lastIndexOf('.')).toLowerCase();
-              
-              // 生成新的文件名：拼音首字母 + 序号 + 时间戳 + 原始扩展名
-              const timestamp = Date.now().toString().substring(8); // 仅使用时间戳后几位
-              const newFileName = `${pinyinInitials}${index + 1}_${timestamp}${fileExt}`;
+              const newFileName = createUploadFileName(
+                tempDish.id || this.data.dishId,
+                index,
+                tempFilePath
+              );
               
               // 上传图片到服务器
               const result = await FileService.uploadFile(
@@ -320,7 +374,6 @@ Page({
           dish: updatedDish,
           tempDish: {} as Dish
         });
-        this.loadDish();
       } else {
         this.setData({ isSaving: false });
       }
@@ -538,7 +591,9 @@ Page({
         if (result.success) {
           hideLoading();
           showSuccess('删除成功');
-          setTimeout(() => {
+          if (this.navigateBackTimer) clearTimeout(this.navigateBackTimer);
+          this.navigateBackTimer = setTimeout(() => {
+            this.navigateBackTimer = null;
             wx.navigateBack();
           }, 1500);
         } else {
@@ -549,6 +604,15 @@ Page({
         console.error('删除菜品失败:', error);
         showToast('删除菜品失败');
       }
+    }
+  },
+
+  onUnload() {
+    detailRequestId += 1;
+    detailRoleRequestId += 1;
+    if (this.navigateBackTimer) {
+      clearTimeout(this.navigateBackTimer);
+      this.navigateBackTimer = null;
     }
   }
 })

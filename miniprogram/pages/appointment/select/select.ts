@@ -237,9 +237,28 @@ Page({
       }
       
       console.log('接收到数据:', dishesResult.list.length, '条记录，总数:', dishesResult.total);
-      const dishes = await ImageCacheService.withCachedImages(
-        dishesResult.list,
-        item => item.images && item.images.length > 0 ? item.images[0] : undefined
+      const listStart = page === 1 ? 0 : this.data.dishes.length;
+      const sourceDishes = dishesResult.list as Dish[];
+      const dishes = await ImageCacheService.withCachedImages<Dish, 'cachedImage'>(
+        sourceDishes,
+        item => item.images && item.images.length > 0 ? item.images[0] : undefined,
+        'cachedImage',
+        {
+          getIdentity: () => ({ familyId }),
+          onResolved: updates => {
+            if (!isCurrentRequest()) return;
+            const patch: Record<string, string> = {};
+            updates.forEach(update => {
+              const source = sourceDishes[update.index];
+              if (!source) return;
+              const targetIndex = this.data.dishes.findIndex(item => String(item.id) === String(source.id));
+              const filteredIndex = this.data.filteredDishes.findIndex(item => String(item.id) === String(source.id));
+              if (targetIndex >= listStart) patch[`dishes[${targetIndex}].${update.field}`] = update.value;
+              if (filteredIndex >= listStart) patch[`filteredDishes[${filteredIndex}].${update.field}`] = update.value;
+            });
+            if (Object.keys(patch).length) this.setData(patch);
+          }
+        }
       );
       const total = dishesResult.total;
 
@@ -276,6 +295,25 @@ Page({
         hideLoading();
       }
     }
+  },
+
+  onDishImageError(e: WechatMiniprogram.TouchEvent) {
+    const dishId = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const sourceIndex = dishId
+      ? this.data.dishes.findIndex(item => String(item.id) === dishId)
+      : fallbackIndex;
+    const filteredIndex = dishId
+      ? this.data.filteredDishes.findIndex(item => String(item.id) === dishId)
+      : fallbackIndex;
+    const patch: Record<string, string> = {};
+    if (sourceIndex >= 0 && sourceIndex < this.data.dishes.length) {
+      patch[`dishes[${sourceIndex}].cachedImage`] = '/images/default-dish.jpg';
+    }
+    if (filteredIndex >= 0 && filteredIndex < this.data.filteredDishes.length) {
+      patch[`filteredDishes[${filteredIndex}].cachedImage`] = '/images/default-dish.jpg';
+    }
+    if (Object.keys(patch).length) this.setData(patch);
   },
 
   // 刷新数据

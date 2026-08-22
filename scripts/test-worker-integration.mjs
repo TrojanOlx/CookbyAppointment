@@ -37,6 +37,15 @@ function assert(condition, message, details) {
   if (!condition) throw new Error(`${message}: ${JSON.stringify(details)}`);
 }
 
+function dateInTimezone(date, timezone) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
 run('npx', ['wrangler', 'd1', 'migrations', 'apply', 'cookby_appointment', '--local', '--config', config]);
 run('npx', ['wrangler', 'd1', 'execute', 'cookby_appointment', '--local', '--file', seed, '--config', config]);
 
@@ -1030,6 +1039,128 @@ try {
     inventoryAfterStockIn.status === 200 && stockedRows.length === 1,
     'concurrent stock-in created duplicate inventory rows',
     { concurrentStockIns, inventoryAfterStockIn, stockedRows },
+  );
+  const shanghaiToday = dateInTimezone(new Date(), 'Asia/Shanghai');
+  const timezoneInventory = await api('/api/inventory/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({ name: '时区临期测试', amount: '1个', category: '其他', expiryDate: shanghaiToday }),
+  });
+  const escapedInventory = await api('/api/inventory/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({ name: '百分%下划_反斜\\测试', amount: '1个', category: '其他' }),
+  });
+  const repeatedEscapedInventory = await api('/api/inventory/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({ name: '百分%下划_反斜\\测试', amount: '2个', category: '其他' }),
+  });
+  const expiringInventory = await api('/api/inventory/expiring?days=3', 'token-owner-a', 'it-family-a');
+  const expiringInventoryPage = await api(
+    `/api/inventory/list?keyword=${encodeURIComponent('时区临期测试')}&expiryState=expiring&expiringDays=3`,
+    'token-owner-a',
+    'it-family-a',
+  );
+  const escapedInventorySearches = await Promise.all(['%', '_', '\\'].map(keyword => api(
+    `/api/inventory/list?keyword=${encodeURIComponent(keyword)}`,
+    'token-owner-a',
+    'it-family-a',
+  )));
+  assert(
+    timezoneInventory.status === 201
+      && expiringInventory.status === 200
+      && expiringInventory.data.list.some(item => item.id === timezoneInventory.data.id)
+      && !expiringInventory.data.list.some(item => item.id === 'it-stock-a')
+      && expiringInventoryPage.data.list.some(item => item.id === timezoneInventory.data.id)
+      && escapedInventory.status === 201
+      && repeatedEscapedInventory.status === 201
+      && repeatedEscapedInventory.data.ingredientId === escapedInventory.data.ingredientId
+      && escapedInventorySearches.every(result => result.status === 200
+        && result.data.list.length === 2
+        && result.data.list.some(item => item.id === escapedInventory.data.id)
+        && result.data.list.some(item => item.id === repeatedEscapedInventory.data.id)),
+    'inventory timezone boundary, expiring endpoint, or escaped keyword search diverged',
+    {
+      timezoneInventory,
+      escapedInventory,
+      repeatedEscapedInventory,
+      expiringInventory,
+      expiringInventoryPage,
+      escapedInventorySearches,
+    },
+  );
+  const filteredInventory = await api(
+    '/api/inventory/list?page=1&pageSize=1&keyword=%E5%9C%9F&expiryState=expired&expiringDays=3',
+    'token-owner-a',
+    'it-family-a',
+  );
+  const invalidInventoryFilter = await api(
+    '/api/inventory/list?expiryState=unknown',
+    'token-owner-a',
+    'it-family-a',
+  );
+  assert(
+    filteredInventory.status === 200
+      && filteredInventory.data.page === 1
+      && filteredInventory.data.pageSize === 1
+      && filteredInventory.data.list.length === 1
+      && filteredInventory.data.list[0].name === '土豆'
+      && filteredInventory.data.hasMore === false
+      && filteredInventory.data.summary.total === 1
+      && filteredInventory.data.summary.expired === 1
+      && invalidInventoryFilter.status === 400
+      && invalidInventoryFilter.data.code === 'VALIDATION_ERROR',
+    'inventory server pagination, expiry filter, or summary contract failed',
+    { filteredInventory, invalidInventoryFilter },
+  );
+
+  const recommendations = await api(
+    '/api/dish/recommend?dinerIds=it-member-a&page=1&pageSize=1',
+    'token-owner-a',
+    'it-family-a',
+  );
+  assert(
+    recommendations.status === 200
+      && recommendations.data.page === 1
+      && recommendations.data.pageSize === 1
+      && typeof recommendations.data.total === 'number'
+      && typeof recommendations.data.hasMore === 'boolean'
+      && recommendations.data.list.length <= 1,
+    'recommendation pagination contract failed',
+    recommendations,
+  );
+  const allRecommendations = await api(
+    '/api/dish/recommend?dinerIds=it-member-a&page=1&pageSize=50',
+    'token-owner-a',
+    'it-family-a',
+  );
+  const dishARecommendation = (allRecommendations.data.list || []).find(item => item.id === 'it-dish-a');
+  const crossFamilyRecommendations = await api(
+    '/api/dish/recommend?page=1&pageSize=20',
+    'token-owner-a',
+    'it-family-b',
+  );
+  assert(
+    allRecommendations.status === 200
+      && dishARecommendation
+      && !(dishARecommendation.expiring || []).some(item => !item.expiryDate || item.expiryDate < shanghaiToday)
+      && crossFamilyRecommendations.status === 403,
+    'recommendation included expired/undated stock or crossed the family boundary',
+    { dishARecommendation, crossFamilyRecommendations },
+  );
+  const invalidTimezoneUpdate = await api('/api/family/detail', 'token-owner-a', 'it-family-a', {
+    method: 'PUT', body: JSON.stringify({ name: '集成家庭A', timezone: 'Invalid/Timezone' }),
+  });
+  const invalidTimezoneInventory = await api('/api/inventory/list?page=1&pageSize=1', 'token-owner-a', 'it-family-a');
+  const invalidTimezoneRecommendations = await api('/api/dish/recommend?page=1&pageSize=1', 'token-owner-a', 'it-family-a');
+  const timezoneRestore = await api('/api/family/detail', 'token-owner-a', 'it-family-a', {
+    method: 'PUT', body: JSON.stringify({ name: '集成家庭A', timezone: 'Asia/Shanghai' }),
+  });
+  assert(
+    invalidTimezoneUpdate.status === 200
+      && invalidTimezoneInventory.status === 200
+      && invalidTimezoneRecommendations.status === 200
+      && timezoneRestore.status === 200,
+    'invalid family timezone crashed inventory or recommendation instead of using the fallback',
+    { invalidTimezoneUpdate, invalidTimezoneInventory, invalidTimezoneRecommendations, timezoneRestore },
   );
 
   const concurrentRecalculations = await Promise.all([

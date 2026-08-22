@@ -128,11 +128,14 @@ Page({
 
   onTemplateImageError(event: any) {
     const id = String(event.currentTarget.dataset.id || '');
-    if (!id) return;
-    const templates = (this.data.templates as PlatformRecipeTemplate[]).map(item =>
-      String(item.id) === id ? { ...item, images: ['/images/default-dish.jpg'] } : item
-    );
-    this.setData({ templates });
+    const fallbackIndex = Number(event.currentTarget.dataset.index);
+    const templates = this.data.templates as PlatformRecipeTemplate[];
+    const index = id
+      ? templates.findIndex(item => String(item.id) === id)
+      : fallbackIndex;
+    if (index < 0 || index >= templates.length) return;
+    if (templates[index].images && templates[index].images[0] === '/images/default-dish.jpg') return;
+    this.setData({ [`templates[${index}].images`]: ['/images/default-dish.jpg'] });
   },
 
   createTemplate() {

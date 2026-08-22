@@ -9,6 +9,7 @@ interface FileInfoData {
   uploadTime?: string;
   url: string;
   userId?: string;
+  thumbnailFailed?: boolean;
 }
 
 interface PageData {
@@ -40,6 +41,7 @@ interface PageInstance {
   batchDelete: () => Promise<void>;
   copyToClipboard: (e: WechatMiniprogram.TouchEvent) => void;
   previewImage: (e: WechatMiniprogram.TouchEvent) => void;
+  onFileImageError: (e: WechatMiniprogram.TouchEvent) => void;
   isImage: (fileType?: string, fileName?: string) => boolean;
   getFileIcon: (fileType?: string, fileName?: string) => string;
   formatFileSize: (bytes?: number) => string;
@@ -540,6 +542,16 @@ Page<PageData, PageInstance>({
       current: url,
       urls: [url]
     });
+  },
+
+  onFileImageError(e) {
+    const filePath = String(e.currentTarget.dataset.path || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const index = filePath
+      ? this.data.files.findIndex(item => String(item.filePath) === filePath)
+      : fallbackIndex;
+    if (index < 0 || index >= this.data.files.length || this.data.files[index].thumbnailFailed) return;
+    this.setData({ [`files[${index}].thumbnailFailed`]: true });
   },
 
   // 判断文件是否为图片

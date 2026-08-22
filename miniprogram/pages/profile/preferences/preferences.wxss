@@ -184,6 +184,11 @@ page {
   box-sizing: border-box;
   font-size: 26rpx;
   font-weight: 700;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.tag:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .tag-selected {
@@ -238,11 +243,12 @@ page {
   font-size: 26rpx;
   font-weight: 900;
   line-height: 74rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .button-pressed,
 .add-tag-button:active {
-  transform: translateY(3rpx);
+  transform: translateY(2rpx) scale(0.97);
   box-shadow: 0 2rpx 0 #dba90e;
 }
 
@@ -272,6 +278,11 @@ page {
   font-size: 24rpx;
   font-weight: 800;
   text-align: center;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.spicy-option:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .spicy-option.spicy-selected {
@@ -330,6 +341,11 @@ page {
   font-size: 31rpx;
   font-weight: 900;
   line-height: 80rpx;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.save-button:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .save-button[disabled] {
@@ -382,9 +398,14 @@ page {
   font-size: 22rpx;
   font-weight: 800;
   line-height: 56rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .load-error button::after { border: 0; }
+
+.load-error button:active {
+  transform: translateY(2rpx) scale(0.97);
+}
 
 /* ── 固定操作栏，与菜品编辑页保持一致 ── */
 .bottom-safe-area {
@@ -431,5 +452,24 @@ page {
 @media (max-width: 360px) {
   .spicy-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tag,
+  .add-tag-button,
+  .spicy-option,
+  .save-button,
+  .load-error button {
+    transition: none;
+  }
+
+  .tag:active,
+  .add-tag-button:active,
+  .spicy-option:active,
+  .save-button:active,
+  .load-error button:active,
+  .button-pressed {
+    transform: none;
   }
 }

@@ -78,17 +78,13 @@ Page({
             ? new Date(item.createTime).toLocaleDateString('zh-CN') : ''
         };
       });
-      const cachedDishList = await ImageCacheService.withCachedImages(
-        list,
-        item => item.dishImage,
-        'cachedDishImage'
-      );
-      const cachedList = await ImageCacheService.withCachedImages(
-        cachedDishList,
-        item => item.userAvatar,
-        'cachedUserAvatar'
-      );
-      const all = refresh ? cachedList : [...this.data.reviews, ...cachedList];
+      const listWithKeys = list.map((item: any, index: number) => ({
+        ...item,
+        imageCacheKey: String(item.id || item.reviewId || `${page}:${index}`),
+        cachedDishImage: item.dishImage || '/images/default-dish.jpg',
+        cachedUserAvatar: item.userAvatar || '/images/default-dish.jpg'
+      }));
+      const all = refresh ? listWithKeys : [...this.data.reviews, ...listWithKeys];
       const responseTotal = Number(res.total || 0);
       if (!isCurrentRequest()) return;
       this.setData({
@@ -97,6 +93,32 @@ Page({
         total: responseTotal,
         hasMore: page * this.data.pageSize < responseTotal
       });
+
+      const applyResolved = (field: 'cachedDishImage' | 'cachedUserAvatar') => (updates: Array<{ index: number; field: string; value: string }>) => {
+        if (!isCurrentRequest()) return;
+        updates.forEach(update => {
+          const source = listWithKeys[update.index];
+          if (!source) return;
+          const currentIndex = (this.data.reviews as any[]).findIndex(item =>
+            String(item.imageCacheKey || item.id || item.reviewId || '') === String(source.imageCacheKey)
+          );
+          if (currentIndex < 0) return;
+          this.setData({ [`reviews[${currentIndex}].${field}`]: update.value });
+        });
+      };
+
+      void ImageCacheService.withCachedImages(
+        listWithKeys,
+        item => item.dishImage,
+        'cachedDishImage',
+        { onResolved: applyResolved('cachedDishImage') }
+      );
+      void ImageCacheService.withCachedImages(
+        listWithKeys,
+        item => item.userAvatar,
+        'cachedUserAvatar',
+        { onResolved: applyResolved('cachedUserAvatar') }
+      );
     } catch (e) {
       if (isCurrentRequest() && refresh) this.setData({ reviews: [] });
     } finally {
@@ -125,6 +147,45 @@ Page({
   previewImage(e: WechatMiniprogram.TouchEvent) {
     const { url, images } = e.currentTarget.dataset;
     wx.previewImage({ current: url, urls: images });
+  },
+
+  onDishImageError(e: WechatMiniprogram.TouchEvent) {
+    const id = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const reviews = this.data.reviews as any[];
+    const index = id
+      ? reviews.findIndex(item => String(item.id || item.reviewId || '') === id)
+      : fallbackIndex;
+    if (index < 0 || index >= reviews.length) return;
+    if (reviews[index].cachedDishImage === '/images/default-dish.jpg') return;
+    this.setData({ [`reviews[${index}].cachedDishImage`]: '/images/default-dish.jpg' });
+  },
+
+  onUserAvatarError(e: WechatMiniprogram.TouchEvent) {
+    const id = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const reviews = this.data.reviews as any[];
+    const index = id
+      ? reviews.findIndex(item => String(item.id || item.reviewId || '') === id)
+      : fallbackIndex;
+    if (index < 0 || index >= reviews.length) return;
+    if (reviews[index].cachedUserAvatar === '/images/default-dish.jpg') return;
+    this.setData({ [`reviews[${index}].cachedUserAvatar`]: '/images/default-dish.jpg' });
+  },
+
+  onReviewImageError(e: WechatMiniprogram.TouchEvent) {
+    const id = String(e.currentTarget.dataset.reviewId || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.reviewIndex);
+    const imageIndex = Number(e.currentTarget.dataset.imageIndex);
+    const reviews = this.data.reviews as any[];
+    const index = id
+      ? reviews.findIndex(item => String(item.id || item.reviewId || '') === id)
+      : fallbackIndex;
+    if (index < 0 || index >= reviews.length || imageIndex < 0) return;
+    const images = Array.isArray(reviews[index].images) ? [...reviews[index].images] : [];
+    if (imageIndex >= images.length || images[imageIndex] === '/images/default-dish.jpg') return;
+    images[imageIndex] = '/images/default-dish.jpg';
+    this.setData({ [`reviews[${index}].images`]: images });
   },
 
   async deleteReview(e: WechatMiniprogram.TouchEvent) {

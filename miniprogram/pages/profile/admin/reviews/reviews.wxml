@@ -22,14 +22,14 @@
 
   <!-- 评价列表 -->
   <block wx:if="{{reviews.length > 0}}">
-    <view class="review-card" wx:for="{{reviews}}" wx:key="id">
+    <view class="review-card" wx:for="{{reviews}}" wx:for-index="reviewIndex" wx:key="id">
       <!-- 头部信息 -->
       <view class="card-header" bindtap="toggleExpand" data-id="{{item.id}}">
-        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedDishImage || item.dishImage || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
+        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedDishImage || item.dishImage || '/images/default-dish.jpg'}}" mode="aspectFill" lazy-load="true" data-id="{{item.id}}" data-index="{{reviewIndex}}" binderror="onDishImageError"></image>
         <view class="card-meta">
           <text class="dish-name">{{item.dishName}}</text>
           <view class="user-row">
-            <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.cachedUserAvatar || item.userAvatar || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
+            <image referrerPolicy="no-referrer" class="user-avatar" src="{{item.cachedUserAvatar || item.userAvatar || '/images/default-dish.jpg'}}" mode="aspectFill" data-id="{{item.id}}" data-index="{{reviewIndex}}" binderror="onUserAvatarError"></image>
             <text class="user-name">{{item.userName}}</text>
           </view>
           <view class="bottom-row">
@@ -54,6 +54,7 @@
             referrerPolicy="no-referrer"
             class="review-img"
             wx:for="{{item.images}}"
+            wx:for-index="imageIndex"
             wx:key="*this"
             wx:for-item="img"
             src="{{img}}"
@@ -61,6 +62,11 @@
             catchtap="previewImage"
             data-url="{{img}}"
             data-images="{{item.images}}"
+            data-review-id="{{item.id}}"
+            data-review-index="{{reviewIndex}}"
+            data-image-index="{{imageIndex}}"
+            lazy-load="true"
+            binderror="onReviewImageError"
           ></image>
         </view>
       </view>

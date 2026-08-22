@@ -46,9 +46,11 @@
           maxlength="20"
           placeholder="{{category.placeholder}}"
           placeholder-class="custom-placeholder"
+          cursor-spacing="16"
+          confirm-type="done"
+          confirm-hold="{{false}}"
           data-category-index="{{categoryIndex}}"
           bindinput="onCustomInput"
-          confirm-type="done"
           bindconfirm="addCustomTag"
         />
         <button class="add-tag-button" hover-class="button-pressed" bindtap="addCustomTag" data-category-index="{{categoryIndex}}">添加</button>

@@ -44,7 +44,7 @@
     show-scrollbar="false">
     <block wx:if="{{dishes.length > 0}}">
       <view class="dish-item" wx:for="{{dishes}}" wx:key="id" bindtap="goToDetail" data-id="{{item.id}}">
-        <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || (item.images && item.images.length > 0 ? item.images[0] : '/images/default-dish.jpg')}}" mode="aspectFill"></image>
+        <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || (item.images && item.images.length > 0 ? item.images[0] : '/images/default-dish.jpg')}}" mode="aspectFill" lazy-load="true" data-id="{{item.id}}" data-index="{{index}}" binderror="onDishImageError"></image>
         <view class="dish-info">
           <view class="dish-name">{{item.name}}</view>
           <view class="dish-tags">

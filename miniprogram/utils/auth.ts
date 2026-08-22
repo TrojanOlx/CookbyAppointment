@@ -1,5 +1,5 @@
 // 用户认证相关工具函数
-import { ImageCacheService } from './imageCache';
+import { SessionCacheService } from './sessionCache';
 
 // 服务器URL，需要根据实际情况修改
 const BASE_URL = 'https://wx.oulongxing.com';
@@ -60,15 +60,12 @@ export const wxLogin = (): Promise<string> => {
     wx.login({
       success: (res) => {
         if (res.code) {
-          console.log('获取code成功:', res.code);
           resolve(res.code);
         } else {
-          console.error('登录失败:', res.errMsg);
           reject(new Error('登录失败: ' + res.errMsg));
         }
       },
       fail: (err) => {
-        console.error('wx.login调用失败:', err);
         reject(err);
       }
     });
@@ -87,8 +84,6 @@ export const code2Session = async (
   try {
     const initialToken = String(wx.getStorageSync(USER_TOKEN_KEY) || '');
     const initialOpenId = String(wx.getStorageSync(OPEN_ID_KEY) || '');
-    console.log('开始请求后端:');
-    
     // 使用统一的多会话登录接口，服务端不会返回微信 session_key。
     const response = await requestWithLoading<LoginResult>({
       url: `${BASE_URL}/api/user/login`,
@@ -104,7 +99,6 @@ export const code2Session = async (
       throw new Error('登录状态已变化，请重试');
     }
 
-    console.log(response);
     if (response && response.openid && response.token) {
       // 保存登录信息
       wx.setStorageSync(OPEN_ID_KEY, response.openid);
@@ -183,13 +177,13 @@ export const isLoggedIn = (): boolean => {
  */
 export const logout = (): void => {
   invalidateAuthSession();
+  SessionCacheService.clear();
   [
     USER_TOKEN_KEY, LEGACY_USER_TOKEN_KEY, OPEN_ID_KEY, LEGACY_SESSION_KEY, USER_INFO_KEY,
     'phoneNumber', 'active_family_id', 'active_family', 'active_family_role', 'family_role',
     'redirectUrl', 'notifyAppointment', 'notifyReview',
     'dish_list_cache', 'inventory_cache', 'appointment_cache', 'shopping_cache'
   ].forEach(key => wx.removeStorageSync(key));
-  void ImageCacheService.clear().catch(error => console.warn('退出后图片缓存清理失败:', error));
 };
 
 /**
@@ -231,10 +225,9 @@ export const requestWithLoading = <T>(
   return new Promise((resolve, reject) => {
     wx.request({
       ...options,
+      timeout: options.timeout || 12_000,
       success: (res) => {
         wx.hideLoading();
-        console.log("后端返回数据");
-        console.log(res.data);
         if (res.statusCode < 200 || res.statusCode >= 300) {
           const errorData = res.data as any;
           reject(new Error(errorData && errorData.message ? errorData.message : `请求失败(${res.statusCode})`));

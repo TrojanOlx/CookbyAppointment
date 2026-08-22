@@ -137,6 +137,27 @@ Page({
     this.setData({ isLoading: false });
   },
 
+  onDishImageError(e: WechatMiniprogram.TouchEvent) {
+    const appointmentId = String(e.currentTarget.dataset.appointmentId || '');
+    const dishId = String(e.currentTarget.dataset.dishId || '');
+    const appointmentIndex = Number(e.currentTarget.dataset.appointmentIndex);
+    const dishIndex = Number(e.currentTarget.dataset.dishIndex);
+    const appointments = this.data.todayAppointments as DisplayAppointment[];
+    const currentAppointmentIndex = appointmentId
+      ? appointments.findIndex(item => String(item.id) === appointmentId)
+      : appointmentIndex;
+    if (currentAppointmentIndex < 0 || currentAppointmentIndex >= appointments.length) return;
+    const dishes = appointments[currentAppointmentIndex].dishList || [];
+    const currentDishIndex = dishId
+      ? dishes.findIndex(item => String(item.id) === dishId)
+      : dishIndex;
+    if (currentDishIndex < 0 || currentDishIndex >= dishes.length) return;
+    if (dishes[currentDishIndex].cachedImage === '/images/default-dish.jpg') return;
+    this.setData({
+      [`todayAppointments[${currentAppointmentIndex}].dishList[${currentDishIndex}].cachedImage`]: '/images/default-dish.jpg'
+    });
+  },
+
   // 设置安全区域
   setSafeArea() {
     const app = getApp<IAppOption>();
@@ -373,9 +394,31 @@ Page({
       const displayAppointments: DisplayAppointment[] = [];
       // 遍历所有预约
       for (const appointment of appointments) {
+        const appointmentId = String(appointment.id || '');
+        const sourceDishes = (appointment.dishes || []) as Dish[];
         const dishList = await ImageCacheService.withCachedImages(
-          (appointment.dishes || []) as Dish[],
-          item => item.images && item.images.length > 0 ? item.images[0] : undefined
+          sourceDishes,
+          item => item.images && item.images.length > 0 ? item.images[0] : undefined,
+          'cachedImage',
+          {
+            getIdentity: () => ({ familyId }),
+            onResolved: updates => {
+              if (!isCurrentRequest()) return;
+              const appointmentIndex = this.data.todayAppointments.findIndex(item => String(item.id) === appointmentId);
+              if (appointmentIndex < 0) return;
+              const patch: Record<string, string> = {};
+              updates.forEach(update => {
+                const sourceDish = sourceDishes[update.index];
+                if (!sourceDish) return;
+                const currentDishes = this.data.todayAppointments[appointmentIndex].dishList || [];
+                const dishIndex = currentDishes.findIndex(item => String(item.id) === String(sourceDish.id));
+                if (dishIndex >= 0) {
+                  patch[`todayAppointments[${appointmentIndex}].dishList[${dishIndex}].${update.field}`] = update.value;
+                }
+              });
+              if (Object.keys(patch).length) this.setData(patch);
+            }
+          }
         );
 
         const status = normalizeAppointmentStatus(appointment.status);

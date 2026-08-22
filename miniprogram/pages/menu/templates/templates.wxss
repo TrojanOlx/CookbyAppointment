@@ -74,21 +74,36 @@ page {
 button::after { border: 0; }
 
 .template-close {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 88rpx;
+  height: 88rpx;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 10rpx;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  box-sizing: border-box;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.template-close-visual {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 68rpx;
   height: 68rpx;
-  flex-shrink: 0;
-  margin: 0;
-  padding: 0;
   background: var(--card-bg-light);
   border: 3rpx solid rgba(121,79,39,0.18);
   border-radius: 50%;
   box-shadow: 0 4rpx 0 rgba(121,79,39,0.10);
 }
 
-.template-close:active { transform: translateY(2rpx); }
+.template-close:active { transform: translateY(2rpx) scale(0.97); }
 
 .template-note {
   display: flex;
@@ -168,6 +183,11 @@ button::after { border: 0; }
   font-weight: 900;
   line-height: 50rpx;
   white-space: nowrap;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.select-all-button:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .select-all-icon { margin-right: 6rpx; }
@@ -202,6 +222,11 @@ button::after { border: 0; }
   font-size: 23rpx;
   font-weight: 800;
   white-space: nowrap;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.type-pill:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .type-pill.is-active {
@@ -341,12 +366,11 @@ button::after { border: 0; }
   margin-bottom: 16rpx;
   padding: 18rpx;
   overflow: hidden;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .template-card:active {
-  transform: translateY(2rpx);
-  box-shadow: 0 3rpx 0 rgba(121,79,39,0.10), 0 8rpx 16rpx rgba(61,52,40,0.10);
+  transform: translateY(2rpx) scale(0.99);
 }
 
 .template-card.is-selected {
@@ -575,8 +599,46 @@ button::after { border: 0; }
 
 .template-import-button[disabled] { opacity: 0.52; }
 
+.template-skip-button,
+.template-import-button,
+.inline-error button,
+.state-retry {
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.template-skip-button:active,
+.template-import-button:active,
+.inline-error button:active,
+.state-retry:active {
+  transform: translateY(2rpx) scale(0.97);
+}
+
 .template-safe-area {
   position: relative;
   z-index: 1;
   height: env(safe-area-inset-bottom);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .template-close,
+  .select-all-button,
+  .type-pill,
+  .template-card,
+  .template-skip-button,
+  .template-import-button,
+  .inline-error button,
+  .state-retry {
+    transition: none;
+  }
+
+  .template-close:active,
+  .select-all-button:active,
+  .type-pill:active,
+  .template-card:active,
+  .template-skip-button:active,
+  .template-import-button:active,
+  .inline-error button:active,
+  .state-retry:active {
+    transform: none;
+  }
 }

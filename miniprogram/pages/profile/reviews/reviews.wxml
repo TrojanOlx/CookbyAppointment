@@ -8,10 +8,10 @@
     show-scrollbar="false"
   >
   <block wx:if="{{reviews.length > 0}}">
-    <view class="review-card" wx:for="{{reviews}}" wx:key="id" bindtap="toggleExpand" data-id="{{item.id}}">
+    <view class="review-card" wx:for="{{reviews}}" wx:for-index="reviewIndex" wx:key="id" bindtap="toggleExpand" data-id="{{item.id}}">
       <!-- 菜品信息行 -->
       <view class="card-header">
-        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedDishImage || item.dishImage}}" mode="aspectFill"></image>
+        <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedDishImage || item.dishImage || '/images/default-dish.jpg'}}" mode="aspectFill" lazy-load="true" data-id="{{item.id}}" data-index="{{reviewIndex}}" binderror="onDishImageError"></image>
         <view class="card-info">
           <text class="dish-name">{{item.dishName}}</text>
           <view class="meta-row">
@@ -34,13 +34,19 @@
             referrerPolicy="no-referrer"
             class="review-img"
             wx:for="{{item.images}}"
+            wx:for-index="imageIndex"
             wx:key="*this"
             wx:for-item="img"
             src="{{img}}"
             mode="aspectFill"
+            lazy-load="true"
+            binderror="onReviewImageError"
             bindtap="previewImage"
             data-url="{{img}}"
             data-images="{{item.images}}"
+            data-review-id="{{item.id}}"
+            data-review-index="{{reviewIndex}}"
+            data-image-index="{{imageIndex}}"
             catchtap="previewImage"
           ></image>
         </view>

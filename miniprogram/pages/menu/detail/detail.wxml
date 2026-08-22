@@ -14,15 +14,16 @@
     indicator-active-color="#ffffff"
   >
     <block wx:if="{{(!isEdit && dish.images && dish.images.length > 0) || (isEdit && tempDish.images && tempDish.images.length > 0)}}">
-      <swiper-item wx:for="{{isEdit ? tempDish.images : dish.images}}" wx:key="*this" class="swiper-item">
+      <swiper-item wx:for="{{isEdit ? tempDish.images : dish.images}}" wx:for-index="imageIndex" wx:key="*this" class="swiper-item">
         <image 
           referrerPolicy="no-referrer" 
-          src="{{item}}" 
+          src="{{(isEdit ? failedEditImages[imageIndex] : failedDishImages[imageIndex]) ? '/images/default-dish.jpg' : item}}"
           mode="aspectFill" 
           class="swiper-image" 
-          lazy-load="{{true}}"
+          binderror="onDishImageError"
           bindtap="previewImage"
-          data-src="{{item}}"
+          data-src="{{(isEdit ? failedEditImages[imageIndex] : failedDishImages[imageIndex]) ? '/images/default-dish.jpg' : item}}"
+          data-image-index="{{imageIndex}}"
         ></image>
       </swiper-item>
     </block>
@@ -35,13 +36,15 @@
   <view class="image-edit-section" wx:if="{{isEdit}}">
     <view class="section-title">图片管理</view>
     <view class="image-grid">
-      <view class="image-item" wx:for="{{tempDish.images}}" wx:key="*this">
+      <view class="image-item" wx:for="{{tempDish.images}}" wx:for-index="imageIndex" wx:key="*this">
         <image 
-          src="{{item}}" 
+          src="{{failedEditImages[imageIndex] ? '/images/default-dish.jpg' : item}}"
           mode="aspectFill" 
           class="thumbnail" 
           bindtap="previewImage" 
-          data-src="{{item}}"
+          binderror="onDishImageError"
+          data-src="{{failedEditImages[imageIndex] ? '/images/default-dish.jpg' : item}}"
+          data-image-index="{{imageIndex}}"
         ></image>
         <view class="image-delete" bindtap="deleteImage" data-index="{{index}}">×</view>
       </view>

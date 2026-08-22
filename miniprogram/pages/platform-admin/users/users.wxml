@@ -35,7 +35,7 @@
       <view wx:elif="{{!loading && !error && !users.length}}" class="list-empty">没有符合条件的用户</view>
       <view wx:else class="row-list">
         <view wx:for="{{users}}" wx:key="id" class="data-row" data-id="{{item.id}}" bindtap="openUser">
-          <image wx:if="{{item.avatarUrl}}" class="row-avatar" src="{{item.avatarUrl}}" mode="aspectFill" referrerPolicy="no-referrer"></image>
+          <image wx:if="{{item.avatarUrl}}" class="row-avatar" src="{{item.avatarUrl}}" mode="aspectFill" referrerPolicy="no-referrer" data-id="{{item.id}}" data-index="{{index}}" binderror="onUserImageError"></image>
           <view wx:else class="row-avatar initials-avatar">{{item.initials}}</view>
           <view class="row-main">
             <text class="row-title">{{item.nickName}}</text>

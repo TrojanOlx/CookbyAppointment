@@ -133,6 +133,11 @@ page {
   font-size: 28rpx;
   font-weight: 900;
   white-space: nowrap;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.date-picker-value:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .date-picker-arrow {
@@ -161,6 +166,11 @@ page {
   font-size: 25rpx;
   font-weight: 800;
   white-space: nowrap;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.meal-tab:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .meal-tab.is-active {
@@ -185,6 +195,13 @@ page {
   padding: 12rpx 4rpx;
   box-sizing: border-box;
   border-bottom: 2rpx solid rgba(159,146,125,0.24);
+  transition: transform var(--motion-press) var(--ease-out),
+    opacity var(--motion-press) var(--ease-out);
+}
+
+.member-check-item:active {
+  transform: translateY(2rpx) scale(0.99);
+  opacity: 0.82;
 }
 
 .member-check-item:last-child { border-bottom: 0; }
@@ -402,6 +419,8 @@ page {
   padding: 12rpx 4rpx;
   box-sizing: border-box;
   border-bottom: 2rpx solid rgba(159,146,125,0.24);
+  transition: transform var(--motion-press) var(--ease-out),
+    opacity var(--motion-press) var(--ease-out);
 }
 
 .dish-check-item:last-child { border-bottom: 0; }
@@ -411,6 +430,7 @@ page {
 }
 
 .dish-check-item:active {
+  transform: translateY(2rpx) scale(0.99);
   opacity: 0.76;
 }
 
@@ -487,6 +507,11 @@ page {
   font-size: 26rpx;
   font-weight: 900;
   line-height: 66rpx;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.preview-btn:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 button::after {
@@ -512,6 +537,18 @@ button::after {
   flex-direction: column;
   gap: 10rpx;
   margin-top: 18rpx;
+  animation: booking-warning-enter var(--motion-state) var(--ease-out) both;
+}
+
+@keyframes booking-warning-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6rpx);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .warning-item {
@@ -675,6 +712,12 @@ button::after {
   font-weight: 900;
   line-height: 76rpx;
   white-space: nowrap;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.booking-cancel:active,
+.booking-save:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 .booking-cancel {
@@ -723,5 +766,31 @@ button::after {
     min-width: 96rpx;
     padding-right: 12rpx;
     padding-left: 12rpx;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .date-picker-value,
+  .meal-tab,
+  .member-check-item,
+  .dish-check-item,
+  .preview-btn,
+  .booking-cancel,
+  .booking-save {
+    transition: none;
+  }
+
+  .warning-list {
+    animation: none;
+  }
+
+  .date-picker-value:active,
+  .meal-tab:active,
+  .member-check-item:active,
+  .dish-check-item:active,
+  .preview-btn:active,
+  .booking-cancel:active,
+  .booking-save:active {
+    transform: none;
   }
 }

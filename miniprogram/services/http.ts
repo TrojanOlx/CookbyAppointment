@@ -1,6 +1,6 @@
 // 基础HTTP请求服务
-import { ImageCacheService } from '../utils/imageCache';
-import { invalidateAuthSession } from '../utils/auth';
+import { getAuthSessionGeneration, invalidateAuthSession } from '../utils/auth';
+import { SESSION_CACHE_TTL, SessionCacheService, SessionResource } from '../utils/sessionCache';
 
 // 根据运行环境自动切换 API 地址
 // 开发环境：使用微信开发者工具 → 详情 → 本地设置 → 不校验合法域名
@@ -13,18 +13,130 @@ export const BASE_URL = envVersion === 'develop'
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 // 请求参数接口
-interface RequestOptions {
+export interface RequestOptions {
   url: string;
   method?: Method;
   data?: any;
   header?: Record<string, string>;
+  timeout?: number;
+  dedupe?: boolean;
 }
+
+export interface CachedGetOptions {
+  resource: SessionResource;
+  ttlMs: number;
+  force?: boolean;
+}
+
+export class HttpError extends Error {
+  status: number;
+  code: string;
+  details?: unknown;
+  requestId?: string;
+  retriable: boolean;
+
+  constructor(message: string, options: {
+    status?: number;
+    code?: string;
+    details?: unknown;
+    requestId?: string;
+    retriable?: boolean;
+  } = {}) {
+    super(message);
+    this.name = 'HttpError';
+    this.status = options.status || 0;
+    this.code = options.code || 'REQUEST_FAILED';
+    this.details = options.details;
+    this.requestId = options.requestId;
+    this.retriable = options.retriable ?? (this.status === 0 || this.status >= 500);
+  }
+}
+
+const DEFAULT_TIMEOUT_MS = 12_000;
+const inFlightGets = new Map<string, Promise<unknown>>();
+
+const stableSerialize = (value: unknown): string => {
+  if (value === null || value === undefined) return '';
+  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(',')}]`;
+  if (typeof value === 'object') {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined && item !== null)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${key}:${stableSerialize(item)}`)
+      .join(',')}}`;
+  }
+  return String(value);
+};
+
+const resourceForUrl = (url: string): SessionResource | undefined => {
+  if (url.includes('/inventory/')) return 'inventory';
+  if (url.includes('/appointment/')) return 'appointment';
+  if (url.includes('/shopping/')) return 'shopping';
+  if (url.includes('/dish/')) return 'dish';
+  if (url.includes('/family/')) return 'family';
+  if (url.includes('/user/') || url.includes('/platform/status')) return 'profile';
+  return undefined;
+};
+
+const requestIdentity = (url: string, data?: unknown): string => [
+  getAuthSessionGeneration(),
+  getFamilyId(),
+  SessionCacheService.generation(resourceForUrl(url)),
+  url,
+  stableSerialize(data),
+].join('|');
+
+const resourcesForMutation = (url: string): SessionResource[] => {
+  if (url.includes('/inventory/')) return ['inventory', 'home', 'dish'];
+  if (url.includes('/appointment/')) return ['appointment', 'shopping', 'inventory', 'home'];
+  if (url.includes('/shopping/')) return ['shopping', 'inventory', 'home'];
+  if (url.includes('/dish/') || url.includes('/recipe-template')) return ['dish', 'home'];
+  if (url.includes('/family/')) return ['family', 'home', 'dish', 'inventory', 'appointment', 'shopping'];
+  if (url.includes('/user/')) return ['profile', 'family', 'dish'];
+  return [];
+};
+
+const cachePolicyForUrl = (url: string): { resource: SessionResource; ttlMs: number } | null => {
+  const resource = resourceForUrl(url);
+  return resource ? { resource, ttlMs: SESSION_CACHE_TTL[resource as keyof typeof SESSION_CACHE_TTL] || 60_000 } : null;
+};
+
+const responseRequestId = (res: any): string | undefined => {
+  const headers = res && res.header ? res.header : {};
+  return headers['x-request-id'] || headers['X-Request-Id'] || headers['X-Request-ID'];
+};
+
+const toHttpError = (res: any, fallback: string): HttpError => {
+  const body = res && res.data && typeof res.data === 'object' ? res.data : {};
+  return new HttpError(typeof body.message === 'string' ? body.message : fallback, {
+    status: Number(res && res.statusCode) || 0,
+    code: typeof body.code === 'string' ? body.code : 'REQUEST_FAILED',
+    details: body.details,
+    requestId: responseRequestId(res),
+  });
+};
+
+const asHttpError = (error: unknown): HttpError => {
+  if (error instanceof HttpError) return error;
+  const message = error instanceof Error ? error.message : String(error || '请求失败');
+  return new HttpError(message, {
+    code: message.includes('登录状态') || message.includes('家庭已切换') ? 'SESSION_CHANGED' : 'REQUEST_FAILED',
+  });
+};
 
 const withoutAuthorization = <T extends Record<string, any>>(header?: T): T => {
   if (!header) return {} as T;
   return Object.fromEntries(
-    Object.entries(header).filter(([key]) => key.toLowerCase() !== 'authorization')
+    Object.entries(header).filter(([key]) => !['authorization', 'x-family-id'].includes(key.toLowerCase()))
   ) as T;
+};
+
+const logPath = (url: string): string => {
+  try {
+    return new URL(url, BASE_URL).pathname;
+  } catch {
+    return url.split('?')[0];
+  }
 };
 
 // 获取全局应用实例
@@ -41,13 +153,14 @@ const getGlobalApp = (): WechatMiniprogram.App.Instance<{
 // 清除所有登录相关信息
 const clearLoginInfo = () => {
   invalidateAuthSession();
+  SessionCacheService.clear();
+  inFlightGets.clear();
   [
     'token', 'user_token', 'session_key', 'userInfo', 'openid', 'phoneNumber',
     'active_family_id', 'active_family', 'active_family_role', 'family_role',
     'redirectUrl', 'notifyAppointment', 'notifyReview',
     'dish_list_cache', 'inventory_cache', 'appointment_cache', 'shopping_cache'
   ].forEach(key => wx.removeStorageSync(key));
-  void ImageCacheService.clear().catch(error => console.warn('退出后图片缓存清理失败:', error));
 };
 
 const getFamilyId = (): string => {
@@ -94,6 +207,7 @@ const silentRefreshToken = (expectedToken: string): Promise<string> => {
           method: 'POST',
           data: { code: loginRes.code },
           header: { 'Content-Type': 'application/json' },
+          timeout: DEFAULT_TIMEOUT_MS,
           success: (res: any) => {
             if (res.statusCode === 200 && res.data && res.data.token) {
               if (String(wx.getStorageSync('token') || '') !== expectedToken) {
@@ -170,18 +284,28 @@ const doRequest = <T = any>(options: RequestOptions, allowRetry: boolean): Promi
         return acc;
       }, {} as Record<string, any>);
     }
-    console.log(`发起请求: ${options.method || 'GET'} ${options.url}`, data);
+    const method = options.method || 'GET';
+    const startedAt = Date.now();
+    if (envVersion === 'develop') {
+      console.info(`[http] ${method} ${logPath(options.url)}`);
+    }
     wx.request({
       url: `${BASE_URL}${options.url}`,
-      method: options.method || 'GET',
+      method,
       data,
       header,
+      timeout: options.timeout || DEFAULT_TIMEOUT_MS,
       success: (res: any) => {
-        console.log(`请求响应: ${options.url}`, res.statusCode, res.data);
+        if (envVersion === 'develop') {
+          console.info(`[http] ${method} ${logPath(options.url)} ${res.statusCode} ${Date.now() - startedAt}ms ${responseRequestId(res) || ''}`);
+        }
         if (res.statusCode >= 200 && res.statusCode < 300) {
           if (String(wx.getStorageSync('token') || '') !== String(token) || getFamilyId() !== familyId) {
-            reject(new Error('登录状态或家庭已变化，请重试'));
+            reject(new HttpError('登录状态或家庭已变化，请重试', { code: 'SESSION_CHANGED' }));
             return;
+          }
+          if (method !== 'GET') {
+            SessionCacheService.markDirty(...resourcesForMutation(options.url));
           }
           resolve(res.data as T);
         } else if (res.statusCode === 401 && allowRetry) {
@@ -204,30 +328,38 @@ const doRequest = <T = any>(options: RequestOptions, allowRetry: boolean): Promi
             })
             .catch((error) => {
               const handled = handleUnauthorized(401, token);
-              reject(handled ? new Error('登录已过期，请重新登录') : error);
+              reject(handled ? new HttpError('登录已过期，请重新登录', { status: 401, code: 'UNAUTHORIZED' }) : error);
             });
         } else if (res.statusCode === 401) {
           // 静默刷新重试后仍失败，清理失效登录态。
           const handled = handleUnauthorized(401, token);
-          reject(new Error(handled ? '登录已过期，请重新登录' : '登录状态已变化，请重试'));
-        } else if (res.statusCode === 403) {
-          // RBAC 拒绝不代表登录失效，保留会话和当前家庭。
-          const errMsg = res.data && res.data.message ? res.data.message : '权限不足';
-          wx.showToast({ title: errMsg, icon: 'none', duration: 2000 });
-          reject(new Error(errMsg));
+          reject(new HttpError(handled ? '登录已过期，请重新登录' : '登录状态已变化，请重试', {
+            status: 401,
+            code: handled ? 'UNAUTHORIZED' : 'SESSION_CHANGED',
+          }));
+        } else if (res.statusCode === 403 && res.data && res.data.code === 'ACCOUNT_SUSPENDED') {
+          const error = toHttpError(res, '账号已停用');
+          if (token && String(wx.getStorageSync('token') || '') === String(token)) {
+            clearLoginInfo();
+            wx.showModal({ title: '账号已停用', content: error.message, showCancel: false });
+          }
+          reject(error);
         } else {
-          const errMsg = res.data && res.data.message
-            ? res.data.message
-            : `请求失败(${res.statusCode})`;
-          wx.showToast({ title: errMsg, icon: 'none', duration: 2000 });
-          reject(new Error(errMsg));
+          reject(toHttpError(res, `请求失败(${res.statusCode})`));
         }
       },
       fail: (err) => {
-        console.error(`请求失败: ${options.url}`, err);
-        const errMsg = err.errMsg || '网络错误，请检查网络连接';
-        wx.showToast({ title: errMsg, icon: 'none', duration: 2000 });
-        reject(new Error(errMsg));
+        if (envVersion === 'develop') {
+          const failureStatus = err && err.errMsg && err.errMsg.includes('timeout') ? 'TIMEOUT' : 'NETWORK_ERROR';
+          console.warn(`[http] ${method} ${logPath(options.url)} ${failureStatus} ${Date.now() - startedAt}ms`);
+        }
+        const message = err && err.errMsg && err.errMsg.includes('timeout')
+          ? '请求超时，请稍后重试'
+          : (err && err.errMsg) || '网络错误，请检查网络连接';
+        reject(new HttpError(message, {
+          code: err && err.errMsg && err.errMsg.includes('timeout') ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR',
+          retriable: true,
+        }));
       }
     });
   });
@@ -235,16 +367,65 @@ const doRequest = <T = any>(options: RequestOptions, allowRetry: boolean): Promi
 
 // 统一请求函数（公开 API，默认允许静默刷新重试）
 export const request = <T = any>(options: RequestOptions): Promise<T> => {
-  return doRequest<T>(options, true);
+  const method = options.method || 'GET';
+  if (method !== 'GET' || options.dedupe === false) {
+    return doRequest<T>(options, true).catch(error => Promise.reject(asHttpError(error)));
+  }
+  const key = requestIdentity(options.url, options.data);
+  const existing = inFlightGets.get(key);
+  if (existing) return existing as Promise<T>;
+  const pending = doRequest<T>(options, true).catch(error => Promise.reject(asHttpError(error)));
+  inFlightGets.set(key, pending);
+  const release = () => {
+    if (inFlightGets.get(key) === pending) inFlightGets.delete(key);
+  };
+  void pending.then(release, release);
+  return pending;
 };
 
 // 封装GET请求
-export const get = <T = any>(url: string, data?: any): Promise<T> => {
-  return request<T>({
-    url,
-    method: 'GET',
-    data
-  });
+export const get = <T = any>(url: string, data?: any, options: { force?: boolean; cache?: boolean } = {}): Promise<T> => {
+  const policy = cachePolicyForUrl(url);
+  if (policy && options.cache !== false) {
+    return getCached<T>(url, data, { ...policy, force: options.force });
+  }
+  return request<T>({ url, method: 'GET', data, dedupe: !options.force });
+};
+
+export const getCached = async <T = any>(
+  url: string,
+  data: any,
+  options: CachedGetOptions
+): Promise<T> => {
+  const load = async (allowRetryAfterMutation: boolean): Promise<T> => {
+    const generation = SessionCacheService.generation(options.resource);
+    const key = requestIdentity(url, data);
+    if (!options.force) {
+      const cached = SessionCacheService.get<T>(key, options.resource);
+      if (cached !== undefined) return cached;
+    }
+    const value = await request<T>({
+      url,
+      method: 'GET',
+      data,
+      dedupe: !options.force,
+    });
+    if (generation !== SessionCacheService.generation(options.resource)) {
+      if (allowRetryAfterMutation) return load(false);
+      throw new HttpError('数据正在更新，请重试', { code: 'RESOURCE_CHANGED', retriable: true });
+    }
+    return SessionCacheService.set(key, options.resource, value, options.ttlMs);
+  };
+  return load(true);
+};
+
+export const markSessionResourceDirty = (...resources: SessionResource[]): void => {
+  SessionCacheService.markDirty(...resources);
+};
+
+export const clearSessionCache = (resource?: SessionResource): void => {
+  SessionCacheService.clear(resource);
+  if (!resource) inFlightGets.clear();
 };
 
 // 封装POST请求
@@ -294,6 +475,7 @@ export function upload<T>(url: string, filePath: string, formData: Record<string
       filePath,
       name: 'file',
       formData,
+      timeout: DEFAULT_TIMEOUT_MS,
       header: {
         'content-type': 'multipart/form-data',
         'Authorization': token ? `Bearer ${token}` : '',
@@ -313,12 +495,13 @@ export function upload<T>(url: string, filePath: string, formData: Record<string
 
         if (res.statusCode >= 200 && res.statusCode < 300) {
           if (String(wx.getStorageSync('token') || '') !== String(token) || getFamilyId() !== familyId) {
-            reject(new Error('登录状态或家庭已变化，请重试'));
+            reject(new HttpError('登录状态或家庭已变化，请重试', { code: 'SESSION_CHANGED' }));
             return;
           }
           if (body === null || body === undefined) {
-            reject(new Error('上传响应无效'));
+            reject(new HttpError('上传响应无效', { status: res.statusCode, code: 'INVALID_RESPONSE' }));
           } else {
+            SessionCacheService.markDirty(...resourcesForMutation(url));
             resolve(body as T);
           }
           return;
@@ -345,32 +528,45 @@ export function upload<T>(url: string, filePath: string, formData: Record<string
             .then(resolve)
             .catch((error) => {
               const handled = handleUnauthorized(401, token);
-              reject(handled ? new Error('登录已过期，请重新登录') : error);
+              reject(handled ? new HttpError('登录已过期，请重新登录', { status: 401, code: 'UNAUTHORIZED' }) : error);
             });
           return;
         }
         if (res.statusCode === 401) {
           const handled = handleUnauthorized(401, token);
-          reject(new Error(handled ? '登录已过期，请重新登录' : '登录状态已变化，请重试'));
+          reject(new HttpError(handled ? '登录已过期，请重新登录' : '登录状态已变化，请重试', {
+            status: 401,
+            code: handled ? 'UNAUTHORIZED' : 'SESSION_CHANGED',
+          }));
           return;
         }
-        if (res.statusCode === 403) {
-          wx.showToast({ title: message, icon: 'none', duration: 2000 });
-          reject(new Error(message));
+        const error = new HttpError(message, {
+          status: res.statusCode,
+          code: body && typeof body.code === 'string' ? body.code : 'UPLOAD_FAILED',
+          details: body && body.details,
+          retriable: res.statusCode >= 500,
+        });
+        if (res.statusCode === 403 && error.code === 'ACCOUNT_SUSPENDED') {
+          if (token && String(wx.getStorageSync('token') || '') === String(token)) {
+            clearLoginInfo();
+            wx.showModal({ title: '账号已停用', content: error.message, showCancel: false });
+          }
+          reject(error);
           return;
         }
-        if (res.statusCode === 426) {
-          wx.showModal({ title: '需要更新', content: message, showCancel: false });
-        } else {
-          wx.showToast({ title: message, icon: 'none', duration: 2000 });
-        }
-        reject(new Error(message));
+        reject(error);
       },
       fail(err) {
-        reject(err);
+        const message = err && err.errMsg && err.errMsg.includes('timeout')
+          ? '上传超时，请稍后重试'
+          : (err && err.errMsg) || '上传失败，请检查网络连接';
+        reject(new HttpError(message, {
+          code: err && err.errMsg && err.errMsg.includes('timeout') ? 'REQUEST_TIMEOUT' : 'NETWORK_ERROR',
+          retriable: true,
+        }));
       }
     });
   });
 
-  return attempt(true);
+  return attempt(true).catch(error => Promise.reject(asHttpError(error)));
 }

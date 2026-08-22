@@ -41,7 +41,7 @@
             <label wx:for="{{members}}" wx:key="userId" class="member-check-item">
               <checkbox value="{{item.userId}}" checked="{{selectedDinerMap[item.userId]}}" color="#19c8b9" />
               <view class="member-avatar">
-                <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+                <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" data-id="{{item.userId}}" data-index="{{index}}" binderror="onMemberImageError"></image>
                 <text wx:else>{{item.initial}}</text>
               </view>
               <view class="member-copy">
@@ -59,7 +59,7 @@
             <view class="section-count">已选 {{selectedDishIds.length}} 道</view>
           </view>
           <view class="dish-search-wrap">
-            <input class="dish-search" value="{{searchKeyword}}" placeholder="搜索菜品名称" placeholder-class="input-placeholder" bindinput="onSearchInput" />
+            <input class="dish-search" value="{{searchKeyword}}" placeholder="搜索菜品名称" placeholder-class="input-placeholder" cursor-spacing="16" confirm-type="search" confirm-hold="{{false}}" bindinput="onSearchInput" />
             <mp-icon ext-class="search-icon" icon="search" size="18" color="#9f927d"></mp-icon>
           </view>
           <view class="dish-type-selector">
@@ -86,7 +86,7 @@
           </view>
           <view wx:else class="dish-check-list">
             <view wx:for="{{filteredDishes}}" wx:key="id" wx:for-index="dishIndex" class="dish-check-item {{selectedDishMap[item.id] ? 'is-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleDish">
-              <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedImage || (item.images && item.images.length ? item.images[0] : '/images/default-dish.jpg')}}" mode="aspectFill" data-index="{{dishIndex}}" data-id="{{item.id}}" binderror="onDishImageError"></image>
+              <image referrerPolicy="no-referrer" class="dish-thumb" src="{{item.cachedImage || (item.images && item.images.length ? item.images[0] : '/images/default-dish.jpg')}}" mode="aspectFill" lazy-load="true" data-index="{{dishIndex}}" data-id="{{item.id}}" binderror="onDishImageError"></image>
               <view class="dish-copy">
                 <view class="dish-name">{{item.name}}</view>
                 <view class="dish-meta">{{item.type}}<text wx:if="{{item.spicy && item.spicy !== '不辣'}}"> · {{item.spicy}}</text></view>
@@ -98,7 +98,7 @@
 
         <view class="booking-section remarks-section">
           <view class="section-label">备注（可选）</view>
-          <textarea class="remarks-input" maxlength="1000" value="{{remarks}}" placeholder="例如：少盐、家人六点半到家" placeholder-class="input-placeholder" bindinput="onRemarksInput"></textarea>
+          <textarea class="remarks-input" maxlength="1000" value="{{remarks}}" placeholder="例如：少盐、家人六点半到家" placeholder-class="input-placeholder" cursor-spacing="24" confirm-type="done" confirm-hold="{{false}}" bindinput="onRemarksInput"></textarea>
           <view class="field-hint">可以写下到家时间、口味或需要提前准备的事项</view>
         </view>
 

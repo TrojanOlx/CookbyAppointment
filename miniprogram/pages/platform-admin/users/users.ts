@@ -144,6 +144,18 @@ Page({
     void this.loadUsers(true);
   },
 
+  onUserImageError(event: WechatMiniprogram.TouchEvent) {
+    const id = String(event.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(event.currentTarget.dataset.index);
+    const users = this.data.users as UserCard[];
+    const index = id
+      ? users.findIndex(user => String(user.id) === id)
+      : fallbackIndex;
+    if (index < 0 || index >= users.length) return;
+    if (!users[index].avatarUrl) return;
+    this.setData({ [`users[${index}].avatarUrl`]: '' });
+  },
+
   openUser(event: WechatMiniprogram.TouchEvent) {
     const id = String(event.currentTarget.dataset.id || '');
     if (!id) return;

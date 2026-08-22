@@ -21,7 +21,7 @@
               data-index="{{index}}">
           <view class="dish-header">
             <view class="dish-info">
-              <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || item.images[0] || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
+              <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || item.images[0] || '/images/default-dish.jpg'}}" mode="aspectFill" lazy-load="true" data-id="{{item.id}}" data-index="{{index}}" binderror="onDishImageError"></image>
               <view class="dish-details">
                 <text class="dish-name">{{item.name}}</text>
                 <view class="dish-tags">
@@ -63,8 +63,8 @@
         <text class="image-title">上传图片（可选）</text>
         <view class="image-uploader">
           <view class="image-list">
-            <view class="image-item" wx:for="{{images}}" wx:key="*this">
-              <image class="uploaded-image" src="{{item}}" mode="aspectFill"></image>
+            <view class="image-item" wx:for="{{images}}" wx:for-index="imageIndex" wx:key="*this">
+              <image class="uploaded-image" src="{{item}}" mode="aspectFill" data-index="{{imageIndex}}" binderror="onUploadedImageError"></image>
               <view class="delete-btn" catchtap="deleteImage" data-index="{{index}}">×</view>
             </view>
             <view class="upload-btn" bindtap="chooseImage" wx:if="{{images.length < 3}}">
@@ -89,8 +89,13 @@
           <image wx:if="{{item && item.trim && !item.includes('[')}}" 
                  src="{{item}}" 
                  mode="aspectFill" 
+                 lazy-load="true"
                  bindtap="previewImage" 
-                 data-url="{{item}}"></image>
+                 binderror="onReviewImageError"
+                 data-url="{{item}}"
+                 data-dish-id="{{dishes[currentDishIndex].id}}"
+                 data-dish-index="{{currentDishIndex}}"
+                 data-index="{{index}}"></image>
         </block>
       </view>
       <view class="result-time">

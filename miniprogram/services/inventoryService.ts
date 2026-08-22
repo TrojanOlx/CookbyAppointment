@@ -1,6 +1,32 @@
 // 库存服务
-import { get, post, put, del } from './http';
+import { get, getCached, post, put, del } from './http';
 import { InventoryItem } from '../models/inventory';
+import { SESSION_CACHE_TTL } from '../utils/sessionCache';
+
+export type InventoryExpiryState = 'normal' | 'expiring' | 'expired';
+
+export interface InventoryListQuery {
+  page?: number;
+  pageSize?: number;
+  category?: string;
+  keyword?: string;
+  expiryState?: InventoryExpiryState;
+  expiringDays?: number;
+}
+
+export interface InventoryListResponse {
+  total: number;
+  list: InventoryItem[];
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+  summary: {
+    total: number;
+    normal: number;
+    expiring: number;
+    expired: number;
+  };
+}
 
 // 库存服务类
 export class InventoryService {
@@ -10,10 +36,25 @@ export class InventoryService {
     pageSize: number = 10, 
     category?: string
   ): Promise<{ total: number, list: InventoryItem[] }> {
-    return get<{ total: number, list: InventoryItem[] }>('/api/inventory/list', { 
+    return get<{ total: number, list: InventoryItem[] }>('/api/inventory/list', {
       page, 
       pageSize, 
       category 
+    });
+  }
+
+  static async listInventory(query: InventoryListQuery = {}, force = false): Promise<InventoryListResponse> {
+    return getCached<InventoryListResponse>('/api/inventory/list', {
+      page: query.page || 1,
+      pageSize: Math.min(50, query.pageSize || 20),
+      category: query.category,
+      keyword: query.keyword && query.keyword.trim() ? query.keyword.trim() : undefined,
+      expiryState: query.expiryState,
+      expiringDays: query.expiringDays ?? 3,
+    }, {
+      resource: 'inventory',
+      ttlMs: SESSION_CACHE_TTL.inventory,
+      force,
     });
   }
 

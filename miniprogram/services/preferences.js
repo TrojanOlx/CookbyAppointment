@@ -62,6 +62,12 @@ const requestPreferences = (method, payload, familyId) => {
     header: buildHeaders(familyId)
   };
   if (payload !== undefined) options.data = payload;
+  if (method === 'GET') {
+    return http.getCached(PREFERENCES_URL, payload, {
+      resource: 'profile',
+      ttlMs: 5 * 60 * 1000
+    });
+  }
   return http.request(options);
 };
 

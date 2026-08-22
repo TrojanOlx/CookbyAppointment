@@ -6,6 +6,7 @@ import { FileService } from '../../services/fileService';
 import { ImageCacheService } from '../../utils/imageCache';
 import { getAuthSessionGeneration, invalidateAuthSession } from '../../utils/auth';
 import { PlatformAdminService } from '../../services/platformAdminService';
+import { clearSessionCache } from '../../services/http';
 const { FamilyService } = require('../../services/family');
 const { canManageFamily } = require('../../services/familyRole');
 let userInfoRequestId = 0;
@@ -13,6 +14,25 @@ let familyContextRequestId = 0;
 let platformStatusRequestId = 0;
 let profileSessionGeneration = 0;
 let profileViewGeneration = 0;
+
+type ProfileTimer = ReturnType<typeof setTimeout>;
+
+const scheduleProfileTimer = (page: any, callback: () => void, delay: number): ProfileTimer => {
+  const timers: Set<ProfileTimer> = page.profileTimers || (page.profileTimers = new Set<ProfileTimer>());
+  const timer = setTimeout(() => {
+    timers.delete(timer);
+    callback();
+  }, delay);
+  timers.add(timer);
+  return timer;
+};
+
+const clearProfileTimers = (page: any): void => {
+  const timers: Set<ProfileTimer> | undefined = page.profileTimers;
+  if (!timers) return;
+  timers.forEach(timer => clearTimeout(timer));
+  timers.clear();
+};
 
 // 页面数据接口
 interface IPageData {
@@ -100,7 +120,6 @@ Page<IPageData, IPageMethods & {
           hasUserInfo: true,
           openid: userInfo.openid
         });
-        this.checkAdminStatus();
       }
       // 缓存只用于首屏展示，随后以服务端资料为准并刷新短期头像地址。
       void this.fetchUserInfo();
@@ -141,6 +160,8 @@ Page<IPageData, IPageMethods & {
 
   onUnload() {
     profileViewGeneration += 1;
+    profileSessionGeneration += 1;
+    clearProfileTimers(this);
     const handler = (this as any)._initLoginPageHandler;
     if (handler) {
       const app = getApp<{ globalData: { eventBus: { off: (event: string, cb: (...args: any[]) => void) => void } } }>();
@@ -165,6 +186,12 @@ Page<IPageData, IPageMethods & {
         });
       }
     }
+    if (token && (this as any).userInfoRequestToken !== token) {
+      // Calling on every tab visit lets the five-minute HTTP TTL decide whether
+      // a network request is needed, while an in-progress reconciliation is
+      // still shared by onLoad/onShow.
+      void this.fetchUserInfo();
+    }
     void this.syncFamilyContext().then(() => {
       if (
         viewGeneration !== profileViewGeneration
@@ -175,7 +202,9 @@ Page<IPageData, IPageMethods & {
       if (this.data.userInfo && !this.data.userInfo.avatarUrl && this.data.hasFamily) {
         const familyId = String(FamilyService.getActiveFamilyId() || '');
         wx.showToast({ title: '请上传头像', icon: 'none' });
-        setTimeout(() => {
+        if ((this as any).avatarPromptTimer) clearTimeout((this as any).avatarPromptTimer);
+        (this as any).avatarPromptTimer = scheduleProfileTimer(this, () => {
+          (this as any).avatarPromptTimer = null;
           if (
             viewGeneration !== profileViewGeneration
             || authGeneration !== getAuthSessionGeneration()
@@ -257,12 +286,13 @@ Page<IPageData, IPageMethods & {
     const requestId = ++userInfoRequestId;
     const token = String(wx.getStorageSync('token') || '');
     if (!token) return;
+    (this as any).userInfoRequestToken = token;
     try {
-      showLoading('获取用户信息...');
       // 不传入userId参数，使用当前登录用户身份获取信息
       const userInfo = await UserService.getUserInfo();
       if (requestId !== userInfoRequestId || String(wx.getStorageSync('token') || '') !== token) return;
       if (userInfo) {
+        (this as any).userInfoSyncToken = token;
         wx.setStorageSync('userInfo', userInfo);
         this.setData({
           userInfo,
@@ -275,15 +305,12 @@ Page<IPageData, IPageMethods & {
       if (requestId !== userInfoRequestId || String(wx.getStorageSync('token') || '') !== token) return;
       console.error('获取用户信息失败:', error);
       // http.ts 已对 401/403 显示弹窗并清除 token，此处不重复清除
-      // 避免与 doLogin() 竞态——如果刚保存了新 token，不能在这里删掉它
-      this.setData({
-        userInfo: null,
-        hasUserInfo: false,
-        isAdmin: false,
-        openid: null
-      });
+      // Keep the local account summary visible when background reconciliation
+      // fails; a later dirty/TTL refresh can retry without a blank profile.
     } finally {
-      if (requestId === userInfoRequestId && String(wx.getStorageSync('token') || '') === token) hideLoading();
+      if ((this as any).userInfoRequestToken === token) {
+        (this as any).userInfoRequestToken = '';
+      }
     }
   },
 
@@ -303,14 +330,14 @@ Page<IPageData, IPageMethods & {
               if (res.code) {
                 resolve(res.code);
               } else if (retry) {
-                setTimeout(() => tryLogin(false), 800);
+                scheduleProfileTimer(this, () => tryLogin(false), 800);
               } else {
                 reject(new Error('wx.login 失败: ' + res.errMsg));
               }
             },
             fail: (err) => {
               if (retry) {
-                setTimeout(() => tryLogin(false), 800);
+                scheduleProfileTimer(this, () => tryLogin(false), 800);
               } else {
                 reject(err);
               }
@@ -333,6 +360,7 @@ Page<IPageData, IPageMethods & {
       }
 
       // 保存登录状态
+      clearSessionCache();
       wx.setStorageSync('token', loginResult.token);
       wx.setStorageSync('openid', loginResult.openid);
 
@@ -424,6 +452,7 @@ Page<IPageData, IPageMethods & {
     platformStatusRequestId += 1;
     profileSessionGeneration += 1;
     invalidateAuthSession();
+    clearSessionCache();
     hideLoading();
     if (wx.getStorageSync('token')) {
       void UserService.logout().catch(error => console.warn('服务端注销失败:', error));
@@ -707,6 +736,7 @@ Page<IPageData, IPageMethods & {
           platformStatusRequestId += 1;
           profileSessionGeneration += 1;
           invalidateAuthSession();
+          clearSessionCache();
           hideLoading();
           // Start cleanup before clearing storage so persisted image entries
           // are still available for deleting saved files.
@@ -739,7 +769,7 @@ Page<IPageData, IPageMethods & {
               });
 
               // 2秒后重启小程序
-              setTimeout(() => {
+              scheduleProfileTimer(this, () => {
                 wx.reLaunch({
                   url: '/pages/index/index'
                 });

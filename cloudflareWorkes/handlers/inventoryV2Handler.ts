@@ -20,6 +20,27 @@ interface InventoryInput {
   expectedUpdateTime?: unknown;
 }
 
+function dateInTimezone(date: Date, timezone: string): string {
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone || 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+  } catch {
+    parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(date);
+  }
+  const value = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
 export function withFamilyInventoryLock<T>(env: Env, familyId: string, execute: () => Promise<T>): Promise<T> {
   return withOperationLock(env, `family:${familyId}:inventory`, execute);
 }
@@ -59,37 +80,95 @@ async function resolveIngredientId(env: Env, name: string, requestedId?: unknown
   const existing = await env.DB.prepare(`
     SELECT c.id FROM ingredient_catalog c
     LEFT JOIN ingredient_aliases a ON a.ingredientId = c.id
-    WHERE lower(replace(c.canonicalName, ' ', '')) = ? OR lower(replace(a.alias, ' ', '')) = ? LIMIT 1
-  `).bind(normalized, normalized).first<{ id: string }>();
+    WHERE c.canonicalName = ? OR a.alias = ?
+      OR lower(replace(replace(replace(replace(replace(c.canonicalName, ' ', ''), '_', ''), '-', ''), '·', ''), '・', '')) = ?
+      OR lower(replace(replace(replace(replace(replace(a.alias, ' ', ''), '_', ''), '-', ''), '·', ''), '・', '')) = ?
+    LIMIT 1
+  `).bind(name, name, normalized, normalized).first<{ id: string }>();
   if (existing) return existing.id;
   const id = crypto.randomUUID();
   const now = Date.now();
   await env.DB.prepare(`
-    INSERT INTO ingredient_catalog (id, canonicalName, category, createdAt, updatedAt)
+    INSERT OR IGNORE INTO ingredient_catalog (id, canonicalName, category, createdAt, updatedAt)
     VALUES (?, ?, '其他', ?, ?)
   `).bind(id, name, now, now).run();
-  return id;
+  const created = await env.DB.prepare('SELECT id FROM ingredient_catalog WHERE canonicalName = ?')
+    .bind(name).first<{ id: string }>();
+  if (!created) throw new ApiError(500, 'INGREDIENT_RESOLUTION_FAILED', '食材目录写入失败');
+  return created.id;
 }
 
 async function listInventory(request: Request, env: Env): Promise<Response> {
   const context = await requireFamilyContext(request, env);
   const url = new URL(request.url);
-  const { page, pageSize, offset } = pagination(url);
+  const paginationResult = pagination(url);
+  const page = paginationResult.page;
+  const pageSize = Math.min(50, paginationResult.pageSize);
+  const offset = (page - 1) * pageSize;
   const category = url.searchParams.get('category');
   const status = url.searchParams.get('status');
-  const keyword = url.searchParams.get('keyword');
-  const conditions = ['familyId = ?'];
-  const bindings: unknown[] = [context.familyId];
-  if (category) { conditions.push('category = ?'); bindings.push(category); }
-  if (status) { conditions.push('status = ?'); bindings.push(status); }
-  if (keyword) { conditions.push('name LIKE ?'); bindings.push(`%${keyword}%`); }
-  const where = conditions.join(' AND ');
-  const [count, items] = await env.DB.batch([
-    env.DB.prepare(`SELECT COUNT(*) AS total FROM inventory_items WHERE ${where}`).bind(...bindings),
-    env.DB.prepare(`SELECT * FROM inventory_items WHERE ${where} ORDER BY expiryDate IS NULL, expiryDate ASC, createTime DESC LIMIT ? OFFSET ?`)
-      .bind(...bindings, pageSize, offset),
+  const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, 80);
+  const expiryState = url.searchParams.get('expiryState');
+  if (expiryState && !['normal', 'expiring', 'expired'].includes(expiryState)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', '库存过期状态无效');
+  }
+  const parsedExpiringDays = Number.parseInt(url.searchParams.get('expiringDays') || '3', 10);
+  const expiringDays = Number.isFinite(parsedExpiringDays)
+    ? Math.min(30, Math.max(0, parsedExpiringDays))
+    : 3;
+  const today = dateInTimezone(new Date(), context.timezone);
+  const expiringUntil = new Date(`${today}T00:00:00Z`);
+  expiringUntil.setUTCDate(expiringUntil.getUTCDate() + expiringDays);
+  const expiringUntilText = expiringUntil.toISOString().slice(0, 10);
+  const baseConditions = ['familyId = ?'];
+  const baseBindings: unknown[] = [context.familyId];
+  if (category) { baseConditions.push('category = ?'); baseBindings.push(category); }
+  if (status) { baseConditions.push('status = ?'); baseBindings.push(status); }
+  if (keyword) {
+    baseConditions.push("name LIKE ? ESCAPE '\\'");
+    baseBindings.push(`%${keyword.replace(/[\\%_]/g, '\\$&')}%`);
+  }
+  const filteredConditions = [...baseConditions];
+  const filteredBindings = [...baseBindings];
+  if (expiryState === 'normal') {
+    filteredConditions.push("(expiryDate IS NULL OR expiryDate = '' OR expiryDate > ?)");
+    filteredBindings.push(expiringUntilText);
+  } else if (expiryState === 'expiring') {
+    filteredConditions.push("(expiryDate IS NOT NULL AND expiryDate != '' AND expiryDate >= ? AND expiryDate <= ?)");
+    filteredBindings.push(today, expiringUntilText);
+  } else if (expiryState === 'expired') {
+    filteredConditions.push("(expiryDate IS NOT NULL AND expiryDate != '' AND expiryDate < ?)");
+    filteredBindings.push(today);
+  }
+  const baseWhere = baseConditions.join(' AND ');
+  const filteredWhere = filteredConditions.join(' AND ');
+  const [count, summary, items] = await env.DB.batch([
+    env.DB.prepare(`SELECT COUNT(*) AS total FROM inventory_items WHERE ${filteredWhere}`).bind(...filteredBindings),
+    env.DB.prepare(`
+      SELECT COUNT(*) AS total,
+        SUM(CASE WHEN expiryDate IS NULL OR expiryDate = '' OR expiryDate > ? THEN 1 ELSE 0 END) AS normal,
+        SUM(CASE WHEN expiryDate IS NOT NULL AND expiryDate != '' AND expiryDate >= ? AND expiryDate <= ? THEN 1 ELSE 0 END) AS expiring,
+        SUM(CASE WHEN expiryDate IS NOT NULL AND expiryDate != '' AND expiryDate < ? THEN 1 ELSE 0 END) AS expired
+      FROM inventory_items WHERE ${baseWhere}
+    `).bind(expiringUntilText, today, expiringUntilText, today, ...baseBindings),
+    env.DB.prepare(`SELECT * FROM inventory_items WHERE ${filteredWhere} ORDER BY expiryDate IS NULL, expiryDate ASC, createTime DESC LIMIT ? OFFSET ?`)
+      .bind(...filteredBindings, pageSize, offset),
   ]);
-  return json({ total: Number((count.results[0] as { total?: unknown } | undefined)?.total || 0), list: items.results, page, pageSize });
+  const total = Number((count.results[0] as { total?: unknown } | undefined)?.total || 0);
+  const summaryRow = summary.results[0] as Record<string, unknown> | undefined;
+  return json({
+    total,
+    list: items.results,
+    page,
+    pageSize,
+    hasMore: offset + items.results.length < total,
+    summary: {
+      total: Number(summaryRow?.total || 0),
+      normal: Number(summaryRow?.normal || 0),
+      expiring: Number(summaryRow?.expiring || 0),
+      expired: Number(summaryRow?.expired || 0),
+    },
+  });
 }
 
 async function getInventory(request: Request, env: Env): Promise<Response> {
@@ -219,8 +298,10 @@ async function deleteInventory(request: Request, env: Env): Promise<Response> {
 async function expiringInventory(request: Request, env: Env): Promise<Response> {
   const context = await requireFamilyContext(request, env);
   const days = Math.min(30, Math.max(0, Number.parseInt(new URL(request.url).searchParams.get('days') || '3', 10) || 3));
-  const today = new Date().toISOString().slice(0, 10);
-  const until = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+  const today = dateInTimezone(new Date(), context.timezone);
+  const untilDate = new Date(`${today}T00:00:00Z`);
+  untilDate.setUTCDate(untilDate.getUTCDate() + days);
+  const until = untilDate.toISOString().slice(0, 10);
   const result = await env.DB.prepare(`
     SELECT * FROM inventory_items
     WHERE familyId = ? AND expiryDate IS NOT NULL AND expiryDate BETWEEN ? AND ?

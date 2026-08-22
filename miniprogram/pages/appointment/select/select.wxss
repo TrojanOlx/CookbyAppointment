@@ -70,6 +70,13 @@ page {
   font-size: 28rpx;
   font-weight: 500;
   border: 2rpx solid transparent;
+  transition: transform var(--motion-press) var(--ease-out),
+    opacity var(--motion-press) var(--ease-out);
+}
+
+.meal-type-item:active {
+  transform: translateY(2rpx) scale(0.97);
+  opacity: 0.84;
 }
 .meal-type-item.active {
   background: var(--primary-light);
@@ -172,6 +179,13 @@ page {
   align-items: center;
   justify-content: center;
   white-space: nowrap;
+  transition: transform var(--motion-press) var(--ease-out),
+    opacity var(--motion-press) var(--ease-out);
+}
+
+.filter-tag:active {
+  transform: translateY(2rpx) scale(0.97);
+  opacity: 0.84;
 }
 .filter-tag.active {
   background: var(--primary-color);
@@ -191,6 +205,11 @@ page {
   padding: 6rpx 18rpx;
   border: 1rpx solid var(--primary-color);
   border-radius: var(--radius-full);
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.clear-filter:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 /* ── 底部固定区域 ── */
@@ -233,6 +252,21 @@ page {
   border: 1rpx solid var(--danger-color);
   border-radius: var(--radius-full);
   background: #fff;
+  position: relative;
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.clear-selection::before {
+  position: absolute;
+  top: -24rpx;
+  right: -24rpx;
+  bottom: -24rpx;
+  left: -24rpx;
+  content: '';
+}
+
+.clear-selection:active {
+  transform: translateY(2rpx) scale(0.97);
 }
 
 /* 底部按钮 */
@@ -268,9 +302,13 @@ page {
   justify-content: center;
   border-radius: var(--radius-full);
   border: 2rpx solid var(--border-color);
-  transition: opacity var(--motion-press) var(--ease-out);
+  transition: transform var(--motion-press) var(--ease-out),
+    opacity var(--motion-press) var(--ease-out);
 }
-.cancel-btn:active { opacity: 0.7; }
+.cancel-btn:active {
+  transform: translateY(2rpx) scale(0.97);
+  opacity: 0.7;
+}
 
 .submit-btn {
   flex: 1;
@@ -283,9 +321,13 @@ page {
   align-items: center;
   justify-content: center;
   border-radius: var(--radius-full);
-  transition: opacity var(--motion-press) var(--ease-out);
+  transition: transform var(--motion-press) var(--ease-out),
+    opacity var(--motion-press) var(--ease-out);
 }
-.submit-btn:active { opacity: 0.82; }
+.submit-btn:active {
+  transform: translateY(2rpx) scale(0.97);
+  opacity: 0.82;
+}
 .submit-btn[disabled] { background: #A5D6A7; opacity: 0.7; }
 
 /* ── 滚动列表 ── */
@@ -315,6 +357,13 @@ page {
   box-shadow: var(--shadow-sm);
   border: 2rpx solid transparent;
   box-sizing: border-box;
+  transition: transform var(--motion-press) var(--ease-out),
+    opacity var(--motion-press) var(--ease-out);
+}
+
+.dish-item:active {
+  transform: translateY(2rpx) scale(0.99);
+  opacity: 0.86;
 }
 .dish-item.selected {
   background: var(--primary-light) !important;
@@ -669,5 +718,15 @@ page {
 
   .loading-spinner {
     animation: none;
+  }
+
+  .meal-type-item:active,
+  .filter-tag:active,
+  .clear-filter:active,
+  .clear-selection:active,
+  .cancel-btn:active,
+  .submit-btn:active,
+  .dish-item:active {
+    transform: none;
   }
 }

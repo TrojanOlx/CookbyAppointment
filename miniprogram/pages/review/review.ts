@@ -105,18 +105,38 @@ Page({
         }
       });
 
-      const cachedDishes = await ImageCacheService.withCachedImages(
-        dishesWithReviewStatus,
-        item => item.images && item.images.length > 0 ? item.images[0] : undefined
-      );
-
       if (!isCurrentRequest()) return;
 
       this.setData({
         date: appointment.date,
         mealType: appointment.mealType,
-        dishes: cachedDishes
+        dishes: dishesWithReviewStatus.map(item => ({
+          ...item,
+          cachedImage: item.images && item.images.length > 0
+            ? item.images[0]
+            : '/images/default-dish.jpg'
+        }))
       });
+
+      void ImageCacheService.withCachedImages(
+        dishesWithReviewStatus,
+        item => item.images && item.images.length > 0 ? item.images[0] : undefined,
+        'cachedImage',
+        {
+          onResolved: (updates) => {
+            if (!isCurrentRequest()) return;
+            updates.forEach(update => {
+              const source = dishesWithReviewStatus[update.index];
+              if (!source) return;
+              const currentIndex = (this.data.dishes as DishWithReviewStatus[]).findIndex(
+                dish => String(dish.id) === String(source.id)
+              );
+              if (currentIndex < 0) return;
+              this.setData({ [`dishes[${currentIndex}].${update.field}`]: update.value });
+            });
+          }
+        }
+      );
 
     } catch (error) {
       if (!isCurrentRequest()) return;
@@ -131,6 +151,41 @@ Page({
     reviewDetailsRequestId += 1;
     reviewImageUploadRequestId += 1;
     hideLoading();
+  },
+
+  onDishImageError(e: WechatMiniprogram.TouchEvent) {
+    const id = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const dishes = this.data.dishes as DishWithReviewStatus[];
+    const index = id
+      ? dishes.findIndex(dish => String(dish.id) === id)
+      : fallbackIndex;
+    if (index < 0 || index >= dishes.length) return;
+    if (dishes[index].cachedImage === '/images/default-dish.jpg') return;
+    this.setData({ [`dishes[${index}].cachedImage`]: '/images/default-dish.jpg' });
+  },
+
+  onReviewImageError(e: WechatMiniprogram.TouchEvent) {
+    const dishId = String(e.currentTarget.dataset.dishId || '');
+    const dishIndex = Number(e.currentTarget.dataset.dishIndex);
+    const imageIndex = Number(e.currentTarget.dataset.index);
+    const dishes = this.data.dishes as DishWithReviewStatus[];
+    const index = dishId
+      ? dishes.findIndex(dish => String(dish.id) === dishId)
+      : dishIndex;
+    if (index < 0 || index >= dishes.length || imageIndex < 0) return;
+    const images = Array.isArray(dishes[index].images) ? [...dishes[index].images!] : [];
+    if (imageIndex >= images.length || images[imageIndex] === '/images/default-dish.jpg') return;
+    images[imageIndex] = '/images/default-dish.jpg';
+    this.setData({ [`dishes[${index}].images`]: images });
+  },
+
+  onUploadedImageError(e: WechatMiniprogram.TouchEvent) {
+    const index = Number(e.currentTarget.dataset.index);
+    const images = [...this.data.images];
+    if (index < 0 || index >= images.length || images[index] === '/images/default-dish.jpg') return;
+    images[index] = '/images/default-dish.jpg';
+    this.setData({ images });
   },
 
   // 选择菜品

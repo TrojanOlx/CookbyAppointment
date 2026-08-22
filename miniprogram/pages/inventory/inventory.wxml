@@ -8,6 +8,7 @@
         class="search-input" 
         placeholder="搜索食材" 
         value="{{searchKeyword}}" 
+        cursor-spacing="16"
         bindinput="onSearchInput" 
         confirm-type="search"
         catchtap="stopEvent"
@@ -88,7 +89,7 @@
               <view class="inventory-item" bindtap="editItem" data-id="{{item.id}}">
                 <!-- 左侧图片区域 -->
                 <view class="item-image">
-                  <image referrerPolicy="no-referrer" src="{{item.cachedImage || item.image || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
+                  <image referrerPolicy="no-referrer" src="{{item.cachedImage || item.image || '/images/default-dish.jpg'}}" mode="aspectFill" lazy-load="true" data-id="{{item.id}}" data-index="{{index}}" binderror="onItemImageError"></image>
                 </view>
                 
                 <view class="item-body">

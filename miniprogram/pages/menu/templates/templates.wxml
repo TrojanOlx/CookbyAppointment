@@ -9,7 +9,9 @@
         <view class="template-subtitle">从公共模板中选择，复制后就是你家庭的专属菜谱</view>
       </view>
       <button class="template-close" bindtap="goBack" aria-label="关闭">
-        <mp-icon icon="close" size="18" color="#725d42"></mp-icon>
+        <view class="template-close-visual">
+          <mp-icon icon="close" size="18" color="#725d42"></mp-icon>
+        </view>
       </button>
     </view>
     <view class="template-note">
@@ -86,7 +88,7 @@
         </view>
         <image
           class="template-image"
-          src="{{item.images && item.images.length ? item.images[0] : '/images/default-dish.jpg'}}"
+          src="{{item.cachedImage || (item.images && item.images.length ? item.images[0] : '/images/default-dish.jpg')}}"
           mode="aspectFill"
           lazy-load="true"
           data-id="{{item.id}}"

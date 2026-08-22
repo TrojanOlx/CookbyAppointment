@@ -1,6 +1,7 @@
 import { AccountService } from '../../../services/accountService';
 import { ImageCacheService } from '../../../utils/imageCache';
 import { getAuthSessionGeneration, invalidateAuthSession } from '../../../utils/auth';
+import { clearSessionCache } from '../../../services/http';
 
 let accountExportRequestId = 0;
 let accountDeleteRequestId = 0;
@@ -106,6 +107,7 @@ Page({
       await AccountService.deleteAccount();
       if (!isCurrentRequest()) return;
       const postDeleteAuthGeneration = invalidateAuthSession();
+      clearSessionCache();
       const clearImageCache = ImageCacheService.clear();
       wx.clearStorageSync();
       await clearImageCache;

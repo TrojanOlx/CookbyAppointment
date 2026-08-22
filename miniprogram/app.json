@@ -1,28 +1,35 @@
 {
   "pages": [
     "pages/index/index",
-    "pages/privacy/privacy",
     "pages/menu/menu",
-    "pages/menu/add/add",
-    "pages/menu/detail/detail",
-    "pages/menu/templates/templates",
     "pages/appointment/appointment",
     "pages/inventory/inventory",
-    "pages/inventory/add/add",
     "pages/profile/profile",
     "pages/profile/settings/settings",
     "pages/profile/account/account",
     "pages/profile/preferences/preferences",
     "pages/family/index/index",
     "pages/family/create/create",
-    "pages/family/join/join",
-    "pages/family/invite/invite",
     "pages/family/members/members",
-    "pages/shopping/index",
-    "pages/review/review",
-    "pages/profile/reviews/reviews"
+    "pages/shopping/index"
   ],
   "subPackages": [
+    {
+      "root": "pages/privacy",
+      "pages": ["privacy"]
+    },
+    {
+      "root": "pages/menu/add",
+      "pages": ["add"]
+    },
+    {
+      "root": "pages/menu/detail",
+      "pages": ["detail"]
+    },
+    {
+      "root": "pages/menu/templates",
+      "pages": ["templates"]
+    },
     {
       "root": "pages/menu/recommend",
       "pages": ["recommend"]
@@ -34,6 +41,26 @@
     {
       "root": "pages/appointment/booking",
       "pages": ["booking"]
+    },
+    {
+      "root": "pages/inventory/add",
+      "pages": ["add"]
+    },
+    {
+      "root": "pages/review",
+      "pages": ["review"]
+    },
+    {
+      "root": "pages/family/join",
+      "pages": ["join"]
+    },
+    {
+      "root": "pages/family/invite",
+      "pages": ["invite"]
+    },
+    {
+      "root": "pages/profile/reviews",
+      "pages": ["reviews"]
     },
     {
       "root": "pages/profile/admin",

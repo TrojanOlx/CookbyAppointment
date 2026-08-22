@@ -1,8 +1,10 @@
 import { Dish, DishType } from '../../models/dish';
 import { DishService } from '../../services/dishService';
-import { showLoading, hideLoading, showToast } from '../../utils/util';
+import { showToast } from '../../utils/util';
 import { UserService } from '../../services/userService';
 import { ImageCacheService } from '../../utils/imageCache';
+import { clearSessionCache } from '../../services/http';
+import { SESSION_CACHE_TTL, SessionCacheService } from '../../utils/sessionCache';
 const { getFamilyRoleContext } = require('../../services/familyRole');
 const { FamilyService } = require('../../services/family');
 
@@ -11,6 +13,7 @@ interface DisplayDish extends Dish {
 }
 
 let menuListRequestId = 0;
+let menuScope = '';
 
 Page({
   /**
@@ -47,8 +50,26 @@ Page({
    * 生命周期函数--监听页面显示
    */
   onShow() {
-    // 每次显示页面时重新加载数据，以获取最新数据
-    this.loadDishes(true);
+    // GET requests are backed by the session TTL cache. Keep the call here so
+    // returning from an edit can revalidate, while cached content stays visible.
+    const scope = `${String(wx.getStorageSync('token') || '')}|${String(FamilyService.getActiveFamilyId() || '')}`;
+    const scopeChanged = scope !== menuScope;
+    menuScope = scope;
+    if (scopeChanged) {
+      menuListRequestId += 1;
+      this.lastLoadedAt = 0;
+      this.setData({
+        dishes: [],
+        currentPage: 1,
+        hasMore: true,
+        total: 0,
+        loading: true
+      });
+    }
+    const cacheExpired = Date.now() - this.lastLoadedAt >= SESSION_CACHE_TTL.dish;
+    if (scopeChanged || !this.data.dishes.length || SessionCacheService.isDirty('dish') || cacheExpired) {
+      this.loadDishes(true);
+    }
     this.syncRoleVisibility();
     
     // 更新TabBar选中状态
@@ -131,6 +152,17 @@ Page({
     });
   },
 
+  onDishImageError(e: WechatMiniprogram.TouchEvent) {
+    const dishId = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const index = dishId
+      ? this.data.dishes.findIndex(item => String(item.id) === dishId)
+      : fallbackIndex;
+    if (index < 0 || index >= this.data.dishes.length) return;
+    if (this.data.dishes[index].cachedImage === '/images/default-dish.jpg') return;
+    this.setData({ [`dishes[${index}].cachedImage`]: '/images/default-dish.jpg' });
+  },
+
   /**
    * 加载菜品数据
    */
@@ -149,18 +181,14 @@ Page({
       && familyId === String(FamilyService.getActiveFamilyId() || '');
     
     console.log("开始加载菜品数据", refresh ? "刷新" : "加载更多", "当前页:", this.data.currentPage);
-    
-    // 如果是刷新，显示顶部loading，否则不显示全屏loading
+
+    // A refresh must not blank or cover an already rendered list. Only the
+    // initial empty state needs an inline loading indicator.
     if (refresh) {
-      // 下拉刷新已经有自己的loading，这里不需要再显示
-      if (!this.data.refresherTriggered && !wx.canIUse('onPullDownRefresh')) {
-        showLoading('刷新中');
-      }
+      this.setData({ loading: this.data.dishes.length === 0 });
     } else {
-      // 加载更多时，只设置loading状态，不显示全屏loading
       this.setData({ loading: true });
     }
-    if (refresh) this.setData({ loading: true });
     
     try {
       const page = refresh ? 1 : this.data.currentPage;
@@ -180,9 +208,24 @@ Page({
         requestedType || undefined
       );
       
+      const listStart = refresh ? 0 : this.data.dishes.length;
       const cachedDishes = await ImageCacheService.withCachedImages(
         result.list,
-        item => item.images && item.images.length > 0 ? item.images[0] : undefined
+        item => item.images && item.images.length > 0 ? item.images[0] : undefined,
+        'cachedImage',
+        {
+          onResolved: updates => {
+            if (!isCurrentRequest()) return;
+            updates.forEach(update => {
+              const targetIndex = listStart + update.index;
+              const resolvedDishId = result.list[update.index]?.id;
+              if (!resolvedDishId || this.data.dishes[targetIndex]?.id !== resolvedDishId) return;
+              this.setData({
+                [`dishes[${targetIndex}].${update.field}`]: update.value
+              });
+            });
+          }
+        }
       );
       console.log("获取数据成功，数量:", cachedDishes.length, "总数:", result.total);
       
@@ -198,6 +241,7 @@ Page({
         total: result.total,
         loading: false
       });
+      this.lastLoadedAt = Date.now();
       
       console.log("数据更新完成，当前菜品数:", this.data.dishes.length, "还有更多:", hasMore);
       
@@ -210,14 +254,6 @@ Page({
         });
       }
       
-      // 如果是刷新操作并且有数据变化，显示提示
-      if (refresh && result.list.length > 0 && !this.data.refresherTriggered) {
-        wx.showToast({
-          title: '刷新成功',
-          icon: 'success',
-          duration: 1500
-        });
-      }
     } catch (error) {
       if (!isCurrentRequest()) return;
       console.error('获取菜品列表失败:', error);
@@ -225,7 +261,6 @@ Page({
       this.setData({ loading: false });
     } finally {
       if (isCurrentRequest()) {
-        hideLoading();
         if (refresh && wx.stopPullDownRefresh) {
           wx.stopPullDownRefresh();
         }
@@ -240,8 +275,7 @@ Page({
     const type = e.currentTarget.dataset.type;
     this.setData({
       selectedType: type,
-      currentPage: 1,
-      dishes: []
+      currentPage: 1
     }, () => this.loadDishes(true, type));
   },
 
@@ -285,6 +319,7 @@ Page({
    */
   onRefresherRefresh() {
     console.log("下拉刷新触发");
+    clearSessionCache('dish');
     // 设置刷新状态
     this.setData({
       refresherTriggered: true
@@ -292,19 +327,12 @@ Page({
     
     // 执行刷新操作
     this.loadDishes(true).then(() => {
-      // 延迟关闭刷新状态，提供更好的视觉反馈
-      setTimeout(() => {
-        this.setData({
-          refresherTriggered: false
-        });
-        console.log("下拉刷新完成");
-      }, 500);
-    }).catch(() => {
-      // 出错时也需要关闭刷新状态
       this.setData({
         refresherTriggered: false
       });
-      console.log("下拉刷新出错");
+      console.log("下拉刷新完成");
+    }).catch(() => {
+      this.setData({ refresherTriggered: false });
     });
   },
   
@@ -372,12 +400,22 @@ Page({
   },
   
   loadMoreTimer: null as any,
+  lastLoadedAt: 0,
+
+  onUnload() {
+    menuListRequestId += 1;
+    if (this.loadMoreTimer) {
+      clearTimeout(this.loadMoreTimer);
+      this.loadMoreTimer = null;
+    }
+  },
 
   /**
    * 原生下拉刷新 - 依然保留，以防scroll-view外部的下拉
    */
   onPullDownRefresh() {
     console.log("原生下拉刷新触发");
+    clearSessionCache('dish');
     // 调用刷新方法
     this.loadDishes(true).then(() => {
       // 停止下拉刷新动画

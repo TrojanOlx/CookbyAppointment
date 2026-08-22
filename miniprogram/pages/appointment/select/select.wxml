@@ -41,6 +41,9 @@
           class="search-input" 
           placeholder="搜索菜品名称或食材" 
           value="{{searchKeyword}}" 
+          cursor-spacing="16"
+          confirm-type="search"
+          confirm-hold="{{false}}"
           bindinput="onSearchInput" 
         />
         <view class="search-icon"></view>
@@ -108,7 +111,7 @@
           data-id="{{item.id}}"
           bindtap="toggleSelectDish"
         >
-          <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || item.images[0] || '/images/default-dish.jpg'}}" mode="aspectFill"></image>
+          <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || item.images[0] || '/images/default-dish.jpg'}}" mode="aspectFill" lazy-load="true" data-id="{{item.id}}" data-index="{{index}}" binderror="onDishImageError"></image>
           <view class="dish-info">
             <view class="dish-name">{{item.name}}</view>
             <view class="dish-tags">

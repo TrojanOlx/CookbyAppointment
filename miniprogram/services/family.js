@@ -31,6 +31,7 @@ const setActiveFamilyId = (familyId) => {
   const previous = getActiveFamilyId();
   wx.setStorageSync(ACTIVE_FAMILY_KEY, value);
   if (previous && previous !== value) {
+    http.clearSessionCache();
     ['dish_list_cache', 'inventory_cache', 'appointment_cache', 'shopping_cache'].forEach((key) => {
       wx.removeStorageSync(key);
     });
@@ -39,6 +40,7 @@ const setActiveFamilyId = (familyId) => {
 };
 
 const clearActiveFamilyId = () => {
+  http.clearSessionCache();
   wx.removeStorageSync(ACTIVE_FAMILY_KEY);
   wx.removeStorageSync('active_family');
   ['dish_list_cache', 'inventory_cache', 'appointment_cache', 'shopping_cache'].forEach((key) => {
@@ -57,6 +59,18 @@ const familyRequest = (url, method, data, includeFamily) => {
   return http.request(options);
 };
 
+const familyGetCached = (url, data, includeFamily) => {
+  const useFamily = includeFamily !== false;
+  const familyId = getActiveFamilyId();
+  if (useFamily && !familyId) {
+    return Promise.reject(new Error('请先选择一个家庭'));
+  }
+  return http.getCached(url, data, {
+    resource: 'family',
+    ttlMs: 5 * 60 * 1000
+  });
+};
+
 class FamilyService {
   static getActiveFamilyId() {
     return getActiveFamilyId();
@@ -71,7 +85,7 @@ class FamilyService {
   }
 
   static async list() {
-    const response = await familyRequest('/api/family/list', 'GET', undefined, false);
+    const response = await familyGetCached('/api/family/list', undefined, false);
     return model.extractList(response, ['list', 'families', 'items'])
       .map(model.normalizeFamily)
       .filter(Boolean);
@@ -96,7 +110,7 @@ class FamilyService {
   }
 
   static async detail() {
-    const response = await familyRequest('/api/family/detail', 'GET');
+    const response = await familyGetCached('/api/family/detail');
     return model.extractFamily(response);
   }
 
@@ -174,7 +188,7 @@ class FamilyService {
   }
 
   static async members() {
-    const response = await familyRequest('/api/family/members', 'GET');
+    const response = await familyGetCached('/api/family/members');
     return model.extractList(response, ['list', 'members', 'items'])
       .map(model.normalizeMember)
       .filter(Boolean);

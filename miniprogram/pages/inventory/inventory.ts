@@ -1,11 +1,12 @@
 import { InventoryCategory, InventoryItem } from '../../models/inventory';
-import { InventoryService } from '../../services/inventoryService';
+import { InventoryExpiryState, InventoryService } from '../../services/inventoryService';
 import { showConfirm, showSuccess, showToast, showLoading, hideLoading, getCurrentDate, formatDate, isDateExpired, dateDiff } from '../../utils/util';
 import { ImageCacheService } from '../../utils/imageCache';
 const { FamilyService } = require('../../services/family');
 
-// 每页加载的数量
-const PAGE_SIZE = 10;
+// 服务端分页大小，避免一次拉取整组库存后再在客户端过滤。
+const PAGE_SIZE = 20;
+const EXPIRING_DAYS = 3;
 let inventoryRequestId = 0;
 
 interface DisplayInventoryItem extends InventoryItem {
@@ -14,13 +15,6 @@ interface DisplayInventoryItem extends InventoryItem {
   daysLeft: number | null;
   xmove?: number; // 添加滑动位移属性
   cachedImage?: string;
-}
-
-interface CountInfo {
-  totalCount: number;
-  normalCount: number;
-  expiringCount: number;
-  expiredCount: number;
 }
 
 Page({
@@ -39,20 +33,47 @@ Page({
     normalCount: 0,   // 未到期数量
     expiringCount: 0, // 即将过期数量
     expiredCount: 0,   // 已过期数量
-    allFilteredItems: [] as DisplayInventoryItem[], // 存储全部筛选后的完整数据
     safeAreaBottom: 0,
     startX: 0 // 添加触摸起始位置
   },
 
+  searchTimer: null as number | null,
+  hasShown: false,
+  wasHidden: false,
+  lastFamilyId: '',
+  pendingReturnRefresh: false,
+
   onLoad() {
-    // 初始加载数据
+    this.lastFamilyId = String(FamilyService.getActiveFamilyId() || '');
     this.loadInventory(true);
     this.setSafeArea();
   },
 
   onShow() {
-    // 显示页面时刷新数据
-    this.loadInventory(true);
+    const familyId = String(FamilyService.getActiveFamilyId() || '');
+    const isInitialShow = !this.hasShown;
+    const familyChanged = Boolean(this.lastFamilyId) && familyId !== this.lastFamilyId;
+    this.hasShown = true;
+    this.lastFamilyId = familyId;
+
+    // onLoad 已负责首次加载；返回页面或切换家庭时交给 service 的会话缓存决定是否真正发请求。
+    if (!isInitialShow && (this.wasHidden || familyChanged || this.pendingReturnRefresh)) {
+      this.pendingReturnRefresh = false;
+      this.loadInventory(true, false, true);
+    }
+    this.wasHidden = false;
+  },
+
+  onHide() {
+    this.wasHidden = true;
+  },
+
+  onUnload() {
+    if (this.searchTimer !== null) {
+      clearTimeout(this.searchTimer);
+      this.searchTimer = null;
+    }
+    inventoryRequestId += 1;
   },
 
   // 设置安全区域
@@ -82,53 +103,33 @@ Page({
     });
   },
 
-  // 统计各状态的食材数量
-  calculateCounts(inventoryItems: InventoryItem[]): CountInfo {
-    const today = getCurrentDate();
-    let normalCount = 0;
-    let expiringCount = 0;
-    let expiredCount = 0;
-
-    for (const item of inventoryItems) {
-      const expired = isDateExpired(item.expiryDate);
-      let daysLeft = null;
-
-      if (!expired) {
-        daysLeft = dateDiff(today, item.expiryDate);
-      }
-
-      if (expired) {
-        expiredCount++;
-      } else if (!expired && daysLeft !== null && daysLeft <= 3) {
-        expiringCount++;
-      } else {
-        normalCount++;
-      }
-    }
-
-    return {
-      totalCount: inventoryItems.length,
-      normalCount,
-      expiringCount,
-      expiredCount
-    };
+  onItemImageError(e: WechatMiniprogram.TouchEvent) {
+    const itemId = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const index = itemId
+      ? this.data.items.findIndex(item => String(item.id) === itemId)
+      : fallbackIndex;
+    if (index < 0 || index >= this.data.items.length) return;
+    if (this.data.items[index].cachedImage === '/images/default-dish.jpg') return;
+    this.setData({ [`items[${index}].cachedImage`]: '/images/default-dish.jpg' });
   },
 
-  // 加载库存数据
-  async loadInventory(refresh = false) {
-    if (!refresh && (this.data.loading || this.data.isRefreshing)) return;
+  // 加载库存数据。刷新只重置页码，force 仅由用户显式下拉时使用。
+  async loadInventory(refresh = false, force = false, silent = false) {
+    if (!refresh && (this.data.loading || this.data.isRefreshing || this.data.isLoadingMore)) return;
+    if (!refresh && !this.data.hasMore) return;
 
     const requestId = ++inventoryRequestId;
     const token = String(wx.getStorageSync('token') || '');
     const familyId = String(FamilyService.getActiveFamilyId() || '');
     const isCurrentRequest = () => requestId === inventoryRequestId
       && token === String(wx.getStorageSync('token') || '')
-      && familyId === String(FamilyService.getActiveFamilyId() || '');
+      && familyId === String(FamilyService.getActiveFamilyId() || '')
+      && searchKeyword === this.data.searchKeyword
+      && filterStatus === this.data.filterStatus;
     const searchKeyword = this.data.searchKeyword;
-    const filterStatus = this.data.filterStatus;
-    const currentPage = this.data.currentPage;
-    let filteredItems = this.data.allFilteredItems;
-    let counts: CountInfo | null = null;
+    const filterStatus = this.data.filterStatus as InventoryExpiryState | '';
+    const page = refresh ? 1 : this.data.currentPage;
 
     this.setData({
       loading: true,
@@ -136,111 +137,58 @@ Page({
     });
 
     try {
-      // 只有刷新时才重新获取全部数据
-      if (refresh) {
-        let inventoryItems: InventoryItem[] = [];
-        let response;
-
-        // 根据搜索关键词获取数据
-        if (searchKeyword) {
-          // 使用搜索接口
-          response = await InventoryService.searchInventory(
-            searchKeyword,
-            1,
-            100 // 获取较多数据以便本地筛选
-          );
-          inventoryItems = response.list;
-        } else {
-          // 获取所有库存数据
-          response = await InventoryService.getInventoryList(1, 100); // 获取较多数据以便本地筛选
-          inventoryItems = response.list;
-        }
-        if (!isCurrentRequest()) return;
-
-        // 计算各状态计数
-        counts = this.calculateCounts(inventoryItems);
-
-        // 处理数据，添加过期信息
-        const allItems: DisplayInventoryItem[] = [];
-        const today = getCurrentDate();
-
-        // 创建ID映射以处理可能的重复ID
-        const usedIds = new Set<string>();
-
-        for (const item of inventoryItems) {
-          const expired = isDateExpired(item.expiryDate);
-          let daysLeft = null;
-
-          if (!expired) {
-            daysLeft = dateDiff(today, item.expiryDate);
-          }
-
-          // 确保ID唯一
-          let uniqueId = item.id;
-          if (usedIds.has(uniqueId)) {
-            uniqueId = `${uniqueId}-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-          }
-          usedIds.add(uniqueId);
-
-          const displayItem = {
-            ...item,
-            id: uniqueId, // 使用唯一ID
-            isExpired: expired,
-            isExpiringSoon: !expired && daysLeft !== null && daysLeft <= 3,
-            daysLeft,
-            xmove: 0 // 添加 xmove 属性
-          };
-
-          // 根据筛选条件过滤
-          if (filterStatus === '') {
-            // 全部
-            allItems.push(displayItem);
-          } else if (filterStatus === 'normal' && !displayItem.isExpired && !displayItem.isExpiringSoon) {
-            // 未到期（不包括即将过期）
-            allItems.push(displayItem);
-          } else if (filterStatus === 'expiring' && displayItem.isExpiringSoon) {
-            // 即将过期
-            allItems.push(displayItem);
-          } else if (filterStatus === 'expired' && displayItem.isExpired) {
-            // 已过期
-            allItems.push(displayItem);
-          }
-        }
-
-        // 按过期情况排序：已过期 > 即将过期 > 正常
-        allItems.sort((a, b) => {
-          if (a.isExpired && !b.isExpired) return -1;
-          if (!a.isExpired && b.isExpired) return 1;
-          if (a.isExpiringSoon && !b.isExpiringSoon) return -1;
-          if (!a.isExpiringSoon && b.isExpiringSoon) return 1;
-
-          // 同类按保质期剩余天数或按名称排序
-          if (a.daysLeft !== null && b.daysLeft !== null) {
-            return a.daysLeft - b.daysLeft;
-          }
-          return a.name.localeCompare(b.name);
-        });
-
-        filteredItems = allItems;
-      }
-
-      // 使用已保存的筛选后数据进行分页
-      const filteredTotal = filteredItems.length;
-      const start = refresh ? 0 : currentPage * this.data.pageSize;
-      const end = start + this.data.pageSize;
-      const items = filteredItems.slice(start, end);
-      const cachedItems = await ImageCacheService.withCachedImages(items, item => item.image);
+      const response = await InventoryService.listInventory({
+        page,
+        pageSize: PAGE_SIZE,
+        keyword: searchKeyword.trim() || undefined,
+        expiryState: filterStatus || undefined,
+        expiringDays: EXPIRING_DAYS,
+      }, force);
       if (!isCurrentRequest()) return;
-      const hasMore = end < filteredTotal;
 
-      // 更新数据
+      const today = getCurrentDate();
+      const items: DisplayInventoryItem[] = response.list.map(item => {
+        const isExpired = isDateExpired(item.expiryDate);
+        const daysLeft = isExpired ? null : dateDiff(today, item.expiryDate);
+        return {
+          ...item,
+          isExpired,
+          isExpiringSoon: !isExpired && daysLeft !== null && daysLeft <= EXPIRING_DAYS,
+          daysLeft,
+          xmove: 0,
+        };
+      });
+      const cachedItems = await ImageCacheService.withCachedImages(
+        items,
+        item => item.image,
+        'cachedImage',
+        {
+          getIdentity: () => ({ familyId }),
+          onResolved: updates => {
+            if (!isCurrentRequest()) return;
+            const patch: Record<string, string> = {};
+            updates.forEach(update => {
+              const item = items[update.index];
+              if (!item) return;
+              const index = this.data.items.findIndex(current => String(current.id) === String(item.id));
+              if (index >= 0) patch[`items[${index}].${update.field}`] = update.value;
+            });
+            if (Object.keys(patch).length) this.setData(patch);
+          }
+        }
+      );
+      if (!isCurrentRequest()) return;
+
+      const summary = response.summary || { total: response.total, normal: 0, expiring: 0, expired: 0 };
       this.setData({
         items: refresh ? cachedItems : [...this.data.items, ...cachedItems],
-        allFilteredItems: filteredItems,
-        currentPage: refresh ? 1 : currentPage + 1,
-        hasMore,
-        filteredTotal,
-        ...(counts || {}),
+        currentPage: (response.page || page) + 1,
+        hasMore: response.hasMore,
+        filteredTotal: response.total,
+        totalCount: summary.total,
+        normalCount: summary.normal,
+        expiringCount: summary.expiring,
+        expiredCount: summary.expired,
         loading: false,
         isRefreshing: false,
         isLoadingMore: false
@@ -248,7 +196,7 @@ Page({
     } catch (error) {
       if (!isCurrentRequest()) return;
       console.error('加载库存数据失败:', error);
-      showToast('加载数据失败，请重试');
+      if (!silent) showToast('加载数据失败，请重试');
       this.setData({
         loading: false,
         isRefreshing: false,
@@ -263,14 +211,26 @@ Page({
 
   // 搜索输入
   onSearchInput(e: any) {
+    inventoryRequestId += 1;
+    if (this.searchTimer !== null) {
+      clearTimeout(this.searchTimer);
+      this.searchTimer = null;
+    }
+    const searchKeyword = String(e.detail.value || '');
     this.setData({
-      searchKeyword: e.detail.value,
-      currentPage: 1
+      searchKeyword,
+      currentPage: 1,
+      items: [],
+      filteredTotal: 0,
+      hasMore: true
     });
 
     // 隐藏所有删除按钮
     this.hideAllDeleteButtons();
-    this.loadInventory(true);
+    this.searchTimer = setTimeout(() => {
+      this.searchTimer = null;
+      this.loadInventory(true);
+    }, 250) as unknown as number;
   },
 
   // 按状态筛选
@@ -278,7 +238,10 @@ Page({
     const status = e.currentTarget.dataset.status;
     this.setData({
       filterStatus: status,
-      currentPage: 1
+      currentPage: 1,
+      items: [],
+      filteredTotal: 0,
+      hasMore: true
     });
 
     // 隐藏所有删除按钮
@@ -295,11 +258,12 @@ Page({
       isRefreshing: true,
       currentPage: 1
     });
-    this.loadInventory(true);
+    this.loadInventory(true, true);
   },
 
   // 添加食材
   addItem() {
+    this.pendingReturnRefresh = true;
     wx.navigateTo({
       url: './add/add'
     });
@@ -346,6 +310,7 @@ Page({
     this.hideAllDeleteButtons();
 
     const id = e.currentTarget.dataset.id;
+    this.pendingReturnRefresh = true;
     wx.navigateTo({
       url: `/pages/inventory/add/add?id=${id}`
     });
@@ -374,12 +339,12 @@ Page({
 
   // 下拉刷新
   onPullDownRefresh() {
-    this.loadInventory(true);
+    this.loadInventory(true, true);
   },
 
   // 上拉加载更多
   onReachBottom() {
-    if (this.data.hasMore && !this.data.loading) {
+    if (this.data.hasMore && !this.data.loading && !this.data.isLoadingMore) {
       this.loadInventory();
     }
   },
@@ -427,8 +392,8 @@ Page({
 
     // 先重置所有项目的xmove为0
     const items = [...this.data.items];
-    items.forEach((item, idx) => {
-      items[idx].xmove = 0;
+    items.forEach(item => {
+      item.xmove = 0;
     });
 
     // 然后只设置当前项目的xmove为-85
@@ -487,7 +452,7 @@ Page({
    */
   hideAllDeleteButtons() {
     const items = [...this.data.items];
-    items.forEach((item, index) => {
+    items.forEach(item => {
       item.xmove = 0;
     });
     this.setData({

@@ -9,6 +9,7 @@ const app = getApp<IAppOption>();
 
 let todayAppointmentsRequestId = 0;
 let expiringItemsRequestId = 0;
+let homeScope = '';
 
 const currentHomeScope = () => `${String(wx.getStorageSync('token') || '')}|${String(FamilyService.getActiveFamilyId() || '')}`;
 
@@ -35,8 +36,21 @@ Page({
     }
     const token = wx.getStorageSync('token');
     const isLoggedIn = !!token;
+    const scope = currentHomeScope();
+    const scopeChanged = scope !== homeScope;
+    homeScope = scope;
     this.setData({ isLoggedIn });
     if (isLoggedIn) {
+      if (scopeChanged) {
+        todayAppointmentsRequestId += 1;
+        expiringItemsRequestId += 1;
+        this.setData({
+          todayAppointments: [],
+          expiringItems: [],
+          loadingAppointments: true,
+          loadingInventory: true
+        });
+      }
       this.loadTodayAppointments();
       this.loadExpiringItems();
     } else {
@@ -65,7 +79,10 @@ Page({
     const requestId = ++todayAppointmentsRequestId;
     const scope = currentHomeScope();
     const isCurrentRequest = () => requestId === todayAppointmentsRequestId && scope === currentHomeScope();
-    this.setData({ loadingAppointments: true });
+    // Keep an already rendered summary visible while the short-lived GET cache
+    // revalidates when returning to the tab.
+    const hasExistingData = this.data.todayAppointments.length > 0;
+    if (!hasExistingData) this.setData({ loadingAppointments: true });
     try {
       const today = getCurrentDate();
       const res = await AppointmentService.getAppointmentListByDate(today);
@@ -77,9 +94,10 @@ Page({
       this.setData({ todayAppointments: list });
     } catch (e) {
       if (!isCurrentRequest()) return;
-      this.setData({ todayAppointments: [] });
+      // A transient refresh failure must not turn a previously rendered card
+      // into an empty state. The next tab visit can retry through the cache.
     } finally {
-      if (isCurrentRequest()) this.setData({ loadingAppointments: false });
+      if (isCurrentRequest() && !hasExistingData) this.setData({ loadingAppointments: false });
     }
   },
 
@@ -87,7 +105,8 @@ Page({
     const requestId = ++expiringItemsRequestId;
     const scope = currentHomeScope();
     const isCurrentRequest = () => requestId === expiringItemsRequestId && scope === currentHomeScope();
-    this.setData({ loadingInventory: true });
+    const hasExistingData = this.data.expiringItems.length > 0;
+    if (!hasExistingData) this.setData({ loadingInventory: true });
     try {
       const today = getCurrentDate();
       const res = await InventoryService.getExpiringItems(3, 1, 5);
@@ -100,9 +119,10 @@ Page({
       this.setData({ expiringItems: list });
     } catch (e) {
       if (!isCurrentRequest()) return;
-      this.setData({ expiringItems: [] });
+      // Keep the last known warning list visible if background revalidation
+      // fails; an empty list would incorrectly hide the warning card.
     } finally {
-      if (isCurrentRequest()) this.setData({ loadingInventory: false });
+      if (isCurrentRequest() && !hasExistingData) this.setData({ loadingInventory: false });
     }
   },
 

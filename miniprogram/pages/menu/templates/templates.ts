@@ -1,11 +1,14 @@
 import { DishTemplate, DishType } from '../../../models/dish';
 import { DishService } from '../../../services/dishService';
+import { ImageCacheService } from '../../../utils/imageCache';
+const { FamilyService } = require('../../../services/family');
 
 const TEMPLATE_PAGE_SIZE = 30;
 
 interface TemplateCard extends DishTemplate {
   selected: boolean;
   ingredientSummary: string;
+  cachedImage?: string;
 }
 
 let templatesRequestId = 0;
@@ -86,9 +89,30 @@ Page({
       const incoming = Array.isArray(result && result.list)
         ? result.list.map(normalizeTemplate)
         : [];
+      const familyId = String(FamilyService.getActiveFamilyId() || '');
+      const cachedIncoming = await ImageCacheService.withCachedImages<TemplateCard, 'cachedImage'>(
+        incoming,
+        item => item.images && item.images.length ? item.images[0] : undefined,
+        'cachedImage',
+        {
+          getIdentity: () => ({ familyId }),
+          onResolved: updates => {
+            if (requestId !== templatesRequestId) return;
+            wx.nextTick(() => {
+              if (requestId !== templatesRequestId) return;
+              updates.forEach(update => {
+                const source = incoming[update.index];
+                if (!source) return;
+                const index = this.data.templates.findIndex(item => String(item.id) === String(source.id));
+                if (index >= 0) this.setData({ [`templates[${index}].${update.field}`]: update.value });
+              });
+            });
+          }
+        }
+      );
       const previous = reset ? [] : (this.data.templates as TemplateCard[]);
       const existingIds = new Set(previous.map(item => String(item.id)));
-      const merged = previous.concat(incoming.filter(item => !existingIds.has(String(item.id))));
+      const merged = previous.concat(cachedIncoming.filter(item => !existingIds.has(String(item.id))));
       const total = Number(result && result.total) || merged.length;
 
       this.setTemplateSelection(merged, {
@@ -233,7 +257,7 @@ Page({
     const id = String(event.currentTarget.dataset.id || '');
     if (!id) return;
     const templates = (this.data.templates as TemplateCard[]).map(item => (
-      String(item.id) === id ? { ...item, images: ['/images/default-dish.jpg'] } : item
+      String(item.id) === id ? { ...item, cachedImage: '/images/default-dish.jpg' } : item
     ));
     this.setData({ templates });
   },

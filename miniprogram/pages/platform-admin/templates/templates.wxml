@@ -57,7 +57,7 @@
       <view wx:for="{{templates}}" wx:key="id" class="template-card">
         <view class="template-card-main" bindtap="editTemplate" data-id="{{item.id}}">
           <view class="template-image-wrap">
-            <image wx:if="{{item.images[0]}}" class="template-image" src="{{item.images[0]}}" mode="aspectFill" lazy-load="true" referrerPolicy="no-referrer" data-id="{{item.id}}" binderror="onTemplateImageError"></image>
+            <image wx:if="{{item.images[0]}}" class="template-image" src="{{item.images[0]}}" mode="aspectFill" lazy-load="true" referrerPolicy="no-referrer" data-id="{{item.id}}" data-index="{{index}}" binderror="onTemplateImageError"></image>
             <image wx:else class="template-image template-image-placeholder" src="/images/default-dish.jpg" mode="aspectFill"></image>
           </view>
           <view class="template-content">

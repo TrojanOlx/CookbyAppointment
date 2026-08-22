@@ -160,6 +160,18 @@ Page({
     };
   },
 
+  onMemberImageError(e) {
+    const id = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const members = this.data.members || [];
+    const index = id
+      ? members.findIndex(item => String(item.userId || item.id || '') === id)
+      : fallbackIndex;
+    if (index < 0 || index >= members.length) return;
+    if (!members[index].avatarUrl) return;
+    this.setData({ [`members[${index}].avatarUrl`]: '' });
+  },
+
   onPullDownRefresh() {
     if (!this.data.hasActiveFamily) {
       wx.stopPullDownRefresh();

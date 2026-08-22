@@ -125,16 +125,17 @@ Page({
         ...popularDishes.map((dish: any) => Number(dish && dish.count || 0)),
         1
       );
-      const topDishesWithPct = popularDishes.map((dish: any) => ({
+      const topDishesWithPct = popularDishes.map((dish: any, index: number) => ({
         ...dish,
         dishId: dish.dishId || dish.id,
+        imageCacheKey: String(dish.dishId || dish.id || index),
         count: Number(dish.count || 0),
         pct: Math.round(Number(dish.count || 0) / maxPopularCount * 100)
       }));
-      const topDishes = await ImageCacheService.withCachedImages(
-        topDishesWithPct,
-        (item: any) => item.image || (Array.isArray(item.images) ? item.images[0] : undefined)
-      );
+      const topDishes = topDishesWithPct.map((item: any) => ({
+        ...item,
+        cachedImage: item.image || (Array.isArray(item.images) ? item.images[0] : undefined) || '/images/default-dish.jpg'
+      }));
 
       const maxDishCount = maxPopularCount;
       const userRanking: any[] = [];
@@ -166,6 +167,27 @@ Page({
       }, () => {
         wx.nextTick(() => { this.drawBarChart(); });
       });
+
+      void ImageCacheService.withCachedImages(
+        topDishesWithPct,
+        (item: any) => item.image || (Array.isArray(item.images) ? item.images[0] : undefined),
+        'cachedImage',
+        {
+          onResolved: (updates) => {
+            if (!isCurrentRequest()) return;
+            updates.forEach(update => {
+              const source = topDishesWithPct[update.index];
+              if (!source) return;
+              const sourceId = String(source.imageCacheKey);
+              const currentIndex = (this.data.topDishes as any[]).findIndex(item =>
+                String(item.imageCacheKey || item.dishId || item.id || '') === sourceId
+              );
+              if (currentIndex < 0) return;
+              this.setData({ [`topDishes[${currentIndex}].${update.field}`]: update.value });
+            });
+          }
+        }
+      );
     } catch (e) {
       if (isCurrentRequest()) wx.showToast({ title: '加载失败', icon: 'error' });
     } finally {
@@ -179,6 +201,30 @@ Page({
 
   onUnload() {
     statisticsRequestId += 1;
+  },
+
+  onTopDishImageError(e: WechatMiniprogram.TouchEvent) {
+    const id = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const dishes = this.data.topDishes as any[];
+    const index = id
+      ? dishes.findIndex(item => String(item.dishId || item.id || '') === id)
+      : fallbackIndex;
+    if (index < 0 || index >= dishes.length) return;
+    if (dishes[index].cachedImage === '/images/default-dish.jpg') return;
+    this.setData({ [`topDishes[${index}].cachedImage`]: '/images/default-dish.jpg' });
+  },
+
+  onUserAvatarError(e: WechatMiniprogram.TouchEvent) {
+    const id = String(e.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(e.currentTarget.dataset.index);
+    const users = this.data.userRanking as any[];
+    const index = id
+      ? users.findIndex(item => String(item.userId || item.id || '') === id)
+      : fallbackIndex;
+    if (index < 0 || index >= users.length) return;
+    if (users[index].cachedAvatar === '/images/default-dish.jpg') return;
+    this.setData({ [`userRanking[${index}].cachedAvatar`]: '/images/default-dish.jpg' });
   },
 
   drawBarChart() {

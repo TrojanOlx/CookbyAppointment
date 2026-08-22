@@ -1,5 +1,6 @@
-const { request } = require('../../../services/http');
+const { getCached } = require('../../../services/http');
 const { FamilyService } = require('../../../services/family');
+const { ImageCacheService } = require('../../../utils/imageCache');
 
 let recommendationRequestId = 0;
 
@@ -11,7 +12,11 @@ Page({
     members: [],
     selectedDinerIds: [],
     recommendations: [],
-    recommendationQueued: false
+    recommendationQueued: false,
+    currentPage: 1,
+    total: 0,
+    hasMore: true,
+    loadingMore: false
   },
 
   async onLoad() {
@@ -33,7 +38,7 @@ Page({
     const familyId = String(FamilyService.getActiveFamilyId() || '');
     if (familyId === this.data.familyId) return;
     recommendationRequestId += 1;
-    this.setData({ familyId, members: [], selectedDinerIds: [], recommendations: [], loadError: '', loading: false, recommendationQueued: false });
+    this.setData({ familyId, members: [], selectedDinerIds: [], recommendations: [], loadError: '', loading: false, recommendationQueued: false, currentPage: 1, total: 0, hasMore: true, loadingMore: false });
     if (familyId && await this.loadMembers()) await this.loadRecommendations();
   },
 
@@ -59,24 +64,55 @@ Page({
     this.setData({ selectedDinerIds: Array.from(selected) }, () => this.loadRecommendations());
   },
 
-  async loadRecommendations() {
+  async loadRecommendations(reset = true) {
     const familyId = String(FamilyService.getActiveFamilyId() || '');
     if (!familyId || familyId !== this.data.familyId) return;
-    if (this.data.loading) {
-      this.setData({ recommendationQueued: true });
+    if (this.data.loading || this.data.loadingMore) {
+      if (reset) this.setData({ recommendationQueued: true });
       return;
     }
+    if (!reset && !this.data.hasMore) return;
     const requestId = ++recommendationRequestId;
     const dinerIds = this.data.selectedDinerIds.slice();
-    this.setData({ loading: true, loadError: '' });
+    const page = reset ? 1 : this.data.currentPage;
+    this.setData(reset ? { loading: true, loadError: '' } : { loadingMore: true });
     try {
-      const result = await request({
-        url: '/api/dish/recommend',
-        method: 'POST',
-        data: { dinerIds, page: 1, pageSize: 50 }
+      const result = await getCached('/api/dish/recommend', {
+        dinerIds: dinerIds.join(','), page, pageSize: 20
+      }, {
+        resource: 'dish',
+        ttlMs: 60 * 1000
       });
       if (requestId !== recommendationRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || familyId !== this.data.familyId) return;
-      this.setData({ recommendations: result.list || [] });
+      const sourceList = result.list || [];
+      const list = await ImageCacheService.withCachedImages(
+        sourceList,
+        item => item.images && item.images.length ? item.images[0] : undefined,
+        'cachedImage',
+        {
+          getIdentity: () => ({ familyId }),
+          onResolved: updates => {
+            if (requestId !== recommendationRequestId) return;
+            wx.nextTick(() => {
+              if (requestId !== recommendationRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '')) return;
+              updates.forEach(update => {
+                const source = sourceList[update.index];
+                if (!source) return;
+                const index = this.data.recommendations.findIndex(item => String(item.id) === String(source.id));
+                if (index >= 0) this.setData({ [`recommendations[${index}].${update.field}`]: update.value });
+              });
+            });
+          }
+        }
+      );
+      const total = Number(result.total || 0);
+      const recommendations = reset ? list : this.data.recommendations.concat(list);
+      this.setData({
+        recommendations,
+        total,
+        currentPage: page + 1,
+        hasMore: typeof result.hasMore === 'boolean' ? result.hasMore : recommendations.length < total
+      });
     } catch (error) {
       if (requestId !== recommendationRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || familyId !== this.data.familyId) return;
       this.setData({ loadError: error.message || '推荐加载失败' });
@@ -84,7 +120,7 @@ Page({
     } finally {
       if (requestId === recommendationRequestId) {
         const queued = this.data.recommendationQueued;
-        this.setData({ loading: false, recommendationQueued: false }, () => {
+        this.setData({ loading: false, loadingMore: false, recommendationQueued: false }, () => {
           if (queued
             && familyId === String(FamilyService.getActiveFamilyId() || '')
             && familyId === this.data.familyId) {
@@ -92,6 +128,12 @@ Page({
           }
         });
       }
+    }
+  },
+
+  onScrollToLower() {
+    if (this.data.hasMore && !this.data.loading && !this.data.loadingMore) {
+      this.loadRecommendations(false);
     }
   },
 
@@ -108,11 +150,20 @@ Page({
     if (!Number.isInteger(index) || !current || !dishId || String(current.id) !== dishId) return;
     const recommendations = this.data.recommendations.map(item => {
       if (String(item.id) !== dishId) return item;
-      const images = Array.isArray(item.images) ? item.images.slice() : [];
-      images[0] = '/images/default-dish.jpg';
-      return { ...item, images };
+      return { ...item, cachedImage: '/images/default-dish.jpg' };
     });
     this.setData({ recommendations });
+  },
+
+  onMemberImageError(event) {
+    const memberId = String(event.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(event.currentTarget.dataset.index);
+    const index = memberId
+      ? this.data.members.findIndex(item => String(item.userId || item.id || '') === memberId)
+      : fallbackIndex;
+    if (index < 0 || index >= this.data.members.length) return;
+    if (!this.data.members[index].avatarUrl) return;
+    this.setData({ [`members[${index}].avatarUrl`]: '' });
   },
 
   openDish(event) {

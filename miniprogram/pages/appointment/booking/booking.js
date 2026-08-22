@@ -462,6 +462,17 @@ Page({
     });
   },
 
+  onMemberImageError(event) {
+    const memberId = String(event.currentTarget.dataset.id || '');
+    const fallbackIndex = Number(event.currentTarget.dataset.index);
+    const index = memberId
+      ? this.data.members.findIndex(item => String(item.userId || item.id || '') === memberId)
+      : fallbackIndex;
+    if (index < 0 || index >= this.data.members.length) return;
+    if (!this.data.members[index].avatarUrl) return;
+    this.setData({ [`members[${index}].avatarUrl`]: '' });
+  },
+
   cancelBooking() {
     if (this.data.selectedDishIds.length || this.data.confirmed) {
       wx.showModal({

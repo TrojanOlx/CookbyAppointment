@@ -67,6 +67,23 @@ function stringList(value: unknown, maxItems: number, maxLength: number): string
   return parsed.slice(0, maxItems).map(item => requiredString(item, '数组项', maxLength));
 }
 
+function dateInTimezone(date: Date, timezone: string): string {
+  let parts: Intl.DateTimeFormatPart[];
+  try {
+    parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone || 'Asia/Shanghai',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(date);
+  } catch {
+    parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Shanghai',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(date);
+  }
+  const value = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
+
 function mapDish(row: Record<string, unknown>, env: Env): Record<string, unknown> {
   return { ...row, images: normalizeImageList(row.images, env), steps: parseJsonField(row.steps, []) };
 }
@@ -740,10 +757,17 @@ async function dinerPreferences(env: Env, context: FamilyContext, dinerIds: stri
 
 async function recommend(request: Request, env: Env): Promise<Response> {
   const context = await requireFamilyContext(request, env);
-  const body = await readJson<{ dinerIds?: unknown; page?: unknown; pageSize?: unknown }>(request);
+  const url = new URL(request.url);
+  const body = request.method === 'GET'
+    ? {
+      dinerIds: (url.searchParams.get('dinerIds') || '').split(',').filter(Boolean),
+      page: Number.parseInt(url.searchParams.get('page') || '1', 10),
+      pageSize: Number.parseInt(url.searchParams.get('pageSize') || '20', 10),
+    }
+    : await readJson<{ dinerIds?: unknown; page?: unknown; pageSize?: unknown }>(request);
   const dinerIds = Array.isArray(body.dinerIds) ? body.dinerIds.filter((id): id is string => typeof id === 'string') : [];
-  const page = Math.max(1, typeof body.page === 'number' ? Math.floor(body.page) : 1);
-  const pageSize = Math.min(50, Math.max(1, typeof body.pageSize === 'number' ? Math.floor(body.pageSize) : 20));
+  const page = Math.max(1, typeof body.page === 'number' && Number.isFinite(body.page) ? Math.floor(body.page) : 1);
+  const pageSize = Math.min(50, Math.max(1, typeof body.pageSize === 'number' && Number.isFinite(body.pageSize) ? Math.floor(body.pageSize) : 20));
   const [dishRows, ingredientRows, inventoryRows] = await env.DB.batch([
     env.DB.prepare('SELECT * FROM dishes WHERE familyId = ? ORDER BY createTime DESC').bind(context.familyId),
     env.DB.prepare(`SELECT i.* FROM ingredients i JOIN dishes d ON d.id = i.dishId WHERE d.familyId = ?`).bind(context.familyId),
@@ -751,13 +775,31 @@ async function recommend(request: Request, env: Env): Promise<Response> {
   ]);
   const preferences = await dinerPreferences(env, context, dinerIds);
   const inventory = inventoryRows.results as Array<Record<string, unknown>>;
+  const inventoryByIngredientId = new Map<string, Array<Record<string, unknown>>>();
+  const inventoryByName = new Map<string, Array<Record<string, unknown>>>();
+  for (const item of inventory) {
+    if (typeof item.ingredientId === 'string' && item.ingredientId) {
+      const byId = inventoryByIngredientId.get(item.ingredientId) || [];
+      byId.push(item);
+      inventoryByIngredientId.set(item.ingredientId, byId);
+    }
+    const normalizedName = normalizeIngredientName(typeof item.name === 'string' ? item.name : '');
+    if (normalizedName) {
+      const byName = inventoryByName.get(normalizedName) || [];
+      byName.push(item);
+      inventoryByName.set(normalizedName, byName);
+    }
+  }
   const ingredientsByDish = new Map<string, Array<Record<string, unknown>>>();
   for (const ingredient of ingredientRows.results as Array<Record<string, unknown>>) {
     const list = ingredientsByDish.get(String(ingredient.dishId)) || [];
     list.push(ingredient);
     ingredientsByDish.set(String(ingredient.dishId), list);
   }
-  const expiryCutoff = new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 10);
+  const today = dateInTimezone(new Date(), context.timezone);
+  const expiryCutoffDate = new Date(`${today}T00:00:00Z`);
+  expiryCutoffDate.setUTCDate(expiryCutoffDate.getUTCDate() + 3);
+  const expiryCutoff = expiryCutoffDate.toISOString().slice(0, 10);
   const recommendations = (dishRows.results as Array<Record<string, unknown>>).map(row => {
     const dish = mapDish(row, env);
     const required = ingredientsByDish.get(String(row.id)) || [];
@@ -765,10 +807,18 @@ async function recommend(request: Request, env: Env): Promise<Response> {
     const missing: unknown[] = [];
     const expiring: unknown[] = [];
     for (const ingredient of required) {
-      const matches = inventory.filter(item =>
-        (ingredient.ingredientId && item.ingredientId === ingredient.ingredientId)
-        || normalizeIngredientName(String(item.name)) === normalizeIngredientName(String(ingredient.name)),
-      );
+      const matchesById = typeof ingredient.ingredientId === 'string'
+        ? inventoryByIngredientId.get(ingredient.ingredientId) || []
+        : [];
+      const ingredientName = typeof ingredient.name === 'string' ? ingredient.name : '';
+      const matchesByName = inventoryByName.get(normalizeIngredientName(ingredientName)) || [];
+      const seenInventoryIds = new Set<string>();
+      const matches = [...matchesById, ...matchesByName].filter(item => {
+        const id = typeof item.id === 'string' ? item.id : '';
+        if (id && seenInventoryIds.has(id)) return false;
+        if (id) seenInventoryIds.add(id);
+        return true;
+      });
       const requiredNormalized = normalizeQuantity(ingredient.quantity, ingredient.unit);
       let covered = matches.length > 0;
       let availableQuantity: number | null = null;
@@ -781,7 +831,11 @@ async function recommend(request: Request, env: Env): Promise<Response> {
       const detail = { ...ingredient, availableQuantity };
       (covered ? existing : missing).push(detail);
       for (const item of matches) {
-        if (typeof item.expiryDate === 'string' && item.expiryDate <= expiryCutoff) expiring.push(item);
+        if (
+          typeof item.expiryDate === 'string'
+          && item.expiryDate >= today
+          && item.expiryDate <= expiryCutoff
+        ) expiring.push(item);
       }
     }
     const warnings = collectPreferenceWarnings(
@@ -803,7 +857,13 @@ async function recommend(request: Request, env: Env): Promise<Response> {
     };
   }).sort(compareRecommendations);
   const offset = (page - 1) * pageSize;
-  return json({ total: recommendations.length, list: recommendations.slice(offset, offset + pageSize), page, pageSize });
+  return json({
+    total: recommendations.length,
+    list: recommendations.slice(offset, offset + pageSize),
+    page,
+    pageSize,
+    hasMore: offset + pageSize < recommendations.length,
+  });
 }
 
 export async function handleDishV2(request: Request, env: Env, path: string): Promise<Response> {
@@ -817,6 +877,7 @@ export async function handleDishV2(request: Request, env: Env, path: string): Pr
     case 'PUT /api/dish/update': return updateDish(request, env);
     case 'DELETE /api/dish/delete': return deleteDish(request, env);
     case 'GET /api/dish/ingredients': return ingredientList(request, env);
+    case 'GET /api/dish/recommend': return recommend(request, env);
     case 'POST /api/dish/ingredient/add': return mutateIngredient(request, env, 'add');
     case 'PUT /api/dish/ingredient/update': return mutateIngredient(request, env, 'update');
     case 'DELETE /api/dish/ingredient/delete': return mutateIngredient(request, env, 'delete');

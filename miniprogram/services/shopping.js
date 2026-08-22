@@ -1,5 +1,5 @@
 // 家庭共享采购清单服务
-const { request } = require('./http');
+const { request, getCached } = require('./http');
 
 function getToken() {
   return wx.getStorageSync('token') || '';
@@ -36,8 +36,12 @@ function familyRequest(url, method, data) {
 }
 
 function getShoppingList(status) {
-  return familyRequest('/api/shopping/list', 'GET', {
+  getFamilyContext();
+  return getCached('/api/shopping/list', {
     status: status || 'active'
+  }, {
+    resource: 'shopping',
+    ttlMs: 30 * 1000
   });
 }
 

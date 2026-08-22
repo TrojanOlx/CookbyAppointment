@@ -25,7 +25,7 @@
         <view class="diner-row">
           <view wx:for="{{members}}" wx:key="userId" class="diner {{selectedDinerIds.indexOf(item.userId || item.id) >= 0 ? 'selected' : ''}}" data-id="{{item.userId || item.id}}" bindtap="toggleDiner">
             <view class="diner-avatar">
-              <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill"></image>
+              <image wx:if="{{item.avatarUrl}}" src="{{item.avatarUrl}}" mode="aspectFill" data-id="{{item.userId || item.id}}" data-index="{{index}}" binderror="onMemberImageError"></image>
               <mp-icon wx:else icon="me" size="14" color="#9f927d"></mp-icon>
             </view>
             <text class="diner-name">{{item.nickName || '家庭成员'}}</text>
@@ -35,8 +35,8 @@
     </view>
   </view>
 
-  <scroll-view class="recommend-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
-    <view wx:if="{{loading}}" class="recommend-state island-surface">
+  <scroll-view class="recommend-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" lower-threshold="120" bindscrolltolower="onScrollToLower">
+    <view wx:if="{{loading && !recommendations.length}}" class="recommend-state island-surface">
       <island-loading></island-loading>
     </view>
     <view wx:elif="{{loadError}}" class="recommend-error island-surface">
@@ -51,13 +51,13 @@
           <view class="list-title">优先推荐</view>
           <view class="list-hint">越靠前越适合当前冰箱和用餐成员</view>
         </view>
-        <view class="list-count">{{recommendations.length}} 道</view>
+        <view class="list-count">{{total}} 道</view>
       </view>
 
       <view class="recommend-list">
         <view class="recommend-item" wx:for="{{recommendations}}" wx:key="id" wx:for-index="recommendIndex" bindtap="openDish" data-id="{{item.id}}">
           <view class="dish-media">
-            <image referrerPolicy="no-referrer" class="dish-image" src="{{item.images && item.images.length ? item.images[0] : '/images/default-dish.jpg'}}" mode="aspectFill" lazy-load="true" data-index="{{recommendIndex}}" data-id="{{item.id}}" binderror="onDishImageError"></image>
+            <image referrerPolicy="no-referrer" class="dish-image" src="{{item.cachedImage || (item.images && item.images.length ? item.images[0] : '/images/default-dish.jpg')}}" mode="aspectFill" lazy-load="true" data-index="{{recommendIndex}}" data-id="{{item.id}}" binderror="onDishImageError"></image>
           </view>
           <view class="dish-content">
             <view class="dish-head">
@@ -75,6 +75,7 @@
           </view>
         </view>
       </view>
+      <view wx:if="{{loadingMore}}" class="list-footnote">正在加载更多...</view>
       <view class="list-footnote">推荐结果仅供安排用餐参考，不会自动扣减库存</view>
     </view>
     <view wx:else class="recommend-empty island-surface">

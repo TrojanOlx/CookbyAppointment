@@ -86,12 +86,16 @@
         <view class="file-icon">
           <image 
             referrerPolicy="no-referrer"
-            wx:if="{{utils.isImageFile(item)}}" 
+            wx:if="{{utils.isImageFile(item) && !item.thumbnailFailed}}"
             src="{{item.url}}" 
             mode="aspectFill" 
             class="file-thumbnail"
+            lazy-load="true"
             catch:tap="previewImage"
             data-url="{{item.url}}"
+            data-path="{{item.filePath}}"
+            data-index="{{index}}"
+            binderror="onFileImageError"
           />
           <view wx:else class="file-type-icon">
             <text>{{getFileIcon(item.fileType, item.fileName)}}</text>

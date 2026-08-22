@@ -2,8 +2,7 @@ import { DishType, Dish, Ingredient, SpicyLevel } from '../../../models/dish';
 import { DishService } from '../../../services/dishService';
 import { FileService } from '../../../services/fileService';
 import { showSuccess, showError, showLoading, hideLoading, showToast } from '../../../utils/util';
-import cnchar from 'cnchar';
-import 'cnchar-poly'; // 引入多音字功能
+import { createUploadFileName } from '../../../utils/uploadFileName';
 
 let dishEditorLoadRequestId = 0;
 let dishEditorMutationRequestId = 0;
@@ -332,12 +331,6 @@ Page({
       this.setData({ isSubmitting: true });
       showLoading('处理图片中...');
       
-      // 获取菜品名称的拼音首字母（小写）
-      const dishName = formData.name.trim();
-      const pinyinResult = cnchar.spell(dishName, 'first', 'low');
-      const pinyinInitials = Array.isArray(pinyinResult) ? pinyinResult.join('') : pinyinResult;
-      console.log('菜品拼音首字母:', pinyinInitials);
-      
       // 只上传本次新增的本地图片；已保存的图片保留稳定文件引用。
       const originalDish = (this as any)._originalDish as Dish | undefined;
       const imagesChanged = !originalDish || JSON.stringify(dish.images || []) !== JSON.stringify(originalDish.images || []);
@@ -349,11 +342,7 @@ Page({
               const fileId = tempFilePath.match(/[?&]id=([^&#]+)/i);
               return fileId ? `/api/file/download?id=${fileId[1]}` : tempFilePath;
             }
-            // 提取原始文件扩展名
-            const fileExt = tempFilePath.substring(tempFilePath.lastIndexOf('.')).toLowerCase();
-            
-            // 生成新的文件名：拼音首字母 + 序号 + 原始扩展名
-            const newFileName = `${pinyinInitials}${index + 1}${fileExt}`;
+            const newFileName = createUploadFileName(dish.id || generateId(), index, tempFilePath);
             console.log(`处理图片 ${index + 1}/${dish.images.length}:`, newFileName);
             
             // 上传图片到服务器

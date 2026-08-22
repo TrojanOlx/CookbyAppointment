@@ -38,7 +38,7 @@
       
       <!-- 预约列表 -->
       <block wx:elif="{{todayAppointments.length > 0}}">
-        <view class="meal-card" wx:for="{{todayAppointments}}" wx:key="id">
+        <view class="meal-card" wx:for="{{todayAppointments}}" wx:for-index="appointmentIndex" wx:key="id">
           <view class="meal-header">
             <view class="meal-info">
               <text class="meal-type">{{item.mealType}}</text>
@@ -68,8 +68,8 @@
             </view>
           </view>
           <scroll-view class="dishes-list" scroll-x enable-flex show-scrollbar="false" enhanced="true">
-            <view class="dish-item" wx:for="{{item.dishList}}" wx:key="id" wx:for-item="dish">
-              <image referrerPolicy="no-referrer" class="dish-image" mode="aspectFill" src="{{dish.cachedImage || dish.images[0] || '/images/default-dish.jpg'}}"></image>
+            <view class="dish-item" wx:for="{{item.dishList}}" wx:for-index="dishIndex" wx:key="id" wx:for-item="dish">
+              <image referrerPolicy="no-referrer" class="dish-image" mode="aspectFill" lazy-load="true" src="{{dish.cachedImage || dish.images[0] || '/images/default-dish.jpg'}}" data-appointment-id="{{item.id}}" data-appointment-index="{{appointmentIndex}}" data-dish-id="{{dish.id}}" data-dish-index="{{dishIndex}}" binderror="onDishImageError"></image>
               <text class="dish-name">{{dish.name}}</text>
             </view>
           </scroll-view>
