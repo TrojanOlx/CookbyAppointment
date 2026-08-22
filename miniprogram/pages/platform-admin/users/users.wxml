@@ -7,7 +7,6 @@
         <view class="platform-title">注册用户</view>
         <view class="platform-subtitle">查看账号状态和家庭数量，不展示微信敏感身份信息</view>
       </view>
-      <button class="platform-back" bindtap="goBack">返回</button>
     </view>
 
     <view class="platform-card">

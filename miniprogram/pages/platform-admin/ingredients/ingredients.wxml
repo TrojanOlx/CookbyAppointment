@@ -4,7 +4,6 @@
     <view class="header-kicker">INGREDIENT CATALOG</view>
     <view class="header-row">
       <view class="header-copy"><view class="header-title">食材目录</view><view class="header-subtitle">统一菜谱和库存里的食材名称与单位</view></view>
-      <button class="header-close" bindtap="goBack" aria-label="返回"><mp-icon ext-class="back-icon" icon="arrow" size="20" color="#725d42"></mp-icon></button>
     </view>
   </view>
 
@@ -24,7 +23,7 @@
       <view wx:if="{{loading && ingredients.length}}" class="inline-loading">正在更新…</view>
       <view wx:for="{{ingredients}}" wx:key="id" class="ingredient-card">
         <view class="ingredient-card-copy"><view class="ingredient-name">{{item.canonicalName}}</view><view class="ingredient-meta"><text>{{item.category || '未分类'}}</text><text class="meta-dot">·</text><text>默认单位 {{item.defaultUnit || '未设置'}}</text></view><view wx:if="{{item.aliasText}}" class="alias-copy">别名：{{item.aliasText}}</view></view>
-        <button class="edit-icon" bindtap="openEdit" data-id="{{item.id}}" aria-label="编辑食材"><text>改</text></button>
+        <button class="edit-action" bindtap="openEdit" data-id="{{item.id}}" hover-class="edit-action-pressed" aria-label="编辑食材">编辑</button>
       </view>
       <view wx:if="{{loadingMore}}" class="inline-loading">正在加载更多…</view>
       <view wx:elif="{{!hasMore}}" class="list-end">已显示全部目录</view>

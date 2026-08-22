@@ -125,6 +125,39 @@ try {
     { blockedOwnerSuspension, suspendedTarget, revokedSuspendedSession, restoredTarget, oldSessionAfterRestore },
   );
 
+  const ownershipSuspensionRace = await Promise.all([
+    api('/api/family/transfer', 'token-owner-a', 'it-family-a', {
+      method: 'POST', body: JSON.stringify({ userId: 'it-shared' }),
+    }),
+    api('/api/platform/users/it-shared/suspend', 'token-platform-admin', undefined, {
+      method: 'POST', body: JSON.stringify({ reason: '并发生命周期测试' }),
+    }),
+  ]);
+  const sharedAfterLifecycleRace = await api('/api/platform/users/it-shared', 'token-platform-admin');
+  const ownersAfterLifecycleRace = await api('/api/family/members', 'token-owner-a', 'it-family-a');
+  assert(
+    ownershipSuspensionRace.filter(result => result.status === 200).length === 1
+      && ownersAfterLifecycleRace.status === 200
+      && (ownersAfterLifecycleRace.data.list || []).filter(member => member.role === 'owner').length === 1
+      && !(
+        sharedAfterLifecycleRace.data.status === 'suspended'
+        && (ownersAfterLifecycleRace.data.list || []).some(member => member.userId === 'it-shared' && member.role === 'owner')
+      ),
+    'ownership transfer and suspension produced a suspended active owner',
+    { ownershipSuspensionRace, sharedAfterLifecycleRace, ownersAfterLifecycleRace },
+  );
+  if (ownershipSuspensionRace[0].status === 200) {
+    const transferBack = await api('/api/family/transfer', 'token-shared', 'it-family-a', {
+      method: 'POST', body: JSON.stringify({ userId: 'it-owner-a' }),
+    });
+    assert(transferBack.status === 200, 'lifecycle race cleanup transfer failed', transferBack);
+  } else {
+    const restoreShared = await api('/api/platform/users/it-shared/restore', 'token-platform-admin', undefined, {
+      method: 'POST',
+    });
+    assert(restoreShared.status === 200, 'lifecycle race cleanup restore failed', restoreShared);
+  }
+
   const ownerFamilies = await api('/api/family/list', 'token-owner-a');
   assert(ownerFamilies.status === 200 && ownerFamilies.data.list.some(item => item.id === 'it-family-a'), 'owner family list failed', ownerFamilies);
 
@@ -210,14 +243,33 @@ try {
     'platform template asset upload permissions failed',
     { uploadedTemplateAsset, forbiddenTemplateAsset },
   );
-
-  const createdPlatformTemplate = await api('/api/platform/recipe-templates', 'token-platform-admin', undefined, {
+  const externalImageTemplate = await api('/api/platform/recipe-templates', 'token-platform-admin', undefined, {
     method: 'POST',
     body: JSON.stringify({
-      name: '平台测试菜谱', type: '炒菜', spicy: '不辣', images: [uploadedTemplateAsset.data.filePath],
-      steps: ['准备食材', '下锅炒熟'], notice: '', remark: '', reference: '', sortOrder: 999,
-      ingredients: [{ name: '平台测试食材', amount: '100g' }],
+      name: '外链图片测试', type: '炒菜', spicy: '不辣', images: ['https://example.com/dish.jpg'],
+      steps: ['完成'], ingredients: [{ name: '鸡蛋', amount: '1个' }],
     }),
+  });
+  assert(
+    externalImageTemplate.status === 400 && externalImageTemplate.data.code === 'TEMPLATE_IMAGE_INVALID',
+    'platform template accepted an external image outside the platform asset namespace',
+    externalImageTemplate,
+  );
+
+  const platformTemplatePayload = {
+    name: '平台测试菜谱', type: '炒菜', spicy: '不辣', images: [uploadedTemplateAsset.data.filePath],
+    steps: ['准备食材', '下锅炒熟'], notice: '', remark: '', reference: '', sortOrder: 999,
+    ingredients: [{ name: '平台测试食材', amount: '100g' }],
+  };
+  const createdPlatformTemplate = await api('/api/platform/recipe-templates', 'token-platform-admin', undefined, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': 'it-platform-template-create' },
+    body: JSON.stringify(platformTemplatePayload),
+  });
+  const replayedPlatformTemplate = await api('/api/platform/recipe-templates', 'token-platform-admin', undefined, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': 'it-platform-template-create' },
+    body: JSON.stringify(platformTemplatePayload),
   });
   const publishedPlatformTemplate = await api(
     `/api/platform/recipe-templates/${encodeURIComponent(createdPlatformTemplate.data.id)}/publish`,
@@ -232,13 +284,15 @@ try {
   const signedTemplateAssetResponse = await fetch(`${origin}${signedTemplateAssetUrl.pathname}${signedTemplateAssetUrl.search}`);
   assert(
     createdPlatformTemplate.status === 201
+      && replayedPlatformTemplate.status === 201
+      && replayedPlatformTemplate.data.id === createdPlatformTemplate.data.id
       && createdPlatformTemplate.data.status === 'archived'
       && publishedPlatformTemplate.status === 200
       && publishedTemplate?.name === '平台测试菜谱'
       && !Object.prototype.hasOwnProperty.call(publishedTemplate, 'createdBy')
       && signedTemplateAssetResponse.status === 200,
     'platform recipe template creation or publication failed',
-    { createdPlatformTemplate, publishedPlatformTemplate, publishedTemplate },
+    { createdPlatformTemplate, replayedPlatformTemplate, publishedPlatformTemplate, publishedTemplate },
   );
 
   const importedPlatformTemplate = await api('/api/dish/templates/import', 'token-starter-owner', templateFamilyId, {
@@ -256,6 +310,11 @@ try {
         ...platformTemplateDetail.data,
         name: '平台测试菜谱新版',
         images: [],
+        ingredients: [{
+          ...platformTemplateDetail.data.ingredients[0],
+          name: '鸡蛋',
+          ingredientId: platformTemplateDetail.data.ingredients[0].ingredientId,
+        }],
         expectedUpdatedAt: platformTemplateDetail.data.updatedAt,
       }),
     },
@@ -273,6 +332,17 @@ try {
   const importedFamilyImage = importedFamilyImageLocation
     ? await fetch(`${origin}${importedFamilyImageLocation.pathname}${importedFamilyImageLocation.search}`)
     : null;
+  const deletedAssetReference = await api(
+    `/api/platform/recipe-templates/${encodeURIComponent(createdPlatformTemplate.data.id)}`,
+    'token-platform-admin', undefined, {
+      method: 'PUT',
+      body: JSON.stringify({
+        ...updatedPlatformTemplate.data,
+        images: [uploadedTemplateAsset.data.filePath],
+        expectedUpdatedAt: updatedPlatformTemplate.data.updatedAt,
+      }),
+    },
+  );
   const stalePlatformTemplateArchive = await api(
     `/api/platform/recipe-templates/${encodeURIComponent(createdPlatformTemplate.data.id)}/archive`,
     'token-platform-admin', undefined, {
@@ -292,10 +362,14 @@ try {
     importedPlatformTemplate.status === 201
       && updatedPlatformTemplate.status === 200
       && updatedPlatformTemplate.data.name === '平台测试菜谱新版'
+      && updatedPlatformTemplate.data.updatedAt > platformTemplateDetail.data.updatedAt
+      && updatedPlatformTemplate.data.ingredients[0].ingredientId === 'template-catalog-egg'
       && importedPlatformDish.status === 200
       && importedPlatformDish.data.name === '平台测试菜谱'
       && importedFamilyImageLocation?.pathname === '/api/file/download'
       && deletedPlatformAsset.status === 200
+      && deletedAssetReference.status === 409
+      && deletedAssetReference.data.code === 'TEMPLATE_ASSET_MISSING'
       && importedFamilyImage?.status === 200
       && stalePlatformTemplateArchive.status === 409
       && archivedPlatformTemplate.status === 200
@@ -306,6 +380,7 @@ try {
       updatedPlatformTemplate,
       importedPlatformDish,
       deletedPlatformAsset,
+      deletedAssetReference,
       importedFamilyImageStatus: importedFamilyImage?.status,
       workerLogs: logs.slice(-4000),
       stalePlatformTemplateArchive,
@@ -315,8 +390,28 @@ try {
 
   const createdCatalogIngredient = await api('/api/platform/ingredients', 'token-platform-admin', undefined, {
     method: 'POST',
+    headers: { 'Idempotency-Key': 'it-platform-ingredient-create' },
     body: JSON.stringify({ canonicalName: '平台目录食材', category: '测试', defaultUnit: 'g', aliases: ['目录别名'] }),
   });
+  const replayedCatalogIngredient = await api('/api/platform/ingredients', 'token-platform-admin', undefined, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': 'it-platform-ingredient-create' },
+    body: JSON.stringify({ canonicalName: '平台目录食材', category: '测试', defaultUnit: 'g', aliases: ['目录别名'] }),
+  });
+  const conflictingCatalogAlias = await api('/api/platform/ingredients', 'token-platform-admin', undefined, {
+    method: 'POST',
+    body: JSON.stringify({ canonicalName: '另一食材', category: '测试', defaultUnit: 'g', aliases: [' 平台 目录食材 '] }),
+  });
+  const normalizedAliasTemplate = await api('/api/platform/recipe-templates', 'token-platform-admin', undefined, {
+    method: 'POST',
+    body: JSON.stringify({
+      name: '规范化别名测试', type: '炒菜', spicy: '不辣', images: [], steps: ['完成'],
+      ingredients: [{ name: '目录-别名', amount: '10g' }],
+    }),
+  });
+  const normalizedAliasTemplateDetail = normalizedAliasTemplate.data.id
+    ? await api(`/api/platform/recipe-templates/${encodeURIComponent(normalizedAliasTemplate.data.id)}`, 'token-platform-admin')
+    : normalizedAliasTemplate;
   const updatedPlatformCatalogIngredient = await api(
     `/api/platform/ingredients/${encodeURIComponent(createdCatalogIngredient.data.id)}`,
     'token-platform-admin', undefined, {
@@ -334,7 +429,15 @@ try {
   );
   assert(
     createdCatalogIngredient.status === 201
+      && replayedCatalogIngredient.status === 201
+      && replayedCatalogIngredient.data.id === createdCatalogIngredient.data.id
+      && conflictingCatalogAlias.status === 409
+      && conflictingCatalogAlias.data.code === 'INGREDIENT_NAME_CONFLICT'
+      && normalizedAliasTemplate.status === 201
+      && normalizedAliasTemplateDetail.status === 200
+      && normalizedAliasTemplateDetail.data.ingredients[0].ingredientId === createdCatalogIngredient.data.id
       && updatedPlatformCatalogIngredient.status === 200
+      && updatedPlatformCatalogIngredient.data.updatedAt > createdCatalogIngredient.data.updatedAt
       && updatedPlatformCatalogIngredient.data.category === '蔬菜'
       && platformAudit.status === 200
       && platformAudit.data.list.some(item => item.action === 'platform.recipe_template.updated')
@@ -344,7 +447,16 @@ try {
       && filteredPlatformAudit.data.list[0].actorUserId === 'it-platform-admin'
       && filteredPlatformAudit.data.list[0].action === 'platform.ingredient.updated',
     'platform ingredient maintenance or audit trail failed',
-    { createdCatalogIngredient, updatedPlatformCatalogIngredient, platformAudit, filteredPlatformAudit },
+    {
+      createdCatalogIngredient,
+      replayedCatalogIngredient,
+      conflictingCatalogAlias,
+      normalizedAliasTemplate,
+      normalizedAliasTemplateDetail,
+      updatedPlatformCatalogIngredient,
+      platformAudit,
+      filteredPlatformAudit,
+    },
   );
 
   const rejoinInvite = await api('/api/family/invite', 'token-owner-a', 'it-family-a', {
@@ -1013,6 +1125,19 @@ try {
     ownerDeletion,
   );
 
+  const platformAdminDeletion = await api('/api/user/account', 'token-platform-admin', undefined, {
+    method: 'DELETE', body: JSON.stringify({ confirm: true }),
+  });
+  const platformAdminSessionAfterDeletionAttempt = await api('/api/platform/status', 'token-platform-admin');
+  assert(
+    platformAdminDeletion.status === 409
+      && platformAdminDeletion.data.code === 'PLATFORM_ADMIN_ACCOUNT_PROTECTED'
+      && platformAdminSessionAfterDeletionAttempt.status === 200
+      && platformAdminSessionAfterDeletionAttempt.data.isPlatformAdmin === true,
+    'platform administrator could delete or invalidate the protected account',
+    { platformAdminDeletion, platformAdminSessionAfterDeletionAttempt },
+  );
+
   const ownerTransferDeleteRace = await Promise.all([
     api('/api/family/transfer', 'token-owner-a', 'it-family-a', {
       method: 'POST', body: JSON.stringify({ userId: 'it-shared' }),
@@ -1045,7 +1170,7 @@ try {
   const revokedSession = await api('/api/user/export', 'token-member-a');
   assert(revokedSession.status === 401, 'deleted account session remained active', revokedSession);
 
-  console.log('Worker+D1 integration checks passed (65 assertions).');
+  console.log('Worker+D1 integration checks passed (72 assertions).');
 } finally {
   worker.kill('SIGTERM');
   await delay(200);

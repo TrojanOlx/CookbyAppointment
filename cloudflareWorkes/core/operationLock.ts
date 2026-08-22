@@ -3,6 +3,10 @@ import type { Env } from './types';
 
 const LOCK_LEASE_MS = 2 * 60 * 1000;
 
+export function userLifecycleLockScope(userId: string): string {
+  return `user:${userId}:lifecycle`;
+}
+
 export async function withOperationLock<T>(
   env: Env,
   scope: string,

@@ -186,9 +186,5 @@ Page({
 
   retry() {
     void this.loadAudit(true);
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   }
 });

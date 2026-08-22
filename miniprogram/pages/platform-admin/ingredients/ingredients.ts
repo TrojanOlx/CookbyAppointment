@@ -69,7 +69,9 @@ Page({
         .filter(item => !seen.has(String(item.id)))
         .map(item => ({ ...item, aliasText: item.aliases.join('、') }));
       const merged = previous.concat(incoming);
-      const allCategories = Array.from(new Set(merged.map(item => item.category).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+      const previousCategories = (this.data.categoryOptions as string[]).filter(Boolean);
+      const sourceCategories = Array.isArray(result.categories) ? result.categories : previousCategories;
+      const allCategories = Array.from(new Set(sourceCategories.filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
       this.setData({ ingredients: merged, total: result.total, page: page + 1, hasMore: merged.length < result.total, categoryOptions: [''].concat(allCategories), loading: false, loadingMore: false, refreshing: false, error: '' });
     } catch (error) {
       if (requestId !== catalogRequestId) return;
@@ -131,7 +133,5 @@ Page({
       this.setData({ saving: false });
       wx.showToast({ title: getErrorMessage(error, '保存失败，请重试'), icon: 'none' });
     }
-  },
-
-  goBack() { wx.navigateBack({ delta: 1 }); }
+  }
 });

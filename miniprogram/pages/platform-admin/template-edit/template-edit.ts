@@ -7,6 +7,9 @@ import {
 
 const typeOptions = ['炒菜', '青菜', '炖汤', '红烧', '蒸菜'];
 const spicyOptions = ['不辣', '微辣', '中辣', '特辣'];
+const DEFAULT_DISH_IMAGE = '/images/default-dish.jpg';
+const QUANTITY_UNIT_PATTERN = /^(\d+(?:\.\d+)?)\s*(g|gram|kg|ml|l|piece|pieces|克|千克|公斤|毫升|升|个|只)$/i;
+const PLAIN_QUANTITY_PATTERN = /^\d+(?:\.\d+)?$/;
 let editorRequestId = 0;
 let ingredientLocalId = 0;
 
@@ -36,6 +39,56 @@ const deleteAssets = async (assetIds: string[]): Promise<void> => {
       console.warn('清理模板图片失败:', id, error);
     }
   }));
+};
+
+const assetIdsFromImages = (images: string[]): Set<string> => new Set(
+  (Array.isArray(images) ? images : [])
+    .map(assetIdFromUrl)
+    .filter(Boolean)
+);
+
+const deleteUnattachedAssets = async (assetIds: string[], images: string[]): Promise<void> => {
+  const referencedIds = assetIdsFromImages(images);
+  await deleteAssets(assetIds.filter(id => !referencedIds.has(id)));
+};
+
+const parseQuantityText = (value: unknown): { quantity: string; unit: string } | null => {
+  if (typeof value !== 'string') return null;
+  const match = value.trim().match(QUANTITY_UNIT_PATTERN);
+  return match ? { quantity: match[1], unit: match[2].toLowerCase() } : null;
+};
+
+const normalizeIngredientForEditor = (item: PlatformTemplateIngredient): PlatformTemplateIngredient => {
+  const amount = String(item.amount || '').trim();
+  const unit = String(item.unit || '').trim();
+  const parsed = parseQuantityText(amount);
+  if (parsed) return { ...item, amount: parsed.quantity, unit: parsed.unit };
+  if (PLAIN_QUANTITY_PATTERN.test(amount) && unit) return { ...item, amount, unit };
+  if (!amount && item.quantity !== undefined && item.quantity !== null && unit) {
+    return { ...item, amount: String(item.quantity), unit };
+  }
+  return { ...item, amount, unit: '' };
+};
+
+const normalizeTemplateForEditor = (template: PlatformRecipeTemplate): PlatformRecipeTemplate => ({
+  ...blankTemplate(),
+  ...template,
+  ingredients: template.ingredients.length
+    ? template.ingredients.map(item => ({
+      ...normalizeIngredientForEditor(item),
+      localKey: item.id || `loaded-${++ingredientLocalId}`
+    }))
+    : [emptyIngredient()],
+  steps: template.steps.length ? template.steps : ['']
+});
+
+const composeIngredientAmount = (amountValue: unknown, unitValue: unknown): { amount: string; unit: string } => {
+  const amount = String(amountValue || '').trim();
+  const unit = String(unitValue || '').trim();
+  const parsed = parseQuantityText(amount);
+  if (parsed) return { amount: `${parsed.quantity}${parsed.unit}`, unit: parsed.unit };
+  if (PLAIN_QUANTITY_PATTERN.test(amount) && unit) return { amount: `${amount}${unit}`, unit };
+  return { amount, unit: '' };
 };
 
 const blankTemplate = (): PlatformRecipeTemplate => ({
@@ -74,6 +127,7 @@ Page({
     uploadingImage: false,
     dirty: false,
     loadError: '',
+    imageDisplayUrls: [] as string[],
     uploadedAssetIds: [] as string[],
     pendingDeleteAssetIds: [] as string[]
   },
@@ -86,16 +140,10 @@ Page({
     const requestId = ++editorRequestId;
     PlatformCatalogService.getTemplate(id).then(template => {
       if (requestId !== editorRequestId) return;
-      const normalized = {
-        ...blankTemplate(),
-        ...template,
-        ingredients: template.ingredients.length
-          ? template.ingredients.map(item => ({ ...item, localKey: item.id || `loaded-${++ingredientLocalId}` }))
-          : [emptyIngredient()],
-        steps: template.steps.length ? template.steps : ['']
-      };
+      const normalized = normalizeTemplateForEditor(template);
       this.setData({
         template: normalized,
+        imageDisplayUrls: normalized.images.slice(),
         typeIndex: Math.max(0, typeOptions.indexOf(normalized.type)),
         spicyIndex: Math.max(0, spicyOptions.indexOf(normalized.spicy)),
         loading: false,
@@ -127,15 +175,8 @@ Page({
     const requestId = ++editorRequestId;
     PlatformCatalogService.getTemplate(id).then(template => {
       if (requestId !== editorRequestId) return;
-      const normalized = {
-        ...blankTemplate(),
-        ...template,
-        ingredients: template.ingredients.length
-          ? template.ingredients.map(item => ({ ...item, localKey: item.id || `loaded-${++ingredientLocalId}` }))
-          : [emptyIngredient()],
-        steps: template.steps.length ? template.steps : ['']
-      };
-      this.setData({ template: normalized, typeIndex: Math.max(0, typeOptions.indexOf(normalized.type)), spicyIndex: Math.max(0, spicyOptions.indexOf(normalized.spicy)), loading: false, loadError: '' });
+      const normalized = normalizeTemplateForEditor(template);
+      this.setData({ template: normalized, imageDisplayUrls: normalized.images.slice(), typeIndex: Math.max(0, typeOptions.indexOf(normalized.type)), spicyIndex: Math.max(0, spicyOptions.indexOf(normalized.spicy)), loading: false, loadError: '' });
     }).catch(error => {
       if (requestId === editorRequestId) this.setData({ loading: false, loadError: getErrorMessage(error, '模板加载失败，请稍后重试') });
     });
@@ -161,31 +202,55 @@ Page({
 
   chooseImage() {
     if (this.data.uploadingImage) return;
-    const remaining = 6 - this.data.template.images.length;
+    const existingImages = (this.data.template.images as string[]).slice();
+    const previousUploadedAssetIds = (this.data.uploadedAssetIds as string[]).slice();
+    const remaining = 6 - existingImages.length;
+    if (remaining <= 0) {
+      wx.showToast({ title: '最多添加 6 张图片', icon: 'none' });
+      return;
+    }
     wx.chooseImage({
-      count: Math.max(1, Math.min(6, remaining)),
+      count: Math.min(6, remaining),
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: async (result) => {
         this.setData({ uploadingImage: true });
+        const uploadedAssetIds: string[] = [];
         try {
           const uploaded: string[] = [];
           for (const path of result.tempFilePaths) {
             const asset = await PlatformCatalogService.uploadTemplateAsset(path, this.data.template.id || undefined);
+            const assetId = asset.id || assetIdFromUrl(asset.url);
+            if (assetId) {
+              uploadedAssetIds.push(assetId);
+              this.setData({
+                uploadedAssetIds: Array.from(new Set(previousUploadedAssetIds.concat(uploadedAssetIds)))
+              });
+            }
             if (asset.url) {
               uploaded.push(asset.url);
-              if (asset.id) {
-                this.setData({
-                  uploadedAssetIds: Array.from(new Set((this.data.uploadedAssetIds as string[]).concat(asset.id)))
-                });
-              }
             }
           }
           if (!uploaded.length) throw new Error('图片上传失败');
-          const images = (this.data.template.images as string[]).concat(uploaded).slice(0, 6);
-          this.setData({ 'template.images': images, dirty: true });
+          const images = existingImages.concat(uploaded).slice(0, 6);
+          const currentDisplayImages = (this.data.imageDisplayUrls as string[]).slice(0, existingImages.length);
+          const displayImages = existingImages.map((image, index) => currentDisplayImages[index] || image)
+            .concat(uploaded).slice(0, 6);
+          const referencedIds = assetIdsFromImages(images);
+          const attachedAssetIds = uploadedAssetIds.filter(id => referencedIds.has(id));
+          await deleteUnattachedAssets(uploadedAssetIds, images);
+          this.setData({
+            'template.images': images,
+            imageDisplayUrls: displayImages,
+            uploadedAssetIds: Array.from(new Set(previousUploadedAssetIds.concat(attachedAssetIds))),
+            dirty: true
+          });
           wx.showToast({ title: `已添加 ${uploaded.length} 张`, icon: 'success', duration: 1200 });
         } catch (error) {
+          await deleteUnattachedAssets(uploadedAssetIds, existingImages);
+          if (!(this as any)._editorUnloaded) {
+            this.setData({ uploadedAssetIds: previousUploadedAssetIds });
+          }
           wx.showToast({ title: getErrorMessage(error, '图片上传失败'), icon: 'none' });
         } finally {
           this.setData({ uploadingImage: false });
@@ -194,11 +259,23 @@ Page({
     });
   },
 
+  imageError(event: any) {
+    const index = Number(event.currentTarget.dataset.index);
+    const images = (this.data.template.images as string[]);
+    if (!Number.isInteger(index) || index < 0 || index >= images.length) return;
+    const displayImages = (this.data.imageDisplayUrls as string[]).slice();
+    if (displayImages[index] === DEFAULT_DISH_IMAGE) return;
+    displayImages[index] = DEFAULT_DISH_IMAGE;
+    this.setData({ imageDisplayUrls: displayImages });
+  },
+
   deleteImage(event: any) {
     const index = Number(event.currentTarget.dataset.index);
     const images = (this.data.template.images as string[]).slice();
+    const displayImages = (this.data.imageDisplayUrls as string[]).slice();
     if (index < 0 || index >= images.length) return;
     const removed = images.splice(index, 1)[0];
+    displayImages.splice(index, 1);
     const assetId = assetIdFromUrl(removed);
     const uploadedAssetIds = (this.data.uploadedAssetIds as string[]).slice();
     const wasUploadedNow = assetId ? uploadedAssetIds.includes(assetId) : false;
@@ -210,6 +287,7 @@ Page({
       : this.data.pendingDeleteAssetIds;
     this.setData({
       'template.images': images,
+      imageDisplayUrls: displayImages,
       uploadedAssetIds: nextUploadedAssetIds,
       pendingDeleteAssetIds,
       dirty: true
@@ -234,7 +312,14 @@ Page({
     this.setData({ 'template.ingredients': ingredients, dirty: true });
   },
 
-  ingredientNameInput(event: any) { this.setData({ [`template.ingredients[${event.currentTarget.dataset.index}].name`]: String(event.detail.value || ''), dirty: true }); },
+  ingredientNameInput(event: any) {
+    const index = event.currentTarget.dataset.index;
+    this.setData({
+      [`template.ingredients[${index}].name`]: String(event.detail.value || ''),
+      [`template.ingredients[${index}].ingredientId`]: '',
+      dirty: true
+    });
+  },
   ingredientAmountInput(event: any) { this.setData({ [`template.ingredients[${event.currentTarget.dataset.index}].amount`]: String(event.detail.value || ''), dirty: true }); },
   ingredientUnitInput(event: any) { this.setData({ [`template.ingredients[${event.currentTarget.dataset.index}].unit`]: String(event.detail.value || ''), dirty: true }); },
 
@@ -267,13 +352,12 @@ Page({
     }
     const ingredients = template.ingredients
       .map(item => {
-        const amount = String(item.amount || '').trim();
-        const unit = String(item.unit || '').trim();
+        const composedAmount = composeIngredientAmount(item.amount, item.unit);
         return {
           ...item,
           name: String(item.name || '').trim(),
-          amount: amount && unit && !amount.includes(unit) ? `${amount}${unit}` : amount,
-          unit
+          amount: composedAmount.amount,
+          unit: composedAmount.unit
         };
       })
       .filter(item => item.name);

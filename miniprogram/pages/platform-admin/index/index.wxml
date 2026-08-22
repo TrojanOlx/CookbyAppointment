@@ -7,7 +7,6 @@
         <view class="platform-title">平台管理</view>
         <view class="platform-subtitle">维护公共能力，查看系统运行状态</view>
       </view>
-      <button class="platform-back" bindtap="goBack">返回</button>
     </view>
 
     <view wx:if="{{loading && !error}}" class="state-card">

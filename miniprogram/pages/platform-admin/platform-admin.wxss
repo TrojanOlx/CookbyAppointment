@@ -67,21 +67,6 @@ button::after { border: 0; }
   overflow-wrap: anywhere;
 }
 
-.platform-back {
-  flex-shrink: 0;
-  height: 64rpx;
-  margin: 0;
-  padding: 0 22rpx;
-  color: var(--text-secondary);
-  background: var(--card-bg-light);
-  border: 3rpx solid rgba(159,146,125,0.34);
-  border-radius: var(--radius-full);
-  box-shadow: 0 4rpx 0 rgba(121,79,39,0.12);
-  font-size: 24rpx;
-  font-weight: 800;
-  line-height: 58rpx;
-}
-
 .platform-card {
   box-sizing: border-box;
   width: 100%;

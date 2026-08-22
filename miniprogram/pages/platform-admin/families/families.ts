@@ -132,9 +132,5 @@ Page({
 
   retry() {
     void this.loadFamilies(true);
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   }
 });

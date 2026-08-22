@@ -1,7 +1,7 @@
 import { checkRateLimit, generateSecret, requireAuth, requireCapability, requireFamilyContext, sha256Hex, writeAudit } from '../core/auth';
 import { canManageRole } from '../core/domain';
 import { ApiError, json, readJson, requiredString } from '../core/http';
-import { withOperationLock } from '../core/operationLock';
+import { userLifecycleLockScope, withOperationLock } from '../core/operationLock';
 import type { Env, FamilyRole } from '../core/types';
 
 const VALID_ROLES = new Set<FamilyRole>(['owner', 'admin', 'chef', 'member']);
@@ -38,7 +38,7 @@ async function createFamily(request: Request, env: Env): Promise<Response> {
     : (env.DEFAULT_TIMEZONE || 'Asia/Shanghai');
   const id = crypto.randomUUID();
   const now = Date.now();
-  return withOperationLock(env, `user:${auth.user.id}:account`, async () => {
+  return withOperationLock(env, userLifecycleLockScope(auth.user.id), async () => {
     await env.DB.batch([
       env.DB.prepare(`
         INSERT INTO families (id, name, timezone, memberLimit, status, createdBy, createdAt, updatedAt)
@@ -331,16 +331,20 @@ async function transferOwnership(request: Request, env: Env): Promise<Response> 
   const data = await readJson<{ userId?: unknown }>(request);
   const userId = requiredString(data.userId, '用户ID');
   if (userId === context.user.id) throw new ApiError(400, 'VALIDATION_ERROR', '不能转让给自己');
-  return withOperationLock(env, `user:${userId}:account`, () =>
+  return withOperationLock(env, userLifecycleLockScope(userId), () =>
     withOperationLock(env, `family:${context.familyId}:membership`, async () => {
       const [actor, target] = await Promise.all([
         env.DB.prepare(`SELECT role FROM family_members WHERE familyId = ? AND userId = ? AND status = 'active'`)
           .bind(context.familyId, context.user.id).first<{ role: FamilyRole }>(),
-        env.DB.prepare(`SELECT role FROM family_members WHERE familyId = ? AND userId = ? AND status = 'active'`)
-          .bind(context.familyId, userId).first<{ role: FamilyRole }>(),
+        env.DB.prepare(`
+          SELECT fm.role, u.status AS userStatus
+          FROM family_members fm JOIN users u ON u.id = fm.userId
+          WHERE fm.familyId = ? AND fm.userId = ? AND fm.status = 'active'
+        `).bind(context.familyId, userId).first<{ role: FamilyRole; userStatus: string }>(),
       ]);
       if (actor?.role !== 'owner') throw new ApiError(403, 'OWNER_REQUIRED', '仅家庭主可以转让家庭');
       if (!target) throw new ApiError(404, 'MEMBER_NOT_FOUND', '接任者必须是当前家庭成员');
+      if (target.userStatus !== 'active') throw new ApiError(409, 'ACCOUNT_SUSPENDED', '已停用用户不能接任家庭主');
       const now = Date.now();
       const results = await env.DB.batch([
         env.DB.prepare(`UPDATE family_members SET role = 'admin', updatedAt = ? WHERE familyId = ? AND userId = ? AND status = 'active' AND role = 'owner'`)

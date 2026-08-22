@@ -74,9 +74,5 @@ Page({
 
   openIngredients() {
     wx.navigateTo({ url: '/pages/platform-admin/ingredients/ingredients' });
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   }
 });

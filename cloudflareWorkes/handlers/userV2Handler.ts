@@ -1,6 +1,6 @@
 import { checkRateLimit, generateSecret, requireAuth, requireFamilyContext, sha256Hex, writeAudit } from '../core/auth';
 import { ApiError, json, readJson, requiredString } from '../core/http';
-import { withOperationLock } from '../core/operationLock';
+import { userLifecycleLockScope, withOperationLock } from '../core/operationLock';
 import type { Env } from '../core/types';
 import {
   createAbsoluteFileAccessUrl,
@@ -67,7 +67,7 @@ async function login(request: Request, env: Env): Promise<Response> {
     user = { id, openid: wxResult.openid, nickName: '', avatarUrl: '', phoneNumber: null, status: 'active' };
   }
 
-  return withOperationLock(env, `user:${user.id}:session`, async () => {
+  return withOperationLock(env, userLifecycleLockScope(user.id), async () => {
     const currentStatus = await env.DB.prepare('SELECT status FROM users WHERE id = ?')
       .bind(user.id).first<string>('status');
     if (currentStatus === 'suspended') {
@@ -224,7 +224,14 @@ async function deleteAccount(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   const body = await readJson<{ confirm?: unknown }>(request);
   if (body.confirm !== true) throw new ApiError(400, 'ACCOUNT_DELETE_CONFIRM_REQUIRED', '请明确确认注销账号');
-  return withOperationLock(env, `user:${auth.user.id}:account`, async () => {
+  return withOperationLock(env, userLifecycleLockScope(auth.user.id), async () => {
+    const platformAdmin = await env.DB.prepare(`
+      SELECT 1 FROM platform_admins WHERE userId = ? AND status = 'active' LIMIT 1
+    `).bind(auth.user.id).first();
+    if (platformAdmin) {
+      throw new ApiError(409, 'PLATFORM_ADMIN_ACCOUNT_PROTECTED', '平台管理员账号不能注销');
+    }
+
     const owned = await env.DB.prepare(`
       SELECT f.id, f.name FROM family_members fm JOIN families f ON f.id = fm.familyId
       WHERE fm.userId = ? AND fm.role = 'owner' AND fm.status = 'active' AND f.status = 'active'

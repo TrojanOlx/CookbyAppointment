@@ -7,9 +7,6 @@
         <view class="header-title">公共菜谱模板</view>
         <view class="header-subtitle">维护家庭可以复制使用的家常菜内容</view>
       </view>
-      <button class="header-close" bindtap="goBack" aria-label="返回">
-        <mp-icon ext-class="back-icon" icon="arrow" size="20" color="#725d42"></mp-icon>
-      </button>
     </view>
   </view>
 
@@ -60,8 +57,8 @@
       <view wx:for="{{templates}}" wx:key="id" class="template-card">
         <view class="template-card-main" bindtap="editTemplate" data-id="{{item.id}}">
           <view class="template-image-wrap">
-            <image wx:if="{{item.images[0]}}" class="template-image" src="{{item.images[0]}}" mode="aspectFill" lazy-load="true"></image>
-            <view wx:else class="template-image-empty"><mp-icon icon="shop" size="28" color="#0f8f85"></mp-icon></view>
+            <image wx:if="{{item.images[0]}}" class="template-image" src="{{item.images[0]}}" mode="aspectFill" lazy-load="true" referrerPolicy="no-referrer" data-id="{{item.id}}" binderror="onTemplateImageError"></image>
+            <image wx:else class="template-image template-image-placeholder" src="/images/default-dish.jpg" mode="aspectFill"></image>
           </view>
           <view class="template-content">
             <view class="template-title-row">

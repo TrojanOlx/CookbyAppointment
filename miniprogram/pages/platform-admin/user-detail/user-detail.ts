@@ -207,9 +207,5 @@ Page({
     } finally {
       this.setData({ actionLoading: false });
     }
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   }
 });

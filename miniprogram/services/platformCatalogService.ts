@@ -64,6 +64,7 @@ export interface PagedResult<T> {
   total: number;
   page: number;
   pageSize: number;
+  categories?: string[];
 }
 
 export interface TemplateWritePayload {
@@ -117,6 +118,15 @@ const asPageSize = (body: any, fallback: number): number => {
     : body && body.data && body.data.pageSize !== undefined ? body.data.pageSize : fallback;
   const pageSize = Number(value);
   return Number.isFinite(pageSize) ? pageSize : fallback;
+};
+
+const asStringList = (body: any, key: string): string[] => {
+  const value = body && Array.isArray(body[key])
+    ? body[key]
+    : body && body.data && Array.isArray(body.data[key])
+      ? body.data[key]
+      : [];
+  return Array.from(new Set(value.map((item: any) => String(item || '').trim()).filter(Boolean)));
 };
 
 const unwrapObject = <T>(body: any): T => {
@@ -246,7 +256,13 @@ export class PlatformCatalogService {
     const pageSize = params.pageSize || 30;
     const body = await get<any>('/api/platform/ingredients', params);
     const list = asList<any>(body, ['list', 'ingredients']).map(normalizeCatalogIngredient);
-    return { list, total: asTotal(body, list.length), page: asPage(body, page), pageSize: asPageSize(body, pageSize) };
+    return {
+      list,
+      total: asTotal(body, list.length),
+      page: asPage(body, page),
+      pageSize: asPageSize(body, pageSize),
+      categories: asStringList(body, 'categories')
+    };
   }
 
   static async createIngredient(payload: IngredientWritePayload): Promise<PlatformIngredient> {

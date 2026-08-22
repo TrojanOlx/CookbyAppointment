@@ -48,7 +48,7 @@
         <view class="section-heading-row"><view class="section-title">菜品图片</view><text class="section-count">{{template.images.length}} / 6</text></view>
         <view class="image-grid">
           <view wx:for="{{template.images}}" wx:key="*this" class="image-item">
-            <image class="dish-image" src="{{item}}" mode="aspectFill"></image>
+            <image class="dish-image" src="{{imageDisplayUrls[index] || item}}" mode="aspectFill" binderror="imageError" data-index="{{index}}"></image>
             <view class="image-delete" catchtap="deleteImage" data-index="{{index}}">×</view>
           </view>
           <view wx:if="{{template.images.length < 6}}" class="image-add" bindtap="chooseImage">

@@ -17,6 +17,7 @@ DELETE FROM families WHERE createdBy = 'it-template-owner';
 
 DELETE FROM operation_locks WHERE scope LIKE '%it-%';
 DELETE FROM idempotency_keys WHERE familyId LIKE 'it-%';
+DELETE FROM idempotency_keys WHERE familyId = '__platform__' AND userId = 'it-platform-admin';
 DELETE FROM family_invitations WHERE familyId LIKE 'it-%';
 DELETE FROM shopping_item_sources
 WHERE itemId IN (SELECT id FROM shopping_list_items WHERE id LIKE 'it-%')

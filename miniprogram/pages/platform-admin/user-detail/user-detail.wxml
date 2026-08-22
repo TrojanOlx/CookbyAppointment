@@ -7,7 +7,6 @@
         <view class="platform-title">用户详情</view>
         <view class="platform-subtitle">仅维护账号状态和会话，不修改用户资料或家庭内容</view>
       </view>
-      <button class="platform-back" bindtap="goBack">返回</button>
     </view>
 
     <view wx:if="{{loading && !detail}}" class="state-card">

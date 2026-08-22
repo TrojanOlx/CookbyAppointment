@@ -7,7 +7,6 @@
         <view class="platform-title">家庭巡检</view>
         <view class="platform-subtitle">只查看家庭元数据，不进入家庭内的菜谱、预约、库存或文件</view>
       </view>
-      <button class="platform-back" bindtap="goBack">返回</button>
     </view>
 
     <view class="platform-card">

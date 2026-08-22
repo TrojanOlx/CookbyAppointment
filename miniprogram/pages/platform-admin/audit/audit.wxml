@@ -7,7 +7,6 @@
         <view class="platform-title">审计日志</view>
         <view class="platform-subtitle">记录平台账号维护和公共资源操作，帮助定位异常变更</view>
       </view>
-      <button class="platform-back" bindtap="goBack">返回</button>
     </view>
 
     <view class="platform-card">

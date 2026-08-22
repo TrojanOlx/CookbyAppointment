@@ -66,7 +66,7 @@ Page({
     hasMore: false
   },
 
-  onLoad() {
+  onShow() {
     void this.loadUsers(true);
   },
 
@@ -148,9 +148,5 @@ Page({
     const id = String(event.currentTarget.dataset.id || '');
     if (!id) return;
     wx.navigateTo({ url: `/pages/platform-admin/user-detail/user-detail?id=${encodeURIComponent(id)}` });
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   }
 });

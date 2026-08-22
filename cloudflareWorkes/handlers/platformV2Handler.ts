@@ -1,7 +1,7 @@
 import { checkRateLimit } from '../core/auth';
 import { normalizeIngredientName, normalizeQuantity, parseQuantityText } from '../core/domain';
 import { ApiError, json, pagination, parseJsonField, readJson, requiredString } from '../core/http';
-import { withOperationLock } from '../core/operationLock';
+import { userLifecycleLockScope, withOperationLock } from '../core/operationLock';
 import {
   createPlatformAssetUrl,
   createStablePlatformAssetPath,
@@ -12,12 +12,104 @@ import {
 import {
   platformAdminStatus,
   requirePlatformAdmin,
-  writePlatformAudit,
   type PlatformAdminContext,
 } from '../core/platformAuth';
 import type { Env } from '../core/types';
 
 const PLATFORM_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const PLATFORM_IDEMPOTENCY_SCOPE = '__platform__';
+const PLATFORM_ASSET_LOCK = 'platform-template-assets';
+const PLATFORM_INGREDIENT_LOCK = 'platform-ingredient-catalog';
+
+function nextVersion(current: unknown): number {
+  return Math.max(Date.now(), Number(current || 0) + 1);
+}
+
+function platformAuditInsert(
+  env: Env,
+  context: PlatformAdminContext,
+  action: string,
+  targetType?: string,
+  targetId?: string,
+  details?: unknown,
+  createdAt = Date.now(),
+): D1PreparedStatement {
+  return env.DB.prepare(`
+    INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, details, createdAt)
+    VALUES (?, NULL, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    crypto.randomUUID(), context.user.id, action, targetType || null, targetId || null,
+    details === undefined ? null : JSON.stringify(details), createdAt,
+  );
+}
+
+async function withPlatformIdempotency(
+  request: Request,
+  env: Env,
+  context: PlatformAdminContext,
+  operation: string,
+  execute: () => Promise<Response>,
+): Promise<Response> {
+  const key = request.headers.get('Idempotency-Key')?.trim();
+  if (!key) return execute();
+  if (key.length > 128) throw new ApiError(400, 'INVALID_IDEMPOTENCY_KEY', '幂等键过长');
+  const now = Date.now();
+  await env.DB.prepare('DELETE FROM idempotency_keys WHERE createdAt < ?')
+    .bind(now - 7 * 24 * 60 * 60 * 1000).run();
+  const claimed = await env.DB.prepare(`
+    INSERT INTO idempotency_keys (familyId, userId, key, operation, createdAt)
+    VALUES (?, ?, ?, ?, ?)
+    ON CONFLICT(familyId, userId, operation, key) DO UPDATE SET
+      responseStatus = NULL, responseBody = NULL, createdAt = excluded.createdAt
+    WHERE idempotency_keys.responseBody IS NULL AND idempotency_keys.createdAt <= ?
+  `).bind(
+    PLATFORM_IDEMPOTENCY_SCOPE, context.user.id, key, operation, now, now - 5 * 60 * 1000,
+  ).run();
+  if (!claimed.meta.changes) {
+    const existing = await env.DB.prepare(`
+      SELECT responseStatus, responseBody FROM idempotency_keys
+      WHERE familyId = ? AND userId = ? AND operation = ? AND key = ?
+    `).bind(PLATFORM_IDEMPOTENCY_SCOPE, context.user.id, operation, key)
+      .first<{ responseStatus: number | null; responseBody: string | null }>();
+    if (existing?.responseBody) {
+      return new Response(existing.responseBody, {
+        status: existing.responseStatus || 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    throw new ApiError(409, 'OPERATION_IN_PROGRESS', '相同操作正在处理中');
+  }
+  try {
+    const response = await execute();
+    const responseBody = await response.clone().text();
+    await env.DB.prepare(`
+      UPDATE idempotency_keys SET responseStatus = ?, responseBody = ?
+      WHERE familyId = ? AND userId = ? AND operation = ? AND key = ?
+    `).bind(
+      response.status, responseBody, PLATFORM_IDEMPOTENCY_SCOPE, context.user.id, operation, key,
+    ).run();
+    return response;
+  } catch (error) {
+    await env.DB.prepare(`
+      DELETE FROM idempotency_keys WHERE familyId = ? AND userId = ? AND operation = ? AND key = ?
+    `).bind(PLATFORM_IDEMPOTENCY_SCOPE, context.user.id, operation, key).run();
+    throw error;
+  }
+}
+
+async function assertPlatformAssetsActive(env: Env, images: string[]): Promise<void> {
+  const ids = Array.from(new Set(images.map(platformAssetIdFromUrl).filter((id): id is string => Boolean(id))));
+  if (!ids.length) return;
+  const placeholders = ids.map(() => '?').join(',');
+  const active = await env.DB.prepare(`
+    SELECT id FROM platform_files WHERE deletedAt IS NULL AND id IN (${placeholders})
+  `).bind(...ids).all<{ id: string }>();
+  const activeIds = new Set(active.results.map(item => item.id));
+  const missing = ids.filter(id => !activeIds.has(id));
+  if (missing.length) {
+    throw new ApiError(409, 'TEMPLATE_ASSET_MISSING', '菜谱图片已删除或不存在，请重新选择', { fileIds: missing });
+  }
+}
 
 interface TemplateIngredientInput {
   ingredientId?: unknown;
@@ -213,22 +305,26 @@ async function assertMutableUser(
 
 async function revokeSessions(request: Request, env: Env, userId: string): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
-  await assertMutableUser(env, context, userId, false);
-  const now = Date.now();
-  const result = await env.DB.prepare(`
-    UPDATE user_sessions SET revokedAt = COALESCE(revokedAt, ?) WHERE userId = ? AND revokedAt IS NULL
-  `).bind(now, userId).run();
-  await writePlatformAudit(env, context, 'platform.user.sessions_revoked', 'user', userId, {
-    reason: '平台管理员主动撤销', count: result.meta.changes,
+  return withOperationLock(env, userLifecycleLockScope(userId), async () => {
+    await assertMutableUser(env, context, userId, false);
+    const now = Date.now();
+    const [result] = await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE user_sessions SET revokedAt = COALESCE(revokedAt, ?) WHERE userId = ? AND revokedAt IS NULL
+      `).bind(now, userId),
+      platformAuditInsert(env, context, 'platform.user.sessions_revoked', 'user', userId, {
+        reason: '平台管理员主动撤销',
+      }, now),
+    ]);
+    return json({ success: true, revokedCount: result.meta.changes });
   });
-  return json({ success: true, revokedCount: result.meta.changes });
 }
 
 async function suspendUser(request: Request, env: Env, userId: string): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
   const body = await readJson<{ reason?: unknown }>(request);
   const reason = requiredString(body.reason, '停用原因', 200);
-  return withOperationLock(env, `user:${userId}:session`, async () => {
+  return withOperationLock(env, userLifecycleLockScope(userId), async () => {
     const target = await assertMutableUser(env, context, userId, true);
     if (target.status === 'suspended') return json({ success: true, alreadySuspended: true });
     const now = Date.now();
@@ -251,7 +347,7 @@ async function suspendUser(request: Request, env: Env, userId: string): Promise<
 
 async function restoreUser(request: Request, env: Env, userId: string): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
-  return withOperationLock(env, `user:${userId}:session`, async () => {
+  return withOperationLock(env, userLifecycleLockScope(userId), async () => {
     const target = await assertMutableUser(env, context, userId, false);
     if (target.status === 'active') return json({ success: true, alreadyActive: true });
     const now = Date.now();
@@ -312,17 +408,32 @@ async function listFamilies(request: Request, env: Env): Promise<Response> {
 }
 
 async function resolveCatalog(env: Env, name: string, requestedId?: unknown): Promise<string> {
-  if (typeof requestedId === 'string' && requestedId) {
-    const requested = await env.DB.prepare('SELECT id FROM ingredient_catalog WHERE id = ?')
-      .bind(requestedId).first<{ id: string }>();
-    if (requested) return requested.id;
-  }
   const normalized = normalizeIngredientName(name);
-  const existing = await env.DB.prepare(`
-    SELECT c.id FROM ingredient_catalog c LEFT JOIN ingredient_aliases a ON a.ingredientId = c.id
-    WHERE lower(replace(c.canonicalName, ' ', '')) = ? OR lower(replace(a.alias, ' ', '')) = ? LIMIT 1
-  `).bind(normalized, normalized).first<{ id: string }>();
-  if (existing) return existing.id;
+  if (typeof requestedId === 'string' && requestedId) {
+    const requested = await env.DB.prepare(`
+      SELECT c.id, c.canonicalName, group_concat(a.alias, '|') AS aliases
+      FROM ingredient_catalog c LEFT JOIN ingredient_aliases a ON a.ingredientId = c.id
+      WHERE c.id = ? GROUP BY c.id
+    `).bind(requestedId).first<{ id: string; canonicalName: string; aliases: string | null }>();
+    const names = requested ? [requested.canonicalName, ...(requested.aliases || '').split('|')] : [];
+    if (requested && names.some(value => value && normalizeIngredientName(value) === normalized)) {
+      return requested.id;
+    }
+  }
+  const [catalog, aliases] = await env.DB.batch([
+    env.DB.prepare('SELECT id, canonicalName FROM ingredient_catalog'),
+    env.DB.prepare('SELECT ingredientId, alias FROM ingredient_aliases'),
+  ]);
+  const canonicalMatch = catalog.results.find(row => {
+    const item = row as { canonicalName?: unknown };
+    return typeof item.canonicalName === 'string' && normalizeIngredientName(item.canonicalName) === normalized;
+  }) as { id?: unknown } | undefined;
+  if (typeof canonicalMatch?.id === 'string') return canonicalMatch.id;
+  const aliasMatch = aliases.results.find(row => {
+    const item = row as { alias?: unknown };
+    return typeof item.alias === 'string' && normalizeIngredientName(item.alias) === normalized;
+  }) as { ingredientId?: unknown } | undefined;
+  if (typeof aliasMatch?.ingredientId === 'string') return aliasMatch.ingredientId;
   const id = crypto.randomUUID();
   const now = Date.now();
   await env.DB.prepare(`
@@ -425,14 +536,15 @@ async function templateValues(env: Env, body: TemplateInput, current?: Record<st
   const spicy = requiredString(value('spicy', current?.spicy || '不辣'), '辣度', 20);
   const rawImages = stringList(value('images', parseJsonField(current?.images, [])), '图片', 6, 1000);
   for (const image of rawImages) {
-    if (!platformAssetIdFromUrl(image) && !image.startsWith('https://')) {
-      throw new ApiError(400, 'TEMPLATE_IMAGE_INVALID', '模板图片地址无效');
+    if (!platformAssetIdFromUrl(image)) {
+      throw new ApiError(400, 'TEMPLATE_IMAGE_INVALID', '模板图片必须先上传到平台素材库');
     }
   }
   const images = rawImages.map(image => {
     const assetId = platformAssetIdFromUrl(image);
     return assetId ? createStablePlatformAssetPath(assetId) : image;
   });
+  await assertPlatformAssetsActive(env, images);
   const steps = stringList(value('steps', parseJsonField(current?.steps, [])), '步骤', 30, 500);
   if (!steps.length) throw new ApiError(400, 'VALIDATION_ERROR', '模板至少需要一个步骤');
   const ingredients = await normalizeTemplateIngredients(env, value('ingredients', undefined));
@@ -458,26 +570,32 @@ function ingredientInsert(env: Env, templateId: string, item: NormalizedTemplate
 
 async function createTemplate(request: Request, env: Env): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
-  const body = await readJson<TemplateInput>(request);
-  const values = await templateValues(env, body);
-  const id = crypto.randomUUID();
-  const now = Date.now();
-  await env.DB.batch([
-    env.DB.prepare(`
-      INSERT INTO recipe_templates (
-        id, templateKey, name, type, spicy, images, steps, notice, remark, reference,
-        status, sortOrder, createdAt, updatedAt, createdBy, updatedBy
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'archived', ?, ?, ?, ?, ?)
-    `).bind(
-      id, `custom:${id}`, values.name, values.type, values.spicy, JSON.stringify(values.images),
-      JSON.stringify(values.steps), values.notice, values.remark, values.reference,
-      values.sortOrder, now, now, context.user.id, context.user.id,
-    ),
-    ...values.ingredients.map(item => ingredientInsert(env, id, item)),
-  ]);
-  await writePlatformAudit(env, context, 'platform.recipe_template.created', 'recipe_template', id, { name: values.name });
-  const row = await env.DB.prepare('SELECT * FROM recipe_templates WHERE id = ?').bind(id).first<Record<string, unknown>>();
-  return json(await mapTemplate(request, env, row || { id }), 201);
+  return withPlatformIdempotency(request, env, context, 'platform.recipe_template.create', () =>
+    withOperationLock(env, PLATFORM_ASSET_LOCK, () =>
+      withOperationLock(env, PLATFORM_INGREDIENT_LOCK, async () => {
+        const body = await readJson<TemplateInput>(request);
+        const values = await templateValues(env, body);
+        const id = crypto.randomUUID();
+        const now = Date.now();
+        await env.DB.batch([
+          env.DB.prepare(`
+            INSERT INTO recipe_templates (
+              id, templateKey, name, type, spicy, images, steps, notice, remark, reference,
+              status, sortOrder, createdAt, updatedAt, createdBy, updatedBy
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'archived', ?, ?, ?, ?, ?)
+          `).bind(
+            id, `custom:${id}`, values.name, values.type, values.spicy, JSON.stringify(values.images),
+            JSON.stringify(values.steps), values.notice, values.remark, values.reference,
+            values.sortOrder, now, now, context.user.id, context.user.id,
+          ),
+          ...values.ingredients.map(item => ingredientInsert(env, id, item)),
+          platformAuditInsert(env, context, 'platform.recipe_template.created', 'recipe_template', id, {
+            name: values.name,
+          }, now),
+        ]);
+        const row = await env.DB.prepare('SELECT * FROM recipe_templates WHERE id = ?').bind(id).first<Record<string, unknown>>();
+        return json(await mapTemplate(request, env, row || { id }), 201);
+      })));
 }
 
 async function updateTemplate(request: Request, env: Env, templateId: string): Promise<Response> {
@@ -487,40 +605,44 @@ async function updateTemplate(request: Request, env: Env, templateId: string): P
   if (!Number.isFinite(expectedUpdatedAt)) {
     throw new ApiError(400, 'EXPECTED_VERSION_REQUIRED', '保存模板需要最新版本号');
   }
-  return withOperationLock(env, `platform-template:${templateId}`, async () => {
-    const current = await env.DB.prepare('SELECT * FROM recipe_templates WHERE id = ?')
-      .bind(templateId).first<Record<string, unknown>>();
-    if (!current) throw new ApiError(404, 'RECIPE_TEMPLATE_NOT_FOUND', '菜谱模板不存在');
-    if (Number(current.updatedAt) !== expectedUpdatedAt) {
-      throw new ApiError(409, 'TEMPLATE_VERSION_CONFLICT', '模板已被更新，请刷新后重试', { currentUpdatedAt: current.updatedAt });
-    }
-    const currentIngredients = await env.DB.prepare(`
-      SELECT ingredientId, name, amount, quantity, unit FROM recipe_template_ingredients
-      WHERE templateId = ? ORDER BY sortOrder
-    `).bind(templateId).all();
-    const values = await templateValues(env, {
-      ...body,
-      ingredients: Object.prototype.hasOwnProperty.call(body, 'ingredients') ? body.ingredients : currentIngredients.results,
-    }, current);
-    const now = Date.now();
-    const update = env.DB.prepare(`
-      UPDATE recipe_templates SET name = ?, type = ?, spicy = ?, images = ?, steps = ?, notice = ?,
-        remark = ?, reference = ?, sortOrder = ?, updatedAt = ?, updatedBy = ?
-      WHERE id = ? AND updatedAt = ?
-    `).bind(
-      values.name, values.type, values.spicy, JSON.stringify(values.images), JSON.stringify(values.steps),
-      values.notice, values.remark, values.reference, values.sortOrder, now, context.user.id,
-      templateId, expectedUpdatedAt,
-    );
-    await env.DB.batch([
-      update,
-      env.DB.prepare('DELETE FROM recipe_template_ingredients WHERE templateId = ?').bind(templateId),
-      ...values.ingredients.map(item => ingredientInsert(env, templateId, item)),
-    ]);
-    await writePlatformAudit(env, context, 'platform.recipe_template.updated', 'recipe_template', templateId, { name: values.name });
-    const row = await env.DB.prepare('SELECT * FROM recipe_templates WHERE id = ?').bind(templateId).first<Record<string, unknown>>();
-    return json(await mapTemplate(request, env, row || { id: templateId }));
-  });
+  return withOperationLock(env, PLATFORM_ASSET_LOCK, () =>
+    withOperationLock(env, PLATFORM_INGREDIENT_LOCK, () =>
+      withOperationLock(env, `platform-template:${templateId}`, async () => {
+        const current = await env.DB.prepare('SELECT * FROM recipe_templates WHERE id = ?')
+          .bind(templateId).first<Record<string, unknown>>();
+        if (!current) throw new ApiError(404, 'RECIPE_TEMPLATE_NOT_FOUND', '菜谱模板不存在');
+        if (Number(current.updatedAt) !== expectedUpdatedAt) {
+          throw new ApiError(409, 'TEMPLATE_VERSION_CONFLICT', '模板已被更新，请刷新后重试', { currentUpdatedAt: current.updatedAt });
+        }
+        const currentIngredients = await env.DB.prepare(`
+          SELECT ingredientId, name, amount, quantity, unit FROM recipe_template_ingredients
+          WHERE templateId = ? ORDER BY sortOrder
+        `).bind(templateId).all();
+        const values = await templateValues(env, {
+          ...body,
+          ingredients: Object.prototype.hasOwnProperty.call(body, 'ingredients') ? body.ingredients : currentIngredients.results,
+        }, current);
+        const now = nextVersion(current.updatedAt);
+        const update = env.DB.prepare(`
+          UPDATE recipe_templates SET name = ?, type = ?, spicy = ?, images = ?, steps = ?, notice = ?,
+            remark = ?, reference = ?, sortOrder = ?, updatedAt = ?, updatedBy = ?
+          WHERE id = ? AND updatedAt = ?
+        `).bind(
+          values.name, values.type, values.spicy, JSON.stringify(values.images), JSON.stringify(values.steps),
+          values.notice, values.remark, values.reference, values.sortOrder, now, context.user.id,
+          templateId, expectedUpdatedAt,
+        );
+        await env.DB.batch([
+          update,
+          env.DB.prepare('DELETE FROM recipe_template_ingredients WHERE templateId = ?').bind(templateId),
+          ...values.ingredients.map(item => ingredientInsert(env, templateId, item)),
+          platformAuditInsert(env, context, 'platform.recipe_template.updated', 'recipe_template', templateId, {
+            name: values.name,
+          }, now),
+        ]);
+        const row = await env.DB.prepare('SELECT * FROM recipe_templates WHERE id = ?').bind(templateId).first<Record<string, unknown>>();
+        return json(await mapTemplate(request, env, row || { id: templateId }));
+      })));
 }
 
 async function setTemplateStatus(request: Request, env: Env, templateId: string, status: 'active' | 'archived'): Promise<Response> {
@@ -530,9 +652,10 @@ async function setTemplateStatus(request: Request, env: Env, templateId: string,
   if (!Number.isFinite(expectedUpdatedAt)) {
     throw new ApiError(400, 'EXPECTED_VERSION_REQUIRED', '变更模板状态需要最新版本号');
   }
-  return withOperationLock(env, `platform-template:${templateId}`, async () => {
-    const current = await env.DB.prepare('SELECT id, name, status, updatedAt FROM recipe_templates WHERE id = ?')
-      .bind(templateId).first<{ id: string; name: string; status: string; updatedAt: number }>();
+  return withOperationLock(env, PLATFORM_ASSET_LOCK, () =>
+    withOperationLock(env, `platform-template:${templateId}`, async () => {
+    const current = await env.DB.prepare('SELECT id, name, status, images, updatedAt FROM recipe_templates WHERE id = ?')
+      .bind(templateId).first<{ id: string; name: string; status: string; images: string; updatedAt: number }>();
     if (!current) throw new ApiError(404, 'RECIPE_TEMPLATE_NOT_FOUND', '菜谱模板不存在');
     if (Number(current.updatedAt) !== expectedUpdatedAt) {
       throw new ApiError(409, 'TEMPLATE_VERSION_CONFLICT', '模板已被更新，请刷新后重试', {
@@ -542,74 +665,98 @@ async function setTemplateStatus(request: Request, env: Env, templateId: string,
     if (current.status === status) {
       return json({ id: templateId, status, updatedAt: current.updatedAt, unchanged: true });
     }
-    const now = Date.now();
-    await env.DB.prepare(`
-      UPDATE recipe_templates SET status = ?, updatedAt = ?, updatedBy = ?,
-        publishedAt = CASE WHEN ? = 'active' THEN COALESCE(publishedAt, ?) ELSE publishedAt END,
-        archivedAt = CASE WHEN ? = 'archived' THEN ? ELSE NULL END
-      WHERE id = ? AND updatedAt = ?
-    `).bind(status, now, context.user.id, status, now, status, now, templateId, expectedUpdatedAt).run();
-    await writePlatformAudit(
-      env, context,
-      status === 'active' ? 'platform.recipe_template.published' : 'platform.recipe_template.archived',
-      'recipe_template', templateId, { name: current.name },
-    );
+    if (status === 'active') {
+      await assertPlatformAssetsActive(env, parseJsonField<string[]>(current.images, []));
+    }
+    const now = nextVersion(current.updatedAt);
+    await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE recipe_templates SET status = ?, updatedAt = ?, updatedBy = ?,
+          publishedAt = CASE WHEN ? = 'active' THEN COALESCE(publishedAt, ?) ELSE publishedAt END,
+          archivedAt = CASE WHEN ? = 'archived' THEN ? ELSE NULL END
+        WHERE id = ? AND updatedAt = ?
+      `).bind(status, now, context.user.id, status, now, status, now, templateId, expectedUpdatedAt),
+      platformAuditInsert(
+        env, context,
+        status === 'active' ? 'platform.recipe_template.published' : 'platform.recipe_template.archived',
+        'recipe_template', templateId, { name: current.name }, now,
+      ),
+    ]);
     return json({ id: templateId, status, updatedAt: now });
-  });
+  }));
 }
 
 async function uploadTemplateAsset(request: Request, env: Env): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
-  await checkRateLimit(env, `platform-file-upload:${context.user.id}`, 30, 60 * 60 * 1000);
-  const maxBytes = Math.min(5 * 1024 * 1024, Math.max(1024, Number(env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024)));
-  const contentLength = Number(request.headers.get('Content-Length') || '0');
-  if (contentLength > maxBytes + 64 * 1024) throw new ApiError(413, 'FILE_TOO_LARGE', '图片过大');
-  const form = await request.formData();
-  const file = form.get('file');
-  if (!(file instanceof File)) throw new ApiError(400, 'FILE_REQUIRED', '请选择图片');
-  if (file.size > maxBytes) throw new ApiError(413, 'FILE_TOO_LARGE', '模板图片不能超过 5MB');
-  if (!PLATFORM_IMAGE_TYPES.has(file.type)) throw new ApiError(415, 'FILE_TYPE_NOT_ALLOWED', '仅支持 JPG、PNG 或 WebP 图片');
-  const id = crypto.randomUUID();
-  const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-  const objectKey = `platform/recipe-templates/${Date.now()}/${id}.${extension}`;
-  await env.FILE_BUCKET.put(objectKey, file.stream(), { httpMetadata: { contentType: file.type } });
-  const now = Date.now();
-  try {
-    await env.DB.prepare(`
-      INSERT INTO platform_files (id, objectKey, name, contentType, size, purpose, uploadedBy, createdAt)
-      VALUES (?, ?, ?, ?, ?, 'recipe-template', ?, ?)
-    `).bind(id, objectKey, file.name || `${id}.${extension}`, file.type, file.size, context.user.id, now).run();
-  } catch (error) {
-    await env.FILE_BUCKET.delete(objectKey);
-    throw error;
-  }
-  await writePlatformAudit(env, context, 'platform.template_asset.uploaded', 'platform_file', id, { size: file.size });
-  return json({
-    id,
-    filePath: createStablePlatformAssetPath(id),
-    url: await createPlatformAssetUrl(request, env, id),
-    contentType: file.type,
-    size: file.size,
-  }, 201);
+  return withPlatformIdempotency(request, env, context, 'platform.template_asset.upload', async () => {
+    await checkRateLimit(env, `platform-file-upload:${context.user.id}`, 30, 60 * 60 * 1000);
+    const maxBytes = Math.min(5 * 1024 * 1024, Math.max(1024, Number(env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024)));
+    const contentLength = Number(request.headers.get('Content-Length') || '0');
+    if (contentLength > maxBytes + 64 * 1024) throw new ApiError(413, 'FILE_TOO_LARGE', '图片过大');
+    const form = await request.formData();
+    const file = form.get('file');
+    if (!(file instanceof File)) throw new ApiError(400, 'FILE_REQUIRED', '请选择图片');
+    if (file.size > maxBytes) throw new ApiError(413, 'FILE_TOO_LARGE', '模板图片不能超过 5MB');
+    if (!PLATFORM_IMAGE_TYPES.has(file.type)) throw new ApiError(415, 'FILE_TYPE_NOT_ALLOWED', '仅支持 JPG、PNG 或 WebP 图片');
+    const id = crypto.randomUUID();
+    const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+    const objectKey = `platform/recipe-templates/${Date.now()}/${id}.${extension}`;
+    await env.FILE_BUCKET.put(objectKey, file.stream(), { httpMetadata: { contentType: file.type } });
+    const now = Date.now();
+    try {
+      await env.DB.batch([
+        env.DB.prepare(`
+          INSERT INTO platform_files (id, objectKey, name, contentType, size, purpose, uploadedBy, createdAt)
+          VALUES (?, ?, ?, ?, ?, 'recipe-template', ?, ?)
+        `).bind(id, objectKey, file.name || `${id}.${extension}`, file.type, file.size, context.user.id, now),
+        platformAuditInsert(env, context, 'platform.template_asset.uploaded', 'platform_file', id, {
+          size: file.size,
+        }, now),
+      ]);
+    } catch (error) {
+      await env.FILE_BUCKET.delete(objectKey);
+      throw error;
+    }
+    return json({
+      id,
+      filePath: createStablePlatformAssetPath(id),
+      url: await createPlatformAssetUrl(request, env, id),
+      contentType: file.type,
+      size: file.size,
+    }, 201);
+  });
 }
 
 async function deleteTemplateAsset(request: Request, env: Env, fileId: string): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
-  const file = await env.DB.prepare('SELECT id, objectKey FROM platform_files WHERE id = ? AND deletedAt IS NULL')
-    .bind(fileId).first<{ id: string; objectKey: string }>();
-  if (!file) throw new ApiError(404, 'FILE_NOT_FOUND', '图片不存在');
-  const referenced = await env.DB.prepare(`
-    SELECT rt.id, rt.name FROM recipe_templates rt
-    WHERE EXISTS (
-      SELECT 1 FROM json_each(rt.images) image WHERE image.value = ?
-    ) LIMIT 1
-  `).bind(createStablePlatformAssetPath(fileId)).first();
-  if (referenced) throw new ApiError(409, 'FILE_IN_USE', '图片仍被菜谱模板使用', { template: referenced });
-  await env.DB.prepare('UPDATE platform_files SET deletedAt = ? WHERE id = ? AND deletedAt IS NULL')
-    .bind(Date.now(), fileId).run();
-  await env.FILE_BUCKET.delete(file.objectKey);
-  await writePlatformAudit(env, context, 'platform.template_asset.deleted', 'platform_file', fileId);
-  return json({ success: true });
+  return withOperationLock(env, PLATFORM_ASSET_LOCK, async () => {
+    const file = await env.DB.prepare('SELECT id, objectKey FROM platform_files WHERE id = ? AND deletedAt IS NULL')
+      .bind(fileId).first<{ id: string; objectKey: string }>();
+    if (!file) throw new ApiError(404, 'FILE_NOT_FOUND', '图片不存在');
+    const referenced = await env.DB.prepare(`
+      SELECT rt.id, rt.name FROM recipe_templates rt
+      WHERE EXISTS (
+        SELECT 1 FROM json_each(CASE WHEN json_valid(rt.images) THEN rt.images ELSE '[]' END) image
+        WHERE image.value = ?
+      ) LIMIT 1
+    `).bind(createStablePlatformAssetPath(fileId)).first();
+    if (referenced) throw new ApiError(409, 'FILE_IN_USE', '图片仍被菜谱模板使用', { template: referenced });
+    const now = Date.now();
+    await env.DB.batch([
+      env.DB.prepare('UPDATE platform_files SET deletedAt = ? WHERE id = ? AND deletedAt IS NULL')
+        .bind(now, fileId),
+      platformAuditInsert(env, context, 'platform.template_asset.deleted', 'platform_file', fileId, undefined, now),
+    ]);
+    try {
+      await env.FILE_BUCKET.delete(file.objectKey);
+    } catch (error) {
+      console.error(JSON.stringify({
+        message: 'platform_asset.object_delete_failed', fileId,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+    }
+    return json({ success: true });
+  });
 }
 
 async function listIngredients(request: Request, env: Env): Promise<Response> {
@@ -626,7 +773,7 @@ async function listIngredients(request: Request, env: Env): Promise<Response> {
   }
   if (category) { conditions.push('c.category = ?'); bindings.push(category); }
   const where = conditions.join(' AND ');
-  const [count, rows] = await env.DB.batch([
+  const [count, rows, categories] = await env.DB.batch([
     env.DB.prepare(`SELECT COUNT(*) AS total FROM ingredient_catalog c WHERE ${where}`).bind(...bindings),
     env.DB.prepare(`
       SELECT c.id, c.canonicalName, c.category, c.defaultUnit, c.createdAt, c.updatedAt,
@@ -635,6 +782,10 @@ async function listIngredients(request: Request, env: Env): Promise<Response> {
       WHERE ${where} GROUP BY c.id
       ORDER BY c.category, c.canonicalName LIMIT ? OFFSET ?
     `).bind(...bindings, pageSize, offset),
+    env.DB.prepare(`
+      SELECT DISTINCT category FROM ingredient_catalog
+      WHERE category IS NOT NULL AND trim(category) <> '' ORDER BY category
+    `),
   ]);
   return json({
     total: Number((count.results[0] as { total?: unknown } | undefined)?.total || 0),
@@ -643,6 +794,10 @@ async function listIngredients(request: Request, env: Env): Promise<Response> {
       const aliasText = typeof item.aliasText === 'string' ? item.aliasText : '';
       return { ...item, aliases: aliasText.split('|').filter(Boolean), aliasText: undefined };
     }),
+    categories: categories.results.map(row => {
+      const category = (row as { category?: unknown }).category;
+      return typeof category === 'string' ? category : '';
+    }).filter(Boolean),
     page,
     pageSize,
   });
@@ -652,9 +807,46 @@ function normalizeAliases(value: unknown, canonicalName: string): string[] {
   if (value === undefined) return [];
   if (!Array.isArray(value)) throw new ApiError(400, 'VALIDATION_ERROR', '食材别名格式错误');
   const canonical = normalizeIngredientName(canonicalName);
-  return Array.from(new Set(value.map(item => requiredString(item, '食材别名', 80))))
-    .filter(alias => normalizeIngredientName(alias) !== canonical)
-    .slice(0, 30);
+  const seen = new Set<string>([canonical]);
+  const aliases: string[] = [];
+  for (const item of value) {
+    const alias = requiredString(item, '食材别名', 80);
+    const normalized = normalizeIngredientName(alias);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    aliases.push(alias);
+    if (aliases.length >= 30) break;
+  }
+  return aliases;
+}
+
+async function assertIngredientNamesAvailable(
+  env: Env,
+  canonicalName: string,
+  aliases: string[],
+  excludeIngredientId?: string,
+): Promise<void> {
+  const desired = new Set([canonicalName, ...aliases].map(normalizeIngredientName));
+  const [catalog, existingAliases] = await env.DB.batch([
+    env.DB.prepare('SELECT id, canonicalName FROM ingredient_catalog'),
+    env.DB.prepare('SELECT ingredientId, alias FROM ingredient_aliases'),
+  ]);
+  const conflict = catalog.results.find(row => {
+    const item = row as { id?: unknown; canonicalName?: unknown };
+    const id = typeof item.id === 'string' ? item.id : '';
+    const name = typeof item.canonicalName === 'string' ? item.canonicalName : '';
+    return id !== String(excludeIngredientId || '') && desired.has(normalizeIngredientName(name));
+  }) || existingAliases.results.find(row => {
+    const item = row as { ingredientId?: unknown; alias?: unknown };
+    const ingredientId = typeof item.ingredientId === 'string' ? item.ingredientId : '';
+    const alias = typeof item.alias === 'string' ? item.alias : '';
+    return ingredientId !== String(excludeIngredientId || '') && desired.has(normalizeIngredientName(alias));
+  });
+  if (conflict) throw new ApiError(409, 'INGREDIENT_NAME_CONFLICT', '食材名称或别名已存在');
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return String(error instanceof Error ? error.message : error).includes('UNIQUE constraint failed');
 }
 
 function defaultUnit(value: unknown): string | null {
@@ -666,34 +858,44 @@ function defaultUnit(value: unknown): string | null {
 
 async function createIngredient(request: Request, env: Env): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
-  const body = await readJson<{ canonicalName?: unknown; category?: unknown; defaultUnit?: unknown; aliases?: unknown }>(request);
-  const canonicalName = requiredString(body.canonicalName, '标准名称', 80);
-  const category = requiredString(body.category || '其他', '分类', 40);
-  const unit = defaultUnit(body.defaultUnit);
-  const aliases = normalizeAliases(body.aliases, canonicalName);
-  const id = crypto.randomUUID();
-  const now = Date.now();
-  try {
-    await env.DB.batch([
-      env.DB.prepare(`
-        INSERT INTO ingredient_catalog (id, canonicalName, category, defaultUnit, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).bind(id, canonicalName, category, unit, now, now),
-      ...aliases.map(alias => env.DB.prepare(`
-        INSERT INTO ingredient_aliases (id, ingredientId, alias, createdAt) VALUES (?, ?, ?, ?)
-      `).bind(crypto.randomUUID(), id, alias, now)),
-    ]);
-  } catch {
-    throw new ApiError(409, 'INGREDIENT_NAME_CONFLICT', '食材名称或别名已存在');
-  }
-  await writePlatformAudit(env, context, 'platform.ingredient.created', 'ingredient', id, { canonicalName });
-  return json({ id, canonicalName, category, defaultUnit: unit, aliases, createdAt: now, updatedAt: now }, 201);
+  return withPlatformIdempotency(request, env, context, 'platform.ingredient.create', () =>
+    withOperationLock(env, PLATFORM_INGREDIENT_LOCK, async () => {
+      const body = await readJson<{ canonicalName?: unknown; category?: unknown; defaultUnit?: unknown; aliases?: unknown }>(request);
+      const canonicalName = requiredString(body.canonicalName, '标准名称', 80);
+      const category = requiredString(body.category || '其他', '分类', 40);
+      const unit = defaultUnit(body.defaultUnit);
+      const aliases = normalizeAliases(body.aliases, canonicalName);
+      await assertIngredientNamesAvailable(env, canonicalName, aliases);
+      const id = crypto.randomUUID();
+      const now = Date.now();
+      try {
+        await env.DB.batch([
+          env.DB.prepare(`
+            INSERT INTO ingredient_catalog (id, canonicalName, category, defaultUnit, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `).bind(id, canonicalName, category, unit, now, now),
+          ...aliases.map(alias => env.DB.prepare(`
+            INSERT INTO ingredient_aliases (id, ingredientId, alias, createdAt) VALUES (?, ?, ?, ?)
+          `).bind(crypto.randomUUID(), id, alias, now)),
+          platformAuditInsert(env, context, 'platform.ingredient.created', 'ingredient', id, {
+            canonicalName,
+          }, now),
+        ]);
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          throw new ApiError(409, 'INGREDIENT_NAME_CONFLICT', '食材名称或别名已存在');
+        }
+        throw error;
+      }
+      return json({ id, canonicalName, category, defaultUnit: unit, aliases, createdAt: now, updatedAt: now }, 201);
+    }));
 }
 
 async function updateIngredient(request: Request, env: Env, ingredientId: string): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
   const body = await readJson<{ canonicalName?: unknown; category?: unknown; defaultUnit?: unknown; aliases?: unknown; expectedUpdatedAt?: unknown }>(request);
-  return withOperationLock(env, `platform-ingredient:${ingredientId}`, async () => {
+  return withOperationLock(env, PLATFORM_INGREDIENT_LOCK, () =>
+    withOperationLock(env, `platform-ingredient:${ingredientId}`, async () => {
     const current = await env.DB.prepare('SELECT * FROM ingredient_catalog WHERE id = ?')
       .bind(ingredientId).first<Record<string, unknown>>();
     if (!current) throw new ApiError(404, 'INGREDIENT_NOT_FOUND', '食材不存在');
@@ -709,7 +911,8 @@ async function updateIngredient(request: Request, env: Env, ingredientId: string
     const aliases = Object.prototype.hasOwnProperty.call(body, 'aliases')
       ? normalizeAliases(body.aliases, canonicalName)
       : existingAliases.results.map(item => item.alias);
-    const now = Date.now();
+    await assertIngredientNamesAvailable(env, canonicalName, aliases, ingredientId);
+    const now = nextVersion(current.updatedAt);
     try {
       await env.DB.batch([
         env.DB.prepare(`
@@ -720,13 +923,18 @@ async function updateIngredient(request: Request, env: Env, ingredientId: string
         ...aliases.map(alias => env.DB.prepare(`
           INSERT INTO ingredient_aliases (id, ingredientId, alias, createdAt) VALUES (?, ?, ?, ?)
         `).bind(crypto.randomUUID(), ingredientId, alias, now)),
+        platformAuditInsert(env, context, 'platform.ingredient.updated', 'ingredient', ingredientId, {
+          canonicalName,
+        }, now),
       ]);
-    } catch {
-      throw new ApiError(409, 'INGREDIENT_NAME_CONFLICT', '食材名称或别名已存在');
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ApiError(409, 'INGREDIENT_NAME_CONFLICT', '食材名称或别名已存在');
+      }
+      throw error;
     }
-    await writePlatformAudit(env, context, 'platform.ingredient.updated', 'ingredient', ingredientId, { canonicalName });
     return json({ id: ingredientId, canonicalName, category, defaultUnit: unit, aliases, updatedAt: now });
-  });
+  }));
 }
 
 async function listAudit(request: Request, env: Env): Promise<Response> {

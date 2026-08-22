@@ -38,8 +38,8 @@ Page({
     error: ''
   },
 
-  onLoad() {
-    this.loadTemplates(true);
+  onShow() {
+    void this.loadTemplates(true);
   },
 
   onUnload() {
@@ -126,6 +126,15 @@ Page({
     return '未上架';
   },
 
+  onTemplateImageError(event: any) {
+    const id = String(event.currentTarget.dataset.id || '');
+    if (!id) return;
+    const templates = (this.data.templates as PlatformRecipeTemplate[]).map(item =>
+      String(item.id) === id ? { ...item, images: ['/images/default-dish.jpg'] } : item
+    );
+    this.setData({ templates });
+  },
+
   createTemplate() {
     wx.navigateTo({ url: '/pages/platform-admin/template-edit/template-edit' });
   },
@@ -162,9 +171,5 @@ Page({
         }
       }
     });
-  },
-
-  goBack() {
-    wx.navigateBack({ delta: 1 });
   }
 });
