@@ -158,7 +158,7 @@
 
   <view class="floating-add" wx:if="{{hasFamily && hasToken && !(activeTab === 'purchased' && selectedStockIds.length > 0)}}" bindtap="openAdd" aria-label="添加采购食材"><mp-icon icon="add" size="27" color="#0f8f85"></mp-icon></view>
 
-  <view class="modal-mask" wx:if="{{showAdd}}" catchtap="closeAdd">
+  <view class="modal-mask {{addActive ? 'is-active' : ''}}" wx:if="{{showAdd}}" catchtap="closeAdd">
     <view class="modal-card" catchtap="stopPropagation">
       <view class="modal-header"><view class="modal-title">添加采购食材</view><button class="modal-close" catchtap="closeAdd" aria-label="关闭"><mp-icon icon="close" size="20" color="#725d42"></mp-icon></button></view>
       <view class="form-label">食材名称 <text>*</text></view>
@@ -173,7 +173,7 @@
     </view>
   </view>
 
-  <view class="modal-mask" wx:if="{{showRecalculate}}" catchtap="closeRecalculate">
+  <view class="modal-mask {{recalculateActive ? 'is-active' : ''}}" wx:if="{{showRecalculate}}" catchtap="closeRecalculate">
     <view class="modal-card" catchtap="stopPropagation">
       <view class="modal-header"><view class="modal-title">重新计算采购清单</view><button class="modal-close" catchtap="closeRecalculate" aria-label="关闭"><mp-icon icon="close" size="20" color="#725d42"></mp-icon></button></view>
       <view class="sync-intro">根据当前家庭所有已确认预约重新计算采购项，已存在的项目会合并数量。</view>

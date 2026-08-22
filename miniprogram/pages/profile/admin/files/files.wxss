@@ -205,6 +205,14 @@
   z-index: 1000;
   padding: calc(40rpx + env(safe-area-inset-top)) 40rpx calc(40rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms var(--ease-out);
+}
+
+.file-info-modal.is-active {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .modal-content {
@@ -219,6 +227,16 @@
   padding: 30rpx;
   box-shadow: var(--shadow-lg);
   box-sizing: border-box;
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: center;
+  transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out);
+}
+
+.file-info-modal.is-active .modal-content {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: 200ms;
 }
 
 .modal-header {
@@ -350,4 +368,12 @@
 .info-url {
   color: var(--primary-color);
   text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-content,
+  .file-info-modal.is-active .modal-content {
+    transform: none;
+    transition-property: opacity;
+  }
 }

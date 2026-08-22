@@ -3,6 +3,13 @@ const shoppingModel = require('../../models/shopping');
 
 let shoppingListRequestId = 0;
 let shoppingMembersRequestId = 0;
+const PANEL_EXIT_MS = 160;
+
+function clearMotionTimer(page, key) {
+  if (!page[key]) return;
+  clearTimeout(page[key]);
+  page[key] = null;
+}
 
 let FamilyService = null;
 try {
@@ -67,6 +74,7 @@ Page({
     membersLoading: false,
     pendingItemIds: [],
     showAdd: false,
+    addActive: false,
     adding: false,
     form: {
       name: '',
@@ -75,6 +83,7 @@ Page({
       note: ''
     },
     showRecalculate: false,
+    recalculateActive: false,
     recalculating: false,
     stocking: false
   },
@@ -95,6 +104,8 @@ Page({
     const token = shoppingService.getToken();
     const hasToken = !!token;
     if (familyId !== this.data.familyId || hasToken !== this.data.hasToken || token !== this.data.authToken) {
+      clearMotionTimer(this, '_addMotionTimer');
+      clearMotionTimer(this, '_recalculateMotionTimer');
       shoppingListRequestId += 1;
       shoppingMembersRequestId += 1;
       this.setData({
@@ -115,7 +126,9 @@ Page({
         pendingItemIds: [],
         stocking: false,
         showAdd: false,
-        showRecalculate: false
+        addActive: false,
+        showRecalculate: false,
+        recalculateActive: false
       });
       this.loadMembers();
       this.loadList();
@@ -128,6 +141,14 @@ Page({
       this.setData({ refreshing: false });
       wx.stopPullDownRefresh();
     });
+  },
+
+  onUnload() {
+    this._motionDestroyed = true;
+    clearMotionTimer(this, '_addMotionTimer');
+    clearMotionTimer(this, '_recalculateMotionTimer');
+    shoppingListRequestId += 1;
+    shoppingMembersRequestId += 1;
   },
 
   async loadMembers() {
@@ -255,14 +276,28 @@ Page({
       wx.showToast({ title: '请先选择一个家庭', icon: 'none' });
       return;
     }
+    clearMotionTimer(this, '_addMotionTimer');
     this.setData({
       showAdd: true,
+      addActive: false,
       form: { name: '', quantity: '', unit: '', note: '' }
+    }, () => {
+      if (this._motionDestroyed) return;
+      wx.nextTick(() => {
+        if (!this._motionDestroyed && this.data.showAdd) this.setData({ addActive: true });
+      });
     });
   },
 
-  closeAdd() {
-    if (!this.data.adding) this.setData({ showAdd: false });
+  closeAdd(force = false) {
+    const shouldForce = force === true;
+    if (!shouldForce && this.data.adding) return;
+    clearMotionTimer(this, '_addMotionTimer');
+    this.setData({ addActive: false });
+    this._addMotionTimer = setTimeout(() => {
+      this._addMotionTimer = null;
+      this.setData({ showAdd: false });
+    }, PANEL_EXIT_MS);
   },
 
   onFormInput(event) {
@@ -302,16 +337,16 @@ Page({
         unit: unit || undefined,
         note: String(form.note || '').trim() || undefined
       });
-      if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
+      if (this._motionDestroyed || String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
       wx.showToast({ title: '已加入清单', icon: 'success' });
-      this.setData({ showAdd: false });
+      this.setData({ adding: false }, () => this.closeAdd(true));
       await this.loadList();
     } catch (error) {
       console.error('添加采购项失败:', error);
       showError(error, '添加失败');
     } finally {
       wx.hideLoading();
-      this.setData({ adding: false });
+      if (!this._motionDestroyed) this.setData({ adding: false });
     }
   },
 
@@ -327,14 +362,16 @@ Page({
     wx.showLoading({ title: checked ? '标记已购' : '移回清单' });
     try {
       await shoppingService.updateShoppingItem({ id, checked, expectedUpdatedAt: Number(item.updatedAt) });
-      if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
+      if (this._motionDestroyed || String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
       await this.loadList();
     } catch (error) {
       console.error('更新采购状态失败:', error);
       showError(error, '更新失败');
     } finally {
       wx.hideLoading();
-      this.setData({ pendingItemIds: this.data.pendingItemIds.filter(entry => entry !== itemKey) });
+      if (!this._motionDestroyed) {
+        this.setData({ pendingItemIds: this.data.pendingItemIds.filter(entry => entry !== itemKey) });
+      }
     }
   },
 
@@ -464,11 +501,24 @@ Page({
       wx.showToast({ title: '请先选择一个家庭', icon: 'none' });
       return;
     }
-    this.setData({ showRecalculate: true });
+    clearMotionTimer(this, '_recalculateMotionTimer');
+    this.setData({ showRecalculate: true, recalculateActive: false }, () => {
+      if (this._motionDestroyed) return;
+      wx.nextTick(() => {
+        if (!this._motionDestroyed && this.data.showRecalculate) this.setData({ recalculateActive: true });
+      });
+    });
   },
 
-  closeRecalculate() {
-    if (!this.data.recalculating) this.setData({ showRecalculate: false });
+  closeRecalculate(force = false) {
+    const shouldForce = force === true;
+    if (!shouldForce && this.data.recalculating) return;
+    clearMotionTimer(this, '_recalculateMotionTimer');
+    this.setData({ recalculateActive: false });
+    this._recalculateMotionTimer = setTimeout(() => {
+      this._recalculateMotionTimer = null;
+      this.setData({ showRecalculate: false });
+    }, PANEL_EXIT_MS);
   },
 
   async submitRecalculate() {
@@ -478,8 +528,8 @@ Page({
     wx.showLoading({ title: '重新计算中' });
     try {
       await shoppingService.recalculateShoppingList();
-      if (String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
-      this.setData({ showRecalculate: false });
+      if (this._motionDestroyed || String(shoppingService.getActiveFamilyId() || '') !== familyId) return;
+      this.setData({ recalculating: false }, () => this.closeRecalculate(true));
       await this.loadList();
       wx.showToast({ title: '采购清单已重新计算', icon: 'success' });
     } catch (error) {
@@ -487,7 +537,7 @@ Page({
       showError(error, '重新计算失败');
     } finally {
       wx.hideLoading();
-      this.setData({ recalculating: false });
+      if (!this._motionDestroyed) this.setData({ recalculating: false });
     }
   }
 });

@@ -41,7 +41,7 @@
               <text class="iconfont">{{user.isExpanded ? '▼' : '▶'}}</text>
             </view>
           </view>
-          <view class="meals-list {{user.isExpanded ? 'expanded' : 'collapsed'}}">
+          <view wx:if="{{user.isExpanded || user.isRendered}}" class="meals-list {{user.isExpanded ? 'expanded' : 'collapsed'}}">
             <view class="meal-item" wx:for="{{user.meals}}" wx:key="type" wx:for-item="meal">
               <view class="meal-type-wrapper">
                 <view class="meal-type">
@@ -93,8 +93,8 @@
   </view>
 
   <!-- 完成预约前的库存扣减预览 -->
-  <view class="completion-overlay" wx:if="{{completionPreview}}">
-    <view class="completion-modal">
+  <view class="completion-overlay {{completionActive ? 'active' : ''}}" wx:if="{{completionPreview}}">
+    <view class="completion-modal {{completionActive ? 'active' : ''}}">
       <button class="completion-close" disabled="{{isCompleting}}" bindtap="cancelCompletion" aria-label="关闭">
         <mp-icon icon="close" size="20" color="#725d42"></mp-icon>
       </button>

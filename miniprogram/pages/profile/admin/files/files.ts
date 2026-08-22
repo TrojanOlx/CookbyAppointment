@@ -18,6 +18,7 @@ interface PageData {
   selectedFiles: string[];
   isLoading: boolean;
   showFileInfo: boolean;
+  fileInfoActive: boolean;
   fileInfoData: FileInfoData;
 }
 
@@ -46,6 +47,13 @@ interface PageInstance {
 }
 
 let filesRequestId = 0;
+const DIALOG_EXIT_MS = 140;
+
+const clearFileInfoMotionTimer = (page: any): void => {
+  if (!page._fileInfoMotionTimer) return;
+  clearTimeout(page._fileInfoMotionTimer);
+  page._fileInfoMotionTimer = null;
+};
 
 const currentSessionScope = () => {
   const storedFamily = wx.getStorageSync('active_family_id');
@@ -63,6 +71,7 @@ Page<PageData, PageInstance>({
     selectedFiles: [],
     isLoading: false,
     showFileInfo: false,
+    fileInfoActive: false,
     fileInfoData: {} as FileInfoData
   },
 
@@ -143,6 +152,8 @@ Page<PageData, PageInstance>({
 
   onUnload() {
     filesRequestId += 1;
+    (this as any)._motionDestroyed = true;
+    clearFileInfoMotionTimer(this);
   },
 
   // 上传文件（从本地选择）
@@ -253,6 +264,7 @@ Page<PageData, PageInstance>({
       wx.showLoading({ title: '获取中...' });
       const fileInfo = await FileService.getFileInfo(filePath);
       wx.hideLoading();
+      if ((this as any)._motionDestroyed) return;
 
       if (fileInfo) {
         // 确保文件类型存在
@@ -261,9 +273,16 @@ Page<PageData, PageInstance>({
           fileType: fileInfo.fileType || this.getFileTypeFromName(fileInfo.fileName)
         };
 
+        clearFileInfoMotionTimer(this);
         this.setData({
           showFileInfo: true,
+          fileInfoActive: false,
           fileInfoData: fileInfoWithType
+        }, () => {
+          if ((this as any)._motionDestroyed) return;
+          wx.nextTick(() => {
+            if (!(this as any)._motionDestroyed && this.data.showFileInfo) this.setData({ fileInfoActive: true });
+          });
         });
       } else {
         wx.showToast({
@@ -283,9 +302,12 @@ Page<PageData, PageInstance>({
 
   // 关闭文件信息弹窗
   closeFileInfo() {
-    this.setData({
-      showFileInfo: false
-    });
+    clearFileInfoMotionTimer(this);
+    this.setData({ fileInfoActive: false });
+    (this as any)._fileInfoMotionTimer = setTimeout(() => {
+      (this as any)._fileInfoMotionTimer = null;
+      this.setData({ showFileInfo: false });
+    }, DIALOG_EXIT_MS);
   },
 
   // 下载文件

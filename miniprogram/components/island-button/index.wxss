@@ -10,6 +10,7 @@
   border: 4rpx solid #fff7d6;
   border-radius: var(--radius-full);
   box-shadow: var(--shadow-fab);
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .island-button::after {
@@ -17,7 +18,7 @@
 }
 
 .island-button:active {
-  transform: translateY(4rpx);
+  transform: translateY(4rpx) scale(0.97);
   box-shadow: 0 3rpx 0 #bdaea0, 0 8rpx 16rpx rgba(61,52,40,0.12);
 }
 
@@ -36,4 +37,9 @@
   background: transparent;
   border-color: var(--border-color);
   box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .island-button { transition: none; }
+  .island-button:active { transform: none; }
 }

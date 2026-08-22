@@ -434,3 +434,7 @@ page {
   background: var(--accent-yellow);
   border-color: #dba90e;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner { animation: none; }
+}

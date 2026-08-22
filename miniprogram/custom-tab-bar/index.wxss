@@ -42,7 +42,7 @@
   padding-top: 8rpx;
   padding-bottom: 8rpx;
   border-radius: 28rpx;
-  transition: background 150ms ease, transform 150ms ease;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .tab-bar-item.is-selected {
@@ -67,14 +67,12 @@
   width: 58rpx;
   height: 58rpx;
   filter: grayscale(100%) opacity(0.58);
-  transition: filter 150ms ease;
 }
 
 .tab-bar-text {
   font-size: 12px;
   color: #725d42;
   font-weight: 800;
-  transition: color 150ms ease;
 }
 
 .icon-active {
@@ -84,4 +82,14 @@
 .text-active {
   color: #0f8f85;
   font-weight: 900;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-bar-item {
+    transition: none;
+  }
+
+  .tab-bar-item:active {
+    transform: none !important;
+  }
 }

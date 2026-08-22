@@ -767,10 +767,11 @@ page {
   border: 4rpx solid var(--primary-color);
   border-radius: 36rpx;
   box-shadow: var(--shadow-fab);
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .floating-add:active {
-  transform: translateY(3rpx) scale(0.98);
+  transform: translateY(3rpx) scale(0.97);
 }
 
 .modal-mask {
@@ -786,6 +787,14 @@ page {
   box-sizing: border-box;
   padding: calc(24rpx + env(safe-area-inset-top)) 24rpx calc(24rpx + env(safe-area-inset-bottom));
   background: rgba(61,52,40,0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms var(--ease-out);
+}
+
+.modal-mask.is-active {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .modal-card {
@@ -804,6 +813,16 @@ page {
   border: 2rpx solid rgba(255,255,255,0.55);
   border-radius: 34rpx 34rpx 26rpx 26rpx;
   box-shadow: var(--shadow-lg);
+  opacity: 0.96;
+  transform: translateY(100%);
+  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
+}
+
+.modal-mask.is-active .modal-card {
+  opacity: 1;
+  transform: translateY(0);
+  transition-duration: var(--motion-panel);
+  transition-timing-function: var(--ease-drawer);
 }
 
 .modal-header {
@@ -920,6 +939,22 @@ page {
 
 .modal-submit[disabled] {
   opacity: 0.56;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-add {
+    transition: none;
+  }
+
+  .floating-add:active {
+    transform: none;
+  }
+
+  .modal-card,
+  .modal-mask.is-active .modal-card {
+    transform: none;
+    transition-property: opacity;
+  }
 }
 
 @media (max-height: 680px) {

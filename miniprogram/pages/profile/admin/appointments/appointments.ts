@@ -30,6 +30,7 @@ interface UserAppointment {
   userAvatar: string;
   userId: string;
   isExpanded?: boolean;
+  isRendered?: boolean;
   meals: {
     type: string;
     dishes: string[];
@@ -191,6 +192,7 @@ Page({
     firstDay: '',
     lastDay: '',
     completionPreview: null as CompletionPreview | null,
+    completionActive: false,
     isCompleting: false,
     isMutatingAppointment: false
   },
@@ -215,10 +217,12 @@ Page({
       adminAppointmentListRequestId += 1;
       adminAppointmentMutationRequestId += 1;
       adminRoleRequestId += 1;
+      this.clearAppointmentMotionTimers();
       delete (this as any)._completionIdempotencyKey;
       this.setData({
         userAppointments: [],
         completionPreview: null,
+        completionActive: false,
         isCompleting: false,
         isMutatingAppointment: false
       });
@@ -856,6 +860,48 @@ Page({
   },
   
   // 完成预约
+  clearAppointmentMotionTimers() {
+    const completionTimer = (this as any)._completionMotionTimer;
+    if (completionTimer) {
+      clearTimeout(completionTimer);
+      delete (this as any)._completionMotionTimer;
+    }
+
+    const expansionTimers = (this as any)._expansionMotionTimers as Map<string, { timer: ReturnType<typeof setTimeout> | null; mode: 'opening' | 'closing' }> | undefined;
+    expansionTimers?.forEach((entry) => {
+      if (entry.timer) clearTimeout(entry.timer);
+    });
+    expansionTimers?.clear();
+  },
+
+  showCompletionPreview(preview: CompletionPreview) {
+    const activeTimer = (this as any)._completionMotionTimer;
+    if (activeTimer) clearTimeout(activeTimer);
+
+    this.setData({ completionPreview: preview, completionActive: false }, () => {
+      if ((this as any)._appointmentScope === '__unloaded__') return;
+      (this as any)._completionMotionTimer = setTimeout(() => {
+        delete (this as any)._completionMotionTimer;
+        if (this.data.completionPreview?.appointmentId === preview.appointmentId) {
+          this.setData({ completionActive: true });
+        }
+      }, 20);
+    });
+  },
+
+  hideCompletionPreview() {
+    const activeTimer = (this as any)._completionMotionTimer;
+    if (activeTimer) clearTimeout(activeTimer);
+
+    this.setData({ completionActive: false });
+    (this as any)._completionMotionTimer = setTimeout(() => {
+      delete (this as any)._completionMotionTimer;
+      if (!this.data.completionActive) {
+        this.setData({ completionPreview: null });
+      }
+    }, 140);
+  },
+
   async completeAppointment(e: any) {
     if (this.data.isCompleting) return;
 
@@ -885,10 +931,8 @@ Page({
       if (result.requiresInventoryConfirmation) {
         hideLoading();
         (this as any)._completionIdempotencyKey = `complete:${appointmentId}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2)}`;
-        this.setData({
-          completionPreview: normalizeCompletionPreview(appointmentId, result),
-          isCompleting: false
-        });
+        this.setData({ isCompleting: false });
+        this.showCompletionPreview(normalizeCompletionPreview(appointmentId, result));
         return;
       }
 
@@ -953,7 +997,7 @@ Page({
 
       hideLoading();
       delete (this as any)._completionIdempotencyKey;
-      this.setData({ completionPreview: null });
+      this.hideCompletionPreview();
       showToast('预约已完成');
       this.loadUserAppointments();
     } catch (error) {
@@ -969,7 +1013,7 @@ Page({
   cancelCompletion() {
     if (this.data.isCompleting) return;
     delete (this as any)._completionIdempotencyKey;
-    this.setData({ completionPreview: null });
+    this.hideCompletionPreview();
   },
   
   // 查看评价
@@ -1064,24 +1108,60 @@ Page({
     adminAppointmentListRequestId += 1;
     adminAppointmentMutationRequestId += 1;
     adminRoleRequestId += 1;
+    this.clearAppointmentMotionTimers();
     (this as any)._appointmentScope = '__unloaded__';
     delete (this as any)._completionIdempotencyKey;
   },
 
   // 切换用户预约列表的展开/折叠状态
   toggleUserExpand(e: any) {
-    const { index } = e.currentTarget.dataset;
-    
-    // 使用setTimeout确保UI更新优先级较高
-    setTimeout(() => {
-      const userAppointments = [...this.data.userAppointments];
-    
-      // 切换当前用户的展开状态
-      userAppointments[index].isExpanded = !userAppointments[index].isExpanded;
-      
+    const index = Number(e.currentTarget.dataset.index);
+    const user = this.data.userAppointments[index] as UserAppointment | undefined;
+    if (!user) return;
+
+    const key = user.userId || String(index);
+    const timers = ((this as any)._expansionMotionTimers ||= new Map<string, { timer: ReturnType<typeof setTimeout> | null; mode: 'opening' | 'closing' }>());
+    const pending = timers.get(key);
+    if (pending) {
+      if (pending.timer) clearTimeout(pending.timer);
+      timers.delete(key);
+    }
+
+    if (pending?.mode === 'opening') {
       this.setData({
-        userAppointments
+        [`userAppointments[${index}].isExpanded`]: false,
+        [`userAppointments[${index}].isRendered`]: false
       });
-    }, 10);
+      return;
+    }
+
+    if (user.isExpanded && pending?.mode !== 'closing') {
+      this.setData({ [`userAppointments[${index}].isExpanded`]: false });
+      const entry: { timer: ReturnType<typeof setTimeout> | null; mode: 'closing' } = { timer: null, mode: 'closing' };
+      entry.timer = setTimeout(() => {
+        if (timers.get(key) !== entry) return;
+        timers.delete(key);
+        const currentUser = this.data.userAppointments[index] as UserAppointment | undefined;
+        if (currentUser?.userId === user.userId && !currentUser.isExpanded) {
+          this.setData({ [`userAppointments[${index}].isRendered`]: false });
+        }
+      }, 140);
+      timers.set(key, entry);
+      return;
+    }
+
+    const entry: { timer: ReturnType<typeof setTimeout> | null; mode: 'opening' } = { timer: null, mode: 'opening' };
+    timers.set(key, entry);
+    this.setData({ [`userAppointments[${index}].isRendered`]: true }, () => {
+      if (timers.get(key) !== entry) return;
+      entry.timer = setTimeout(() => {
+        if (timers.get(key) !== entry) return;
+        timers.delete(key);
+        const currentUser = this.data.userAppointments[index] as UserAppointment | undefined;
+        if (currentUser?.userId === user.userId) {
+          this.setData({ [`userAppointments[${index}].isExpanded`]: true });
+        }
+      }, 20);
+    });
   }
 });

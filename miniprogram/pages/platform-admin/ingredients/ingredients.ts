@@ -5,7 +5,24 @@ import {
 } from '../../../services/platformCatalogService';
 
 const PAGE_SIZE = 30;
+const PANEL_EXIT_MS = 160;
 let catalogRequestId = 0;
+
+const clearEditorMotionTimer = (page: any): void => {
+  if (!page._editorMotionTimer) return;
+  clearTimeout(page._editorMotionTimer);
+  page._editorMotionTimer = null;
+};
+
+const showEditor = (page: any, data: Record<string, unknown>): void => {
+  clearEditorMotionTimer(page);
+  page.setData({ ...data, editorVisible: true, editorActive: false }, () => {
+    if (page._motionDestroyed) return;
+    wx.nextTick(() => {
+      if (!page._motionDestroyed && page.data.editorVisible) page.setData({ editorActive: true });
+    });
+  });
+};
 
 const getErrorMessage = (error: unknown, fallback: string): string => {
   if (error instanceof Error && error.message) return error.message;
@@ -45,6 +62,7 @@ Page({
     refreshing: false,
     error: '',
     editorVisible: false,
+    editorActive: false,
     editingId: '',
     editingUpdatedAt: undefined as number | string | undefined,
     form: emptyForm(),
@@ -53,7 +71,11 @@ Page({
 
   onLoad() { this.loadIngredients(true); },
 
-  onUnload() { catalogRequestId += 1; },
+  onUnload() {
+    catalogRequestId += 1;
+    (this as any)._motionDestroyed = true;
+    clearEditorMotionTimer(this);
+  },
 
   async loadIngredients(reset = false) {
     if (!reset && (this.data.loading || this.data.loadingMore || !this.data.hasMore)) return;
@@ -94,16 +116,26 @@ Page({
     this.setData({ category, ingredients: [], page: 1, total: 0, hasMore: false }, () => { void this.loadIngredients(true); });
   },
 
-  openCreate() { this.setData({ editorVisible: true, editingId: '', editingUpdatedAt: undefined, form: emptyForm() }); },
+  openCreate() {
+    showEditor(this, { editingId: '', editingUpdatedAt: undefined, form: emptyForm() });
+  },
 
   openEdit(event: any) {
     const id = String(event.currentTarget.dataset.id || '');
     const item = (this.data.ingredients as IngredientRow[]).find(value => String(value.id) === id);
     if (!item) return;
-    this.setData({ editorVisible: true, editingId: id, editingUpdatedAt: item.updatedAt, form: { canonicalName: item.canonicalName, category: item.category, defaultUnit: item.defaultUnit, aliasesText: item.aliases.join('、') } });
+    showEditor(this, { editingId: id, editingUpdatedAt: item.updatedAt, form: { canonicalName: item.canonicalName, category: item.category, defaultUnit: item.defaultUnit, aliasesText: item.aliases.join('、') } });
   },
 
-  closeEditor() { if (!this.data.saving) this.setData({ editorVisible: false }); },
+  closeEditor(force: unknown = false) {
+    if (force !== true && this.data.saving) return;
+    clearEditorMotionTimer(this);
+    this.setData({ editorActive: false });
+    (this as any)._editorMotionTimer = setTimeout(() => {
+      (this as any)._editorMotionTimer = null;
+      this.setData({ editorVisible: false });
+    }, PANEL_EXIT_MS);
+  },
   stopPropagation() {},
   canonicalNameInput(event: any) { this.setData({ 'form.canonicalName': String(event.detail.value || '') }); },
   categoryInput(event: any) { this.setData({ 'form.category': String(event.detail.value || '') }); },
@@ -126,10 +158,12 @@ Page({
     try {
       if (this.data.editingId) await PlatformCatalogService.updateIngredient(this.data.editingId, payload);
       else await PlatformCatalogService.createIngredient(payload);
-      this.setData({ saving: false, editorVisible: false });
+      if ((this as any)._motionDestroyed) return;
+      this.setData({ saving: false }, () => this.closeEditor(true));
       wx.showToast({ title: '食材已保存', icon: 'success', duration: 1200 });
       void this.loadIngredients(true);
     } catch (error) {
+      if ((this as any)._motionDestroyed) return;
       this.setData({ saving: false });
       wx.showToast({ title: getErrorMessage(error, '保存失败，请重试'), icon: 'none' });
     }

@@ -37,10 +37,13 @@
   align-items: center;
   padding: 32rpx;
   border-bottom: 1rpx solid var(--border-color);
-  transition: background 0.15s;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 .settings-item:last-child { border-bottom: none; }
-.settings-item:active { background: var(--input-bg); }
+.settings-item:active {
+  transform: scale(0.97);
+  background: var(--input-bg);
+}
 
 .settings-label {
   flex: 1;
@@ -75,9 +78,9 @@
   color: #fff;
   border-radius: var(--radius-full);
   font-weight: 500;
-  transition: opacity 0.15s;
+  transition: transform var(--motion-press) var(--ease-out);
 }
-.phone-btn:active { opacity: 0.82; }
+.phone-btn:active { transform: scale(0.97); }
 
 /* Animal Island native redesign */
 .settings-container {
@@ -112,4 +115,16 @@
 
 .settings-label {
   font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-item,
+  .phone-btn {
+    transition: none;
+  }
+
+  .settings-item:active,
+  .phone-btn:active {
+    transform: none !important;
+  }
 }

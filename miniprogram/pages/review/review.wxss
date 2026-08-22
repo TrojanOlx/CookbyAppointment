@@ -313,6 +313,18 @@ page {
   padding: 30rpx 24rpx;
   box-shadow: var(--shadow-sm);
   box-sizing: border-box;
+  animation: review-result-enter 200ms var(--ease-out) both;
+}
+
+@keyframes review-result-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .result-title {
@@ -468,4 +480,16 @@ page {
 .submit-btn[disabled] {
   color: var(--text-muted);
   background: var(--input-bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review-result {
+    animation-name: review-result-fade;
+    animation-duration: 1ms;
+  }
+}
+
+@keyframes review-result-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

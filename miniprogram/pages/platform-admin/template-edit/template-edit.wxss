@@ -64,3 +64,7 @@ button::after { border: 0; }
 @keyframes editor-spin { to { transform: rotate(360deg); } }
 .state-mark { display: flex; align-items: center; justify-content: center; width: 56rpx; height: 56rpx; margin-bottom: 14rpx; color: #8a5b00; background: var(--warning-light); border-radius: 50%; font-size: 34rpx; }
 .state-button { height: 68rpx; margin: 24rpx 0 0; padding: 0 28rpx; color: var(--primary-dark); background: var(--primary-light); border: 2rpx solid rgba(25,200,185,0.25); border-radius: var(--radius-full); font-size: 24rpx; line-height: 64rpx; }
+
+@media (prefers-reduced-motion: reduce) {
+  .state-spinner { animation: none; }
+}

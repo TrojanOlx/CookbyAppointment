@@ -39,7 +39,6 @@ page {
   border-radius: var(--radius-full);
   background: var(--input-bg);
   color: var(--text-secondary);
-  transition: all 0.2s;
 }
 .chip-active {
   background: #FFF3E0;
@@ -139,7 +138,7 @@ page {
   background: var(--danger-color);
   padding: 6rpx 18rpx;
   border-radius: var(--radius-full);
-  transition: opacity 0.15s;
+  transition: opacity var(--motion-press) var(--ease-out);
 }
 .delete-btn:active { opacity: 0.8; }
 
@@ -225,4 +224,11 @@ page {
 .delete-btn {
   background: var(--accent-coral);
   font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-chip,
+  .delete-btn {
+    transition: none;
+  }
 }

@@ -77,8 +77,9 @@ page {
   align-items: center;
   justify-content: center;
   position: relative;
-  transition: color 0.2s;
+  transition: transform var(--motion-press) var(--ease-out);
 }
+.filter-item:active { transform: scale(0.97); }
 .filter-item.active {
   color: var(--primary-color);
   font-weight: 700;
@@ -174,7 +175,9 @@ page {
   background: var(--danger-color);
   border-top-right-radius: var(--radius-lg);
   border-bottom-right-radius: var(--radius-lg);
+  transition: transform var(--motion-press) var(--ease-out);
 }
+.movable-delete-btn:active { transform: scale(0.97); }
 
 /* ── 列表项 ── */
 .inventory-item {
@@ -187,7 +190,9 @@ page {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   overflow: hidden;
+  transition: transform var(--motion-press) var(--ease-out);
 }
+.inventory-item:active { transform: scale(0.97); }
 
 .item-image {
   width: 108rpx;
@@ -322,9 +327,9 @@ page {
   align-items: center;
   justify-content: center;
   box-shadow: var(--shadow-sm);
-  transition: opacity 0.15s ease;
+  transition: transform var(--motion-press) var(--ease-out);
 }
-.seed-btn:active { opacity: 0.82; }
+.seed-btn:active { transform: scale(0.97); }
 
 /* ── 加载 ── */
 .loading-container {
@@ -373,11 +378,10 @@ page {
   justify-content: center;
   box-shadow: var(--shadow-fab);
   z-index: 9000;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 .add-btn:active {
-  transform: scale(0.93);
-  box-shadow: 0 4rpx 12rpx rgba(76,175,80,0.22);
+  transform: scale(0.97);
 }
 
 .add-icon {
@@ -527,5 +531,27 @@ page {
     height: 96rpx;
     min-width: 96rpx;
     margin-right: 14rpx;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner {
+    animation: none;
+  }
+
+  .filter-item,
+  .movable-delete-btn,
+  .inventory-item,
+  .seed-btn,
+  .add-btn {
+    transition: none;
+  }
+
+  .filter-item:active,
+  .movable-delete-btn:active,
+  .inventory-item:active,
+  .seed-btn:active,
+  .add-btn:active {
+    transform: none !important;
   }
 }

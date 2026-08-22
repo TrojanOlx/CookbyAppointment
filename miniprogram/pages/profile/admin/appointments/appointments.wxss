@@ -123,7 +123,7 @@ page {
   width: 40rpx;
   height: 40rpx;
   flex-shrink: 0;
-  transition: transform 0.25s;
+  transition: transform var(--motion-state) var(--ease-out);
 }
 .expand-icon.expanded { transform: rotate(180deg); }
 .expand-icon .iconfont { font-size: 24rpx; color: var(--primary-dark); }
@@ -158,18 +158,18 @@ page {
   box-sizing: border-box;
   background: var(--card-bg);
   overflow: hidden;
-  transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
-  will-change: max-height, opacity;
+  padding: 16rpx 28rpx;
+  opacity: 0;
+  transform: translateY(-6rpx);
+  transition: transform var(--motion-state) var(--ease-out), opacity var(--motion-state) ease-out;
 }
 .meals-list.expanded {
-  padding: 16rpx 28rpx;
   opacity: 1;
-  max-height: 4000rpx;
+  transform: translateY(0);
 }
 .meals-list.collapsed {
-  padding: 0 28rpx;
-  max-height: 0;
   opacity: 0;
+  transform: translateY(-6rpx);
 }
 
 .meal-item {
@@ -377,6 +377,14 @@ page {
   padding: calc(40rpx + env(safe-area-inset-top)) 28rpx calc(40rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   background: rgba(61, 52, 40, 0.42);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 160ms ease-out;
+}
+
+.completion-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .completion-modal {
@@ -391,6 +399,16 @@ page {
   border: 4rpx solid rgba(121,79,39,0.18);
   border-radius: var(--radius-lg);
   box-shadow: 0 10rpx 0 rgba(121,79,39,0.14), 0 20rpx 42rpx rgba(61,52,40,0.24);
+  opacity: 0;
+  transform: scale(0.96);
+  transition: transform 140ms var(--ease-in-out), opacity 140ms ease-in;
+}
+
+.completion-modal.active {
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-out), ease-out;
 }
 
 .completion-close {
@@ -567,3 +585,22 @@ page {
 }
 
 .completion-modal-actions button[disabled] { opacity: 0.66; }
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-spinner { animation: none; }
+
+  .expand-icon,
+  .meals-list,
+  .completion-overlay,
+  .completion-modal {
+    transition-duration: 1ms;
+  }
+
+  .meals-list,
+  .meals-list.expanded,
+  .meals-list.collapsed,
+  .completion-modal,
+  .completion-modal.active {
+    transform: none;
+  }
+}

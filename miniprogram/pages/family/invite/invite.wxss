@@ -420,3 +420,7 @@ button::after { border: 0; }
   .invite-title { font-size: 40rpx; }
   .invite-dock-secondary { flex-basis: 184rpx; }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .invite-code-loading-dot { animation: none; }
+}

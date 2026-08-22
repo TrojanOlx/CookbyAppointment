@@ -11,7 +11,7 @@
 
 .star {
   margin: 0 10rpx;
-  transition: all 0.2s ease;
+  transition: transform var(--motion-state) var(--ease-out);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,4 +33,10 @@
   font-size: 28rpx;
   color: var(--warning-color);
   font-weight: 800;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star {
+    transition: none;
+  }
 }

@@ -20,3 +20,7 @@
 @keyframes island-spin {
   to { transform: rotate(360deg); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .island-loading__spinner { animation: none; }
+}

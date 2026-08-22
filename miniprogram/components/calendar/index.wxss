@@ -106,3 +106,7 @@
     transform: rotate(360deg);
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .lc-dates-mask .iconfont { animation: none; }
+}

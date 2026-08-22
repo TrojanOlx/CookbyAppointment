@@ -157,9 +157,13 @@ button::after { border: 0; }
   background: var(--input-bg);
   border: 2rpx solid rgba(159,146,125,0.24);
   border-radius: var(--radius-md);
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
-.quick-item:active { background: var(--primary-light); }
+.quick-item:active {
+  transform: scale(0.97);
+  background: var(--primary-light);
+}
 
 .quick-icon {
   flex: 0 0 auto;
@@ -256,7 +260,9 @@ button::after { border: 0; }
   font-size: 24rpx;
   font-weight: 900;
   line-height: 62rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
+.state-action:active { transform: scale(0.97); }
 
 .search-row {
   display: flex;
@@ -292,7 +298,9 @@ button::after { border: 0; }
   font-size: 25rpx;
   font-weight: 900;
   line-height: 72rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
+.search-button:active { transform: scale(0.97); }
 
 .filter-scroll {
   width: 100%;
@@ -319,7 +327,9 @@ button::after { border: 0; }
   border-radius: var(--radius-full);
   font-size: 23rpx;
   font-weight: 800;
+  transition: transform var(--motion-press) var(--ease-out);
 }
+.filter-pill:active { transform: scale(0.97); }
 
 .filter-pill.active {
   color: var(--text-color);
@@ -461,7 +471,9 @@ button::after { border: 0; }
   background: transparent;
   font-size: 23rpx;
   font-weight: 900;
+  transition: transform var(--motion-press) var(--ease-out);
 }
+.load-more:active { transform: scale(0.97); }
 
 .detail-block {
   margin-bottom: 20rpx;
@@ -604,7 +616,9 @@ button::after { border: 0; }
   font-size: 25rpx;
   font-weight: 900;
   line-height: 72rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
+.bottom-button:active { transform: scale(0.97); }
 
 .bottom-button.primary {
   color: #fff9e8;
@@ -661,4 +675,24 @@ button::after { border: 0; }
 @media (min-width: 500px) {
   .stat-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .quick-list { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick-item,
+  .state-action,
+  .search-button,
+  .filter-pill,
+  .load-more,
+  .bottom-button {
+    transition: none;
+  }
+
+  .quick-item:active,
+  .state-action:active,
+  .search-button:active,
+  .filter-pill:active,
+  .load-more:active,
+  .bottom-button:active {
+    transform: none !important;
+  }
 }

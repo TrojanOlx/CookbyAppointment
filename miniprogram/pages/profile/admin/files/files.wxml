@@ -138,7 +138,7 @@
   </view>
   
   <!-- 文件信息弹窗 -->
-  <view class="file-info-modal" wx:if="{{showFileInfo}}">
+  <view class="file-info-modal {{fileInfoActive ? 'is-active' : ''}}" wx:if="{{showFileInfo}}">
     <view class="modal-content">
       <view class="modal-header">
         <text class="modal-title">文件详情</text>

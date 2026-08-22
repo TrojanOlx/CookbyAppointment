@@ -33,7 +33,7 @@
 
   <view class="catalog-fab-wrap"><button class="catalog-fab" bindtap="openCreate"><text class="fab-plus">+</text><text>添加食材</text></button></view>
 
-  <view wx:if="{{editorVisible}}" class="editor-overlay" catchtap="closeEditor">
+  <view wx:if="{{editorVisible}}" class="editor-overlay {{editorActive ? 'is-active' : ''}}" catchtap="closeEditor">
     <view class="editor-sheet" catchtap="stopPropagation">
       <view class="sheet-heading"><view><view class="sheet-kicker">{{editingId ? 'EDIT ITEM' : 'NEW ITEM'}}</view><view class="sheet-title">{{editingId ? '编辑食材' : '添加食材'}}</view></view><button class="sheet-close" bindtap="closeEditor" aria-label="关闭"><mp-icon icon="close" size="19" color="#725d42"></mp-icon></button></view>
       <view class="sheet-field"><view class="field-label required">标准名称</view><input class="field-input" placeholder="例如：西红柿" value="{{form.canonicalName}}" maxlength="30" bindinput="canonicalNameInput" /></view>

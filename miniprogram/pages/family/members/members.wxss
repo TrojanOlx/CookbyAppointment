@@ -72,6 +72,7 @@ button::after { border: 0; }
   font-size: 25rpx;
   font-weight: 900;
   line-height: 72rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .member-invite-btn {
@@ -187,6 +188,7 @@ button::after { border: 0; }
   font-size: 23rpx;
   font-weight: 900;
   line-height: 56rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .member-more-btn {
@@ -262,9 +264,18 @@ button::after { border: 0; }
   font-size: 28rpx;
   font-weight: 900;
   line-height: 78rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .member-primary-btn[disabled] { opacity: 0.48; }
+
+.member-invite-btn:active,
+.member-leave-btn:active,
+.member-more-btn:active,
+.member-transfer-btn:active,
+.member-primary-btn:active {
+  transform: scale(0.97);
+}
 
 .members-note {
   display: flex;
@@ -282,4 +293,22 @@ button::after { border: 0; }
   height: 30rpx;
   flex-shrink: 0;
   margin: 2rpx 10rpx 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .member-invite-btn,
+  .member-leave-btn,
+  .member-more-btn,
+  .member-transfer-btn,
+  .member-primary-btn {
+    transition: none;
+  }
+
+  .member-invite-btn:active,
+  .member-leave-btn:active,
+  .member-more-btn:active,
+  .member-transfer-btn:active,
+  .member-primary-btn:active {
+    transform: none !important;
+  }
 }

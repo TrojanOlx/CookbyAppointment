@@ -114,6 +114,7 @@ button::after { border: 0; }
   font-weight: 900;
   line-height: 1.5;
   white-space: nowrap;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .family-toolbar {
@@ -226,9 +227,11 @@ button::after { border: 0; }
   font-size: 22rpx;
   font-weight: 800;
   line-height: 62rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .family-retry-btn::after { border: 0; }
+.family-retry-btn:active { transform: scale(0.97); }
 
 .family-list {
   display: flex;
@@ -250,6 +253,7 @@ button::after { border: 0; }
   border: 3rpx solid rgba(159, 146, 125, 0.32);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .family-item.is-active {
@@ -359,6 +363,7 @@ button::after { border: 0; }
   font-size: 27rpx;
   font-weight: 900;
   line-height: 82rpx;
+  transition: transform var(--motion-press) var(--ease-out);
 }
 
 .family-primary-btn {
@@ -421,5 +426,38 @@ button::after { border: 0; }
   .toolbar-add,
   .toolbar-join {
     flex: 1;
+  }
+}
+
+.family-link-btn:active,
+.toolbar-add:active,
+.toolbar-join:active,
+.family-manage-btn:active,
+.family-primary-btn:active,
+.family-secondary-btn:active {
+  transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .family-link-btn,
+  .toolbar-add,
+  .toolbar-join,
+  .family-retry-btn,
+  .family-item,
+  .family-manage-btn,
+  .family-primary-btn,
+  .family-secondary-btn {
+    transition: none;
+  }
+
+  .family-link-btn:active,
+  .toolbar-add:active,
+  .toolbar-join:active,
+  .family-retry-btn:active,
+  .family-item:active,
+  .family-manage-btn:active,
+  .family-primary-btn:active,
+  .family-secondary-btn:active {
+    transform: none !important;
   }
 }
