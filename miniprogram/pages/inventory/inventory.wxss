@@ -190,9 +190,7 @@ page {
   background: var(--card-bg);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  transition: transform var(--motion-press) var(--ease-out);
 }
-.inventory-item:active { transform: scale(0.97); }
 
 .item-image {
   width: 108rpx;
@@ -541,7 +539,6 @@ page {
 
   .filter-item,
   .movable-delete-btn,
-  .inventory-item,
   .seed-btn,
   .add-btn {
     transition: none;
@@ -549,7 +546,6 @@ page {
 
   .filter-item:active,
   .movable-delete-btn:active,
-  .inventory-item:active,
   .seed-btn:active,
   .add-btn:active {
     transform: none !important;

@@ -16,10 +16,14 @@ const clearEditorMotionTimer = (page: any): void => {
 
 const showEditor = (page: any, data: Record<string, unknown>): void => {
   clearEditorMotionTimer(page);
+  const motionGeneration = (page._editorMotionGeneration || 0) + 1;
+  page._editorMotionGeneration = motionGeneration;
   page.setData({ ...data, editorVisible: true, editorActive: false }, () => {
     if (page._motionDestroyed) return;
     wx.nextTick(() => {
-      if (!page._motionDestroyed && page.data.editorVisible) page.setData({ editorActive: true });
+      if (!page._motionDestroyed && page._editorMotionGeneration === motionGeneration && page.data.editorVisible) {
+        page.setData({ editorActive: true });
+      }
     });
   });
 };
@@ -129,6 +133,7 @@ Page({
 
   closeEditor(force: unknown = false) {
     if (force !== true && this.data.saving) return;
+    (this as any)._editorMotionGeneration = ((this as any)._editorMotionGeneration || 0) + 1;
     clearEditorMotionTimer(this);
     this.setData({ editorActive: false });
     (this as any)._editorMotionTimer = setTimeout(() => {

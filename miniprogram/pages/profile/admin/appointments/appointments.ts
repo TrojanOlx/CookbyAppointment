@@ -168,6 +168,8 @@ const completeAppointmentRequest = (
 let adminAppointmentListRequestId = 0;
 let adminAppointmentMutationRequestId = 0;
 let adminRoleRequestId = 0;
+const COMPLETION_EXIT_MS = 160;
+const EXPANSION_EXIT_MS = 180;
 
 const currentAppointmentScope = () => {
   const storedFamily = wx.getStorageSync('active_family_id');
@@ -877,12 +879,17 @@ Page({
   showCompletionPreview(preview: CompletionPreview) {
     const activeTimer = (this as any)._completionMotionTimer;
     if (activeTimer) clearTimeout(activeTimer);
+    const motionGeneration = ((this as any)._completionMotionGeneration || 0) + 1;
+    (this as any)._completionMotionGeneration = motionGeneration;
 
     this.setData({ completionPreview: preview, completionActive: false }, () => {
       if ((this as any)._appointmentScope === '__unloaded__') return;
       (this as any)._completionMotionTimer = setTimeout(() => {
         delete (this as any)._completionMotionTimer;
-        if (this.data.completionPreview?.appointmentId === preview.appointmentId) {
+        if (
+          (this as any)._completionMotionGeneration === motionGeneration
+          && this.data.completionPreview?.appointmentId === preview.appointmentId
+        ) {
           this.setData({ completionActive: true });
         }
       }, 20);
@@ -892,6 +899,7 @@ Page({
   hideCompletionPreview() {
     const activeTimer = (this as any)._completionMotionTimer;
     if (activeTimer) clearTimeout(activeTimer);
+    (this as any)._completionMotionGeneration = ((this as any)._completionMotionGeneration || 0) + 1;
 
     this.setData({ completionActive: false });
     (this as any)._completionMotionTimer = setTimeout(() => {
@@ -899,7 +907,7 @@ Page({
       if (!this.data.completionActive) {
         this.setData({ completionPreview: null });
       }
-    }, 140);
+    }, COMPLETION_EXIT_MS);
   },
 
   async completeAppointment(e: any) {
@@ -1119,6 +1127,7 @@ Page({
     const user = this.data.userAppointments[index] as UserAppointment | undefined;
     if (!user) return;
 
+    const selectedDate = this.data.selectedDate;
     const key = user.userId || String(index);
     const timers = ((this as any)._expansionMotionTimers ||= new Map<string, { timer: ReturnType<typeof setTimeout> | null; mode: 'opening' | 'closing' }>());
     const pending = timers.get(key);
@@ -1136,16 +1145,19 @@ Page({
     }
 
     if (user.isExpanded && pending?.mode !== 'closing') {
-      this.setData({ [`userAppointments[${index}].isExpanded`]: false });
+      this.setData({
+        [`userAppointments[${index}].isExpanded`]: false,
+        [`userAppointments[${index}].isRendered`]: true
+      });
       const entry: { timer: ReturnType<typeof setTimeout> | null; mode: 'closing' } = { timer: null, mode: 'closing' };
       entry.timer = setTimeout(() => {
         if (timers.get(key) !== entry) return;
         timers.delete(key);
         const currentUser = this.data.userAppointments[index] as UserAppointment | undefined;
-        if (currentUser?.userId === user.userId && !currentUser.isExpanded) {
+        if (this.data.selectedDate === selectedDate && currentUser?.userId === user.userId && !currentUser.isExpanded) {
           this.setData({ [`userAppointments[${index}].isRendered`]: false });
         }
-      }, 140);
+      }, EXPANSION_EXIT_MS);
       timers.set(key, entry);
       return;
     }
@@ -1158,7 +1170,7 @@ Page({
         if (timers.get(key) !== entry) return;
         timers.delete(key);
         const currentUser = this.data.userAppointments[index] as UserAppointment | undefined;
-        if (currentUser?.userId === user.userId) {
+        if (this.data.selectedDate === selectedDate && currentUser?.userId === user.userId) {
           this.setData({ [`userAppointments[${index}].isExpanded`]: true });
         }
       }, 20);

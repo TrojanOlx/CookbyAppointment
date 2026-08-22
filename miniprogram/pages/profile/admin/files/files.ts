@@ -274,6 +274,8 @@ Page<PageData, PageInstance>({
         };
 
         clearFileInfoMotionTimer(this);
+        const motionGeneration = ((this as any)._fileInfoMotionGeneration || 0) + 1;
+        (this as any)._fileInfoMotionGeneration = motionGeneration;
         this.setData({
           showFileInfo: true,
           fileInfoActive: false,
@@ -281,7 +283,13 @@ Page<PageData, PageInstance>({
         }, () => {
           if ((this as any)._motionDestroyed) return;
           wx.nextTick(() => {
-            if (!(this as any)._motionDestroyed && this.data.showFileInfo) this.setData({ fileInfoActive: true });
+            if (
+              !(this as any)._motionDestroyed
+              && (this as any)._fileInfoMotionGeneration === motionGeneration
+              && this.data.showFileInfo
+            ) {
+              this.setData({ fileInfoActive: true });
+            }
           });
         });
       } else {
@@ -302,6 +310,7 @@ Page<PageData, PageInstance>({
 
   // 关闭文件信息弹窗
   closeFileInfo() {
+    (this as any)._fileInfoMotionGeneration = ((this as any)._fileInfoMotionGeneration || 0) + 1;
     clearFileInfoMotionTimer(this);
     this.setData({ fileInfoActive: false });
     (this as any)._fileInfoMotionTimer = setTimeout(() => {

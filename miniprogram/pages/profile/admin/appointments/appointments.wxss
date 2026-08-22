@@ -161,7 +161,7 @@ page {
   padding: 16rpx 28rpx;
   opacity: 0;
   transform: translateY(-6rpx);
-  transition: transform var(--motion-state) var(--ease-out), opacity var(--motion-state) ease-out;
+  transition: transform var(--motion-state) var(--ease-out), opacity var(--motion-state) var(--ease-out);
 }
 .meals-list.expanded {
   opacity: 1;
@@ -378,13 +378,12 @@ page {
   box-sizing: border-box;
   background: rgba(61, 52, 40, 0.42);
   opacity: 0;
-  pointer-events: none;
-  transition: opacity 160ms ease-out;
+  pointer-events: auto;
+  transition: opacity 160ms var(--ease-out);
 }
 
 .completion-overlay.active {
   opacity: 1;
-  pointer-events: auto;
 }
 
 .completion-modal {
@@ -400,15 +399,17 @@ page {
   border-radius: var(--radius-lg);
   box-shadow: 0 10rpx 0 rgba(121,79,39,0.14), 0 20rpx 42rpx rgba(61,52,40,0.24);
   opacity: 0;
+  pointer-events: none;
   transform: scale(0.96);
-  transition: transform 140ms var(--ease-in-out), opacity 140ms ease-in;
+  transition: transform 140ms var(--ease-out), opacity 140ms var(--ease-out);
 }
 
 .completion-modal.active {
   opacity: 1;
+  pointer-events: auto;
   transform: scale(1);
   transition-duration: 200ms;
-  transition-timing-function: var(--ease-out), ease-out;
+  transition-timing-function: var(--ease-out), var(--ease-out);
 }
 
 .completion-close {

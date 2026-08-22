@@ -206,13 +206,12 @@
   padding: calc(40rpx + env(safe-area-inset-top)) 40rpx calc(40rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
   opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
   transition: opacity 140ms var(--ease-out);
 }
 
 .file-info-modal.is-active {
   opacity: 1;
-  pointer-events: auto;
 }
 
 .modal-content {
@@ -228,6 +227,7 @@
   box-shadow: var(--shadow-lg);
   box-sizing: border-box;
   opacity: 0;
+  pointer-events: none;
   transform: scale(0.96);
   transform-origin: center;
   transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out);
@@ -235,6 +235,7 @@
 
 .file-info-modal.is-active .modal-content {
   opacity: 1;
+  pointer-events: auto;
   transform: scale(1);
   transition-duration: 200ms;
 }

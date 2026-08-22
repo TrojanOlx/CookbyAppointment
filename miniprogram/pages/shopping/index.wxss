@@ -788,13 +788,12 @@ page {
   padding: calc(24rpx + env(safe-area-inset-top)) 24rpx calc(24rpx + env(safe-area-inset-bottom));
   background: rgba(61,52,40,0.42);
   opacity: 0;
-  pointer-events: none;
+  pointer-events: auto;
   transition: opacity 160ms var(--ease-out);
 }
 
 .modal-mask.is-active {
   opacity: 1;
-  pointer-events: auto;
 }
 
 .modal-card {
@@ -814,12 +813,14 @@ page {
   border-radius: 34rpx 34rpx 26rpx 26rpx;
   box-shadow: var(--shadow-lg);
   opacity: 0.96;
+  pointer-events: none;
   transform: translateY(100%);
   transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
 }
 
 .modal-mask.is-active .modal-card {
   opacity: 1;
+  pointer-events: auto;
   transform: translateY(0);
   transition-duration: var(--motion-panel);
   transition-timing-function: var(--ease-drawer);

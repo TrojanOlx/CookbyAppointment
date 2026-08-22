@@ -277,6 +277,8 @@ Page({
       return;
     }
     clearMotionTimer(this, '_addMotionTimer');
+    const motionGeneration = (this._addMotionGeneration || 0) + 1;
+    this._addMotionGeneration = motionGeneration;
     this.setData({
       showAdd: true,
       addActive: false,
@@ -284,7 +286,9 @@ Page({
     }, () => {
       if (this._motionDestroyed) return;
       wx.nextTick(() => {
-        if (!this._motionDestroyed && this.data.showAdd) this.setData({ addActive: true });
+        if (!this._motionDestroyed && this._addMotionGeneration === motionGeneration && this.data.showAdd) {
+          this.setData({ addActive: true });
+        }
       });
     });
   },
@@ -292,6 +296,7 @@ Page({
   closeAdd(force = false) {
     const shouldForce = force === true;
     if (!shouldForce && this.data.adding) return;
+    this._addMotionGeneration = (this._addMotionGeneration || 0) + 1;
     clearMotionTimer(this, '_addMotionTimer');
     this.setData({ addActive: false });
     this._addMotionTimer = setTimeout(() => {
@@ -502,10 +507,14 @@ Page({
       return;
     }
     clearMotionTimer(this, '_recalculateMotionTimer');
+    const motionGeneration = (this._recalculateMotionGeneration || 0) + 1;
+    this._recalculateMotionGeneration = motionGeneration;
     this.setData({ showRecalculate: true, recalculateActive: false }, () => {
       if (this._motionDestroyed) return;
       wx.nextTick(() => {
-        if (!this._motionDestroyed && this.data.showRecalculate) this.setData({ recalculateActive: true });
+        if (!this._motionDestroyed && this._recalculateMotionGeneration === motionGeneration && this.data.showRecalculate) {
+          this.setData({ recalculateActive: true });
+        }
       });
     });
   },
@@ -513,6 +522,7 @@ Page({
   closeRecalculate(force = false) {
     const shouldForce = force === true;
     if (!shouldForce && this.data.recalculating) return;
+    this._recalculateMotionGeneration = (this._recalculateMotionGeneration || 0) + 1;
     clearMotionTimer(this, '_recalculateMotionTimer');
     this.setData({ recalculateActive: false });
     this._recalculateMotionTimer = setTimeout(() => {
