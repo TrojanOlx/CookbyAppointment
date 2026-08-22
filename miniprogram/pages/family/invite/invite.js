@@ -1,6 +1,6 @@
 const { FamilyService } = require('../../../services/family');
 const { normalizeInvitation } = require('../../../models/family');
-const { downloadInviteCode, removeLocalInviteCode } = require('../../../services/inviteCode');
+const { downloadInviteCode, removeLocalInviteCode } = require('./services/inviteCode');
 
 let invitePreviewRequestId = 0;
 let inviteContextRequestId = 0;

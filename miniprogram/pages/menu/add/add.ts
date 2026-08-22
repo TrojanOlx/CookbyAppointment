@@ -2,7 +2,7 @@ import { DishType, Dish, Ingredient, SpicyLevel } from '../../../models/dish';
 import { DishService } from '../../../services/dishService';
 import { FileService } from '../../../services/fileService';
 import { showSuccess, showError, showLoading, hideLoading, showToast } from '../../../utils/util';
-import { createUploadFileName } from '../../../utils/uploadFileName';
+import { createUploadFileName } from './uploadFileName';
 
 let dishEditorLoadRequestId = 0;
 let dishEditorMutationRequestId = 0;

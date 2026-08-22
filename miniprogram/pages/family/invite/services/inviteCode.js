@@ -1,4 +1,4 @@
-const { BASE_URL } = require('./http');
+const { BASE_URL } = require('../../../../services/http');
 
 const INVITE_CODE_PREFIX = 'family-invite-';
 const INVITE_CODE_MAX_AGE = 60 * 60 * 1000;

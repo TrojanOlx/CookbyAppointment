@@ -3,7 +3,7 @@ import {
   PlatformRecipeTemplate,
   PlatformTemplateIngredient,
   TemplateWritePayload
-} from '../../../services/platformCatalogService';
+} from '../services/platformCatalogService';
 
 const typeOptions = ['炒菜', '青菜', '炖汤', '红烧', '蒸菜'];
 const spicyOptions = ['不辣', '微辣', '中辣', '特辣'];

@@ -4,7 +4,7 @@ import { showSuccess, showConfirm, showLoading, hideLoading, showToast } from '.
 import { UserService } from '../../../services/userService';
 import { FileService } from '../../../services/fileService';
 import { SessionCacheService } from '../../../utils/sessionCache';
-import { createUploadFileName } from '../../../utils/uploadFileName';
+import { createUploadFileName } from './uploadFileName';
 const { getFamilyRoleContext } = require('../../../services/familyRole');
 const { FamilyService } = require('../../../services/family');
 

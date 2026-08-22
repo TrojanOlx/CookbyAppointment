@@ -2,7 +2,7 @@ import {
   PlatformCatalogService,
   PlatformRecipeTemplate,
   PlatformTemplateIngredient
-} from '../../../services/platformCatalogService';
+} from '../services/platformCatalogService';
 
 const TEMPLATE_PAGE_SIZE = 20;
 let templateRequestId = 0;

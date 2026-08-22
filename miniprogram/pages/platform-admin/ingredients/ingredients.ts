@@ -2,7 +2,7 @@ import {
   IngredientWritePayload,
   PlatformCatalogService,
   PlatformIngredient
-} from '../../../services/platformCatalogService';
+} from '../services/platformCatalogService';
 
 const PAGE_SIZE = 30;
 const PANEL_EXIT_MS = 160;

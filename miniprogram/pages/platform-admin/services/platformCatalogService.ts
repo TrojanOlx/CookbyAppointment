@@ -1,4 +1,4 @@
-import { del, get, post, put, upload } from './http';
+import { del, get, post, put, upload } from '../../../services/http';
 
 export type PlatformTemplateStatus = 'draft' | 'active' | 'archived' | string;
 
