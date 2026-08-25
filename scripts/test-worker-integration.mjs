@@ -15,7 +15,7 @@ function run(command, args) {
 async function api(path, token, familyId, init = {}) {
   const headers = new Headers(init.headers || {});
   headers.set('Authorization', `Bearer ${token}`);
-  if (!headers.has('X-App-Version')) headers.set('X-App-Version', '2.1.0-test');
+  if (!headers.has('X-App-Version')) headers.set('X-App-Version', '1.0.1-test');
   if (familyId) headers.set('X-Family-Id', familyId);
   if (init.body) headers.set('Content-Type', 'application/json');
   const response = await fetch(`${origin}${path}`, { ...init, headers });
@@ -26,7 +26,7 @@ async function api(path, token, familyId, init = {}) {
 async function apiForm(path, token, form) {
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
-    'X-App-Version': '2.1.0-test',
+    'X-App-Version': '1.0.1-test',
   });
   const response = await fetch(`${origin}${path}`, { method: 'POST', headers, body: form });
   const data = await response.json();
@@ -51,7 +51,7 @@ run('npx', ['wrangler', 'd1', 'execute', 'cookby_appointment', '--local', '--fil
 
 const worker = spawn('npx', [
   'wrangler', 'dev', '--local', '--port', String(port), '--config', config,
-  '--var', 'FAMILY_MODE:on', '--var', 'MINIPROGRAM_MIN_VERSION:2.1.0',
+  '--var', 'FAMILY_MODE:on', '--var', 'MINIPROGRAM_MIN_VERSION:1.0.1',
   '--var', 'WX_APPID:test', '--var', 'WX_SECRET:test',
 ], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
 
@@ -71,7 +71,7 @@ try {
   assert(ready, 'Worker did not start', logs.slice(-4000));
 
   const outdatedClient = await api('/api/family/list', 'token-owner-a', undefined, {
-    headers: { 'X-App-Version': '2.0.9' },
+    headers: { 'X-App-Version': '1.0.0' },
   });
   assert(
     outdatedClient.status === 426 && outdatedClient.data.code === 'CLIENT_UPDATE_REQUIRED',

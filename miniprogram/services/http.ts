@@ -173,9 +173,9 @@ const getFamilyId = (): string => {
 
 const getAppVersion = (): string => {
   try {
-    return wx.getAccountInfoSync().miniProgram.version || '2.1.0-dev';
+    return wx.getAccountInfoSync().miniProgram.version || '1.0.1-dev';
   } catch {
-    return '2.1.0-dev';
+    return '1.0.1-dev';
   }
 };
 

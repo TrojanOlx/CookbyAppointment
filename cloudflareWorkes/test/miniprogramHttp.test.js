@@ -12,7 +12,7 @@ describe('miniprogram HTTP session behavior', () => {
     ]);
     requests = [];
     vi.stubGlobal('wx', {
-      getAccountInfoSync: () => ({ miniProgram: { envVersion: 'release', version: '2.1.0-test' } }),
+      getAccountInfoSync: () => ({ miniProgram: { envVersion: 'release', version: '1.0.1-test' } }),
       getStorageSync: key => storage.get(key),
       setStorageSync: (key, value) => storage.set(key, value),
       removeStorageSync: key => storage.delete(key),
