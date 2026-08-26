@@ -5,6 +5,15 @@ import { normalizeImageList } from '../core/media';
 import { withOperationLock } from '../core/operationLock';
 import { platformAssetIdFromUrl, resolvePlatformAssetUrls } from '../core/platformAssets';
 import type { Env, FamilyContext } from '../core/types';
+import { claimFamilyImages, expireDetachedTargetFiles, expireTargetFiles } from '../core/uploadSecurity';
+import {
+  strictAmountText,
+  strictHttpUrl,
+  strictQuantity,
+  strictText,
+  strictTextArray,
+  validateSearchText,
+} from '../core/validation';
 
 interface IngredientInput {
   id?: unknown;
@@ -57,16 +66,6 @@ function withDishLock<T>(env: Env, familyId: string, dishId: string, execute: ()
   return withOperationLock(env, `dish:${familyId}:${dishId}`, execute);
 }
 
-function stringList(value: unknown, maxItems: number, maxLength: number): string[] {
-  if (value === undefined || value === null || value === '') return [];
-  let parsed = value;
-  if (typeof value === 'string') {
-    try { parsed = JSON.parse(value); } catch { parsed = [value]; }
-  }
-  if (!Array.isArray(parsed)) throw new ApiError(400, 'VALIDATION_ERROR', '数组字段格式错误');
-  return parsed.slice(0, maxItems).map(item => requiredString(item, '数组项', maxLength));
-}
-
 function dateInTimezone(date: Date, timezone: string): string {
   let parts: Intl.DateTimeFormatPart[];
   try {
@@ -106,8 +105,12 @@ interface PreparedTemplateAssetCopies {
   copiedObjectKeys: string[];
 }
 
-function templateFamilyFileId(familyId: string, platformFileId: string): string {
-  return `template-copy-file:${familyId}:${platformFileId}`;
+function templateFamilyFileId(familyId: string, templateId: string, platformFileId: string): string {
+  return `template-copy-file:${familyId}:${templateId}:${platformFileId}`;
+}
+
+function templateAssetKey(templateId: string, platformFileId: string): string {
+  return `${templateId}:${platformFileId}`;
 }
 
 function stableFamilyFilePath(fileId: string): string {
@@ -137,17 +140,26 @@ async function prepareTemplateAssetCopies(
     throw new ApiError(409, 'TEMPLATE_ASSET_MISSING', '模板图片已失效，请联系平台管理员更新模板', { fileIds: missingIds });
   }
 
-  const targetIds = platformFiles.results.map(file => templateFamilyFileId(context.familyId, file.id));
+  const platformFilesById = new Map(platformFiles.results.map(file => [file.id, file]));
+  const assetUses = templates.flatMap(template => Array.from(new Set(
+    parseJsonField<string[]>(template.images, [])
+      .map(platformAssetIdFromUrl)
+      .filter((id): id is string => Boolean(id)),
+  )).map(platformFileId => ({ templateId: template.id, platformFileId })));
+  const targetIds = assetUses.map(use => templateFamilyFileId(context.familyId, use.templateId, use.platformFileId));
   const existing = await env.DB.prepare(`
     SELECT id, deletedAt FROM family_files
     WHERE familyId = ? AND id IN (${targetIds.map(() => '?').join(',')})
   `).bind(context.familyId, ...targetIds).all<{ id: string; deletedAt: number | null }>();
   const activeTargetIds = new Set(existing.results.filter(file => file.deletedAt === null).map(file => file.id));
-  const filesToCopy = platformFiles.results.filter(file => !activeTargetIds.has(templateFamilyFileId(context.familyId, file.id)));
+  const filesToCopy = assetUses.filter(use => !activeTargetIds.has(
+    templateFamilyFileId(context.familyId, use.templateId, use.platformFileId),
+  ));
   const usedBytes = await env.DB.prepare(`
     SELECT COALESCE(SUM(size), 0) AS used FROM family_files WHERE familyId = ? AND deletedAt IS NULL
   `).bind(context.familyId).first<number>('used');
-  const additionalBytes = filesToCopy.reduce((total, file) => total + Number(file.size || 0), 0);
+  const additionalBytes = filesToCopy.reduce((total, use) =>
+    total + Number(platformFilesById.get(use.platformFileId)?.size || 0), 0);
   const maxUploadBytes = Math.max(1024, Number(env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024));
   const quota = Math.max(maxUploadBytes, Number(env.FAMILY_STORAGE_QUOTA_BYTES || 200 * 1024 * 1024));
   if ((usedBytes || 0) + additionalBytes > quota) {
@@ -158,25 +170,36 @@ async function prepareTemplateAssetCopies(
   const statements: D1PreparedStatement[] = [];
   const now = Date.now();
   try {
-    for (const file of filesToCopy) {
+    for (const use of filesToCopy) {
+      const file = platformFilesById.get(use.platformFileId);
+      if (!file) {
+        throw new ApiError(409, 'TEMPLATE_ASSET_MISSING', '模板图片已失效，请联系平台管理员更新模板', {
+          fileId: use.platformFileId,
+        });
+      }
       const source = await env.FILE_BUCKET.get(file.objectKey);
       if (!source?.body) {
         throw new ApiError(409, 'TEMPLATE_ASSET_MISSING', '模板图片文件不存在，请联系平台管理员更新模板', { fileId: file.id });
       }
       const extensionMatch = file.objectKey.match(/\.[a-zA-Z0-9]{1,8}$/);
-      const objectKey = `families/${context.familyId}/recipe-template-copies/${file.id}${extensionMatch?.[0] || ''}`;
+      const objectKey = `families/${context.familyId}/recipe-template-copies/${use.templateId}/${file.id}${extensionMatch?.[0] || ''}`;
       await env.FILE_BUCKET.put(objectKey, source.body, { httpMetadata: { contentType: file.contentType } });
       copiedObjectKeys.push(objectKey);
-      const familyFileId = templateFamilyFileId(context.familyId, file.id);
+      const familyFileId = templateFamilyFileId(context.familyId, use.templateId, file.id);
+      const dishId = templateDishId(context.familyId, use.templateId);
       statements.push(env.DB.prepare(`
-        INSERT INTO family_files (id, familyId, objectKey, name, contentType, size, purpose, uploadedBy, createdAt, deletedAt)
-        VALUES (?, ?, ?, ?, ?, ?, 'recipe-template-copy', ?, ?, NULL)
+        INSERT INTO family_files (
+          id, familyId, objectKey, name, contentType, size, purpose, uploadedBy, createdAt,
+          deletedAt, targetType, targetId, attachedAt, expiresAt
+        ) VALUES (?, ?, ?, ?, ?, ?, 'recipe-template-copy', ?, ?, NULL, 'dish', ?, ?, NULL)
         ON CONFLICT(id) DO UPDATE SET objectKey = excluded.objectKey, name = excluded.name,
           contentType = excluded.contentType, size = excluded.size, purpose = excluded.purpose,
-          uploadedBy = excluded.uploadedBy, createdAt = excluded.createdAt, deletedAt = NULL
+          uploadedBy = excluded.uploadedBy, createdAt = excluded.createdAt, deletedAt = NULL,
+          targetType = excluded.targetType, targetId = excluded.targetId,
+          attachedAt = excluded.attachedAt, expiresAt = NULL
       `).bind(
         familyFileId, context.familyId, objectKey, file.name, file.contentType,
-        file.size, context.user.id, now,
+        file.size, context.user.id, now, dishId, now,
       ));
     }
   } catch (error) {
@@ -184,9 +207,9 @@ async function prepareTemplateAssetCopies(
     throw error;
   }
 
-  const paths = new Map(platformFiles.results.map(file => {
-    const familyFileId = templateFamilyFileId(context.familyId, file.id);
-    return [file.id, stableFamilyFilePath(familyFileId)];
+  const paths = new Map(assetUses.map(use => {
+    const familyFileId = templateFamilyFileId(context.familyId, use.templateId, use.platformFileId);
+    return [templateAssetKey(use.templateId, use.platformFileId), stableFamilyFilePath(familyFileId)];
   }));
   return { paths, statements, copiedObjectKeys };
 }
@@ -242,11 +265,10 @@ async function resolveCatalog(env: Env, name: string, requestedId?: unknown): Pr
 async function normalizeIngredient(env: Env, input: IngredientInput): Promise<{
   id: string; name: string; ingredientId: string; quantity: number | null; unit: string | null; amount: string; legacyAmount: string | null;
 }> {
-  const name = requiredString(input.name, '食材名称', 80);
+  const name = strictText(input.name, '食材名称', 30, { required: true, meaningfulName: true });
   const ingredientId = await resolveCatalog(env, name, input.ingredientId);
-  const amount = typeof input.amount === 'string' ? input.amount.trim().slice(0, 100) : '';
   if (Object.prototype.hasOwnProperty.call(input, 'amount')) {
-    if (!amount) throw new ApiError(400, 'INVALID_QUANTITY', '食材必须提供结构化数量或文字用量');
+    const amount = strictAmountText(input.amount, '食材用量');
     const parsed = parseQuantityText(amount);
     return {
       id: typeof input.id === 'string' && input.id ? input.id : crypto.randomUUID(),
@@ -258,8 +280,10 @@ async function normalizeIngredient(env: Env, input: IngredientInput): Promise<{
       legacyAmount: parsed ? null : amount,
     };
   }
-  let quantity = typeof input.quantity === 'number' && Number.isFinite(input.quantity) && input.quantity >= 0 ? input.quantity : null;
-  let unit = typeof input.unit === 'string' && input.unit.trim() ? input.unit.trim().slice(0, 20) : null;
+  let quantity = typeof input.quantity === 'number' ? strictQuantity(input.quantity, '食材数量') : null;
+  let unit = typeof input.unit === 'string' && input.unit.trim()
+    ? strictText(input.unit, '单位', 10, { required: true })
+    : null;
   if ((quantity === null) !== (unit === null)) throw new ApiError(400, 'INVALID_QUANTITY', '食材 quantity 和 unit 必须同时提供');
   if (quantity === null || unit === null) throw new ApiError(400, 'INVALID_QUANTITY', '食材必须提供结构化数量或文字用量');
   let legacyAmount: string | null = null;
@@ -280,8 +304,8 @@ async function listDishes(request: Request, env: Env): Promise<Response> {
   const context = await requireFamilyContext(request, env);
   const url = new URL(request.url);
   const { page, pageSize, offset } = pagination(url);
-  const type = url.searchParams.get('type');
-  const keyword = url.searchParams.get('keyword');
+  const type = strictText(url.searchParams.get('type') || '', '菜品类型', 20);
+  const keyword = validateSearchText(url.searchParams.get('keyword'));
   const conditions = ['familyId = ?'];
   const bindings: unknown[] = [context.familyId];
   if (type) { conditions.push('type = ?'); bindings.push(type); }
@@ -397,7 +421,7 @@ async function importRecipeTemplates(request: Request, env: Env): Promise<Respon
         const dishId = templateDishId(context.familyId, template.id);
         const images = parseJsonField<string[]>(template.images, []).map(image => {
           const platformFileId = platformAssetIdFromUrl(image);
-          return platformFileId ? (assetCopies.paths.get(platformFileId) || '') : image;
+          return platformFileId ? (assetCopies.paths.get(templateAssetKey(template.id, platformFileId)) || '') : image;
         }).filter(Boolean);
         statements.push(env.DB.prepare(`
           INSERT OR IGNORE INTO dishes (
@@ -486,7 +510,8 @@ function parseIngredientInputs(value: unknown): IngredientInput[] {
   if (typeof value === 'string') {
     try { parsed = JSON.parse(value); } catch { throw new ApiError(400, 'VALIDATION_ERROR', '食材列表格式错误'); }
   }
-  if (!Array.isArray(parsed) || parsed.length > 100) throw new ApiError(400, 'VALIDATION_ERROR', '食材列表格式错误');
+  if (!Array.isArray(parsed)) throw new ApiError(400, 'VALIDATION_ERROR', '食材列表格式错误', { field: '食材' });
+  if (parsed.length > 50) throw new ApiError(400, 'VALIDATION_ERROR', '食材最多50项', { field: '食材', maxItems: 50 });
   return parsed as IngredientInput[];
 }
 
@@ -497,12 +522,15 @@ async function addDish(request: Request, env: Env): Promise<Response> {
   const id = crypto.randomUUID();
   const now = Date.now();
   const dish = {
-    id, name: requiredString(data.name, '菜品名称', 80), type: requiredString(data.type, '菜品类型', 40),
-    spicy: typeof data.spicy === 'string' && data.spicy.trim() ? data.spicy.trim().slice(0, 20) : '不辣',
-    images: stringList(data.images, 20, 1000), steps: stringList(data.steps, 100, 1000),
-    notice: typeof data.notice === 'string' ? data.notice.slice(0, 1000) : '',
-    remark: typeof data.remark === 'string' ? data.remark.slice(0, 1000) : '',
-    reference: typeof data.reference === 'string' ? data.reference.slice(0, 1000) : '',
+    id,
+    name: strictText(data.name, '菜品名称', 40, { required: true, meaningfulName: true }),
+    type: strictText(data.type, '菜品类型', 20, { required: true }),
+    spicy: strictText(data.spicy || '不辣', '辣度', 10, { required: true }),
+    images: strictTextArray(data.images || [], '菜品图片', 9, 1000),
+    steps: strictTextArray(data.steps || [], '菜谱步骤', 30, 500, { allowNewlines: true }),
+    notice: strictText(data.notice, '注意事项', 300, { allowNewlines: true }),
+    remark: strictText(data.remark, '备注', 300, { allowNewlines: true }),
+    reference: strictHttpUrl(data.reference),
   };
   await env.DB.prepare(`
     INSERT INTO dishes (
@@ -515,8 +543,10 @@ async function addDish(request: Request, env: Env): Promise<Response> {
   ).run();
   try {
     await insertIngredients(env, id, parseIngredientInputs(data.ingredients), now);
+    await claimFamilyImages(env, context, dish.images, 'dish', id, 9);
   } catch (error) {
     await env.DB.prepare('DELETE FROM dishes WHERE id = ? AND familyId = ?').bind(id, context.familyId).run();
+    await expireTargetFiles(env, context.familyId, 'dish', id);
     throw error;
   }
   await writeAudit(env, context, 'dish.created', 'dish', id, { name: dish.name });
@@ -540,20 +570,25 @@ async function updateDish(request: Request, env: Env): Promise<Response> {
     throw new ApiError(409, 'DISH_CHANGED', '菜品已被其他操作修改，请刷新后重试');
   }
   const next = {
-    name: data.name === undefined ? current.name : requiredString(data.name, '菜品名称', 80),
-    type: data.type === undefined ? current.type : requiredString(data.type, '菜品类型', 40),
-    spicy: data.spicy === undefined ? current.spicy : requiredString(data.spicy, '辣度', 20),
-    images: data.images === undefined ? parseJsonField(current.images, []) : stringList(data.images, 20, 1000),
-    steps: data.steps === undefined ? parseJsonField(current.steps, []) : stringList(data.steps, 100, 1000),
-    notice: data.notice === undefined ? current.notice : typeof data.notice === 'string' ? data.notice.slice(0, 1000) : '',
-    remark: data.remark === undefined ? current.remark : typeof data.remark === 'string' ? data.remark.slice(0, 1000) : '',
-    reference: data.reference === undefined ? current.reference : typeof data.reference === 'string' ? data.reference.slice(0, 1000) : '',
+    name: data.name === undefined ? current.name : strictText(data.name, '菜品名称', 40, { required: true, meaningfulName: true }),
+    type: data.type === undefined ? current.type : strictText(data.type, '菜品类型', 20, { required: true }),
+    spicy: data.spicy === undefined ? current.spicy : strictText(data.spicy, '辣度', 10, { required: true }),
+    images: data.images === undefined ? parseJsonField<string[]>(current.images, []) : strictTextArray(data.images, '菜品图片', 9, 1000),
+    steps: data.steps === undefined ? parseJsonField<string[]>(current.steps, []) : strictTextArray(data.steps, '菜谱步骤', 30, 500, { allowNewlines: true }),
+    notice: data.notice === undefined ? current.notice : strictText(data.notice, '注意事项', 300, { allowNewlines: true }),
+    remark: data.remark === undefined ? current.remark : strictText(data.remark, '备注', 300, { allowNewlines: true }),
+    reference: data.reference === undefined ? current.reference : strictHttpUrl(data.reference),
   };
   const now = Math.max(Date.now(), currentUpdateTime + 1);
   const hasField = (field: string) => Object.prototype.hasOwnProperty.call(data, field);
   const normalizedIngredients = data.ingredients === undefined
     ? null
     : await normalizeIngredients(env, parseIngredientInputs(data.ingredients));
+  const hasImages = hasField('images');
+  const currentImages = parseJsonField<string[]>(current.images, []);
+  if (hasImages) {
+    await claimFamilyImages(env, context, next.images, 'dish', id, 9, currentImages);
+  }
   const statements = [env.DB.prepare(`
     UPDATE dishes SET
       name = CASE WHEN ? = 1 THEN ? ELSE name END,
@@ -594,8 +629,19 @@ async function updateDish(request: Request, env: Env): Promise<Response> {
       id, context.familyId, now,
     )));
   }
-  const results = await env.DB.batch(statements);
-  if (!results[0].meta.changes) throw new ApiError(409, 'DISH_CHANGED', '菜品已被其他操作修改，请刷新后重试');
+  let results: D1Result[];
+  try {
+    results = await env.DB.batch(statements);
+    if (!results[0].meta.changes) throw new ApiError(409, 'DISH_CHANGED', '菜品已被其他操作修改，请刷新后重试');
+  } catch (error) {
+    if (hasImages) {
+      await expireDetachedTargetFiles(env, context.familyId, 'dish', id, currentImages);
+    }
+    throw error;
+  }
+  if (hasImages) {
+    await expireDetachedTargetFiles(env, context.familyId, 'dish', id, next.images);
+  }
   await writeAudit(env, context, 'dish.updated', 'dish', id);
     return getDish(new Request(`${new URL(request.url).origin}/api/dish/detail?id=${id}`, { headers: request.headers }), env);
   });
@@ -621,6 +667,7 @@ async function deleteDish(request: Request, env: Env): Promise<Response> {
     env.DB.prepare('DELETE FROM dishes WHERE id = ? AND familyId = ?').bind(id, context.familyId),
   ]);
   if (!results[1].meta.changes) throw new ApiError(404, 'DISH_NOT_FOUND', '菜品不存在');
+  await expireTargetFiles(env, context.familyId, 'dish', id);
   await writeAudit(env, context, 'dish.deleted', 'dish', id);
     return json({ success: true });
   });
@@ -855,7 +902,8 @@ async function recommend(request: Request, env: Env): Promise<Response> {
         preference: warnings.length ? `${warnings.length} 项口味提醒` : '无口味冲突',
       },
     };
-  }).sort(compareRecommendations);
+  }).filter(item => item.ingredients.length > 0 && item.existing.length > 0)
+    .sort(compareRecommendations);
   const offset = (page - 1) * pageSize;
   return json({
     total: recommendations.length,

@@ -13,9 +13,9 @@ const getFamilyId = () => {
 
 const getAppVersion = () => {
   try {
-    return wx.getAccountInfoSync().miniProgram.version || '1.0.1-dev';
+    return wx.getAccountInfoSync().miniProgram.version || '1.0.3-dev';
   } catch (error) {
-    return '1.0.1-dev';
+    return '1.0.3-dev';
   }
 };
 

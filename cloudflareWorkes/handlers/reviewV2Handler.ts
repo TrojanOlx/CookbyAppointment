@@ -2,6 +2,8 @@ import { requireFamilyContext, writeAudit } from '../core/auth';
 import { ApiError, json, pagination, parseJsonField, readJson, requiredString } from '../core/http';
 import { normalizeImageList } from '../core/media';
 import type { Env } from '../core/types';
+import { claimFamilyImages, expireDetachedTargetFiles, expireTargetFiles } from '../core/uploadSecurity';
+import { strictText, strictTextArray } from '../core/validation';
 
 interface ReviewInput {
   id?: unknown;
@@ -18,8 +20,7 @@ function images(value: unknown): string[] {
   if (typeof value === 'string') {
     try { parsed = JSON.parse(value); } catch { parsed = [value]; }
   }
-  if (!Array.isArray(parsed)) throw new ApiError(400, 'VALIDATION_ERROR', '评价图片格式错误');
-  return parsed.filter((item): item is string => typeof item === 'string').slice(0, 9).map(item => item.slice(0, 1000));
+  return strictTextArray(parsed, '评价图片', 3, 1000);
 }
 
 async function listReviews(request: Request, env: Env, mode: 'user' | 'dish' | 'appointment' | 'admin'): Promise<Response> {
@@ -89,7 +90,7 @@ async function addReview(request: Request, env: Env): Promise<Response> {
   const id = crypto.randomUUID();
   const now = Date.now();
   const reviewImages = images(body.images);
-  const content = typeof body.content === 'string' ? body.content.trim().slice(0, 2000) : '';
+  const content = strictText(body.content, '评价内容', 200, { allowNewlines: true });
   await env.DB.prepare(`
     INSERT INTO reviews (
       id, appointmentId, userId, openid, dishId, rating, content, images, createTime, updateTime, familyId
@@ -98,6 +99,13 @@ async function addReview(request: Request, env: Env): Promise<Response> {
     id, appointmentId, context.user.id, context.user.openid, dishId, rating, content,
     JSON.stringify(reviewImages), now, now, context.familyId,
   ).run();
+  try {
+    await claimFamilyImages(env, context, reviewImages, 'review', id, 3);
+  } catch (error) {
+    await env.DB.prepare('DELETE FROM reviews WHERE id = ? AND familyId = ?').bind(id, context.familyId).run();
+    await expireTargetFiles(env, context.familyId, 'review', id);
+    throw error;
+  }
   await writeAudit(env, context, 'review.created', 'review', id, { appointmentId, dishId });
   return json({ id, appointmentId, dishId, rating, content, images: reviewImages, createTime: now, updateTime: now }, 201);
 }
@@ -112,11 +120,25 @@ async function updateReview(request: Request, env: Env): Promise<Response> {
   const rating = body.rating === undefined ? current.rating
     : typeof body.rating === 'number' && Number.isInteger(body.rating) && body.rating >= 1 && body.rating <= 5 ? body.rating : null;
   if (!rating) throw new ApiError(400, 'VALIDATION_ERROR', '评分必须为1到5');
-  const content = body.content === undefined ? current.content : typeof body.content === 'string' ? body.content.trim().slice(0, 2000) : '';
+  const content = body.content === undefined ? current.content : strictText(body.content, '评价内容', 200, { allowNewlines: true });
   const reviewImages = body.images === undefined ? parseJsonField(current.images, []) : images(body.images);
+  const currentImages = parseJsonField<string[]>(current.images, []);
+  if (body.images !== undefined) {
+    await claimFamilyImages(env, context, reviewImages, 'review', id, 3, currentImages);
+  }
   const updateTime = Date.now();
-  await env.DB.prepare('UPDATE reviews SET rating = ?, content = ?, images = ?, updateTime = ? WHERE id = ? AND familyId = ?')
-    .bind(rating, content, JSON.stringify(reviewImages), updateTime, id, context.familyId).run();
+  try {
+    await env.DB.prepare('UPDATE reviews SET rating = ?, content = ?, images = ?, updateTime = ? WHERE id = ? AND familyId = ?')
+      .bind(rating, content, JSON.stringify(reviewImages), updateTime, id, context.familyId).run();
+  } catch (error) {
+    if (body.images !== undefined) {
+      await expireDetachedTargetFiles(env, context.familyId, 'review', id, currentImages);
+    }
+    throw error;
+  }
+  if (body.images !== undefined) {
+    await expireDetachedTargetFiles(env, context.familyId, 'review', id, reviewImages);
+  }
   await writeAudit(env, context, 'review.updated', 'review', id);
   return json({ ...current, rating, content, images: reviewImages, updateTime });
 }
@@ -129,6 +151,7 @@ async function deleteReview(request: Request, env: Env): Promise<Response> {
   if (!current) throw new ApiError(404, 'REVIEW_NOT_FOUND', '评价不存在');
   if (current.userId !== context.user.id && !['owner', 'admin'].includes(context.role)) throw new ApiError(403, 'REVIEW_DELETE_FORBIDDEN', '无权删除该评价');
   await env.DB.prepare('DELETE FROM reviews WHERE id = ? AND familyId = ?').bind(id, context.familyId).run();
+  await expireTargetFiles(env, context.familyId, 'review', id);
   await writeAudit(env, context, 'review.deleted', 'review', id);
   return json({ success: true });
 }

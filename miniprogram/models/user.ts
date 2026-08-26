@@ -15,6 +15,9 @@ export interface User {
   isAdmin: boolean;     // 是否为管理员
   createTime: number;   // 创建时间
   updateTime: number;   // 更新时间
+  /** 服务端资料完整性字段，旧接口响应可能没有。 */
+  profileComplete?: boolean;
+  missingProfileFields?: Array<'nickName' | 'avatarUrl'>;
 }
 
 // 登录信息接口
@@ -37,4 +40,4 @@ export interface UserPhone {
   purePhoneNumber: string; // 不带区号的手机号
   countryCode: string;  // 区号
   createTime: number;   // 创建时间
-} 
+}

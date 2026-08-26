@@ -2,6 +2,7 @@ import { InventoryCategory, InventoryItem } from '../../models/inventory';
 import { InventoryExpiryState, InventoryService } from '../../services/inventoryService';
 import { showConfirm, showSuccess, showToast, showLoading, hideLoading, getCurrentDate, formatDate, isDateExpired, dateDiff } from '../../utils/util';
 import { ImageCacheService } from '../../utils/imageCache';
+import { createAppShareContent } from '../../utils/share';
 const { FamilyService } = require('../../services/family');
 
 // 服务端分页大小，避免一次拉取整组库存后再在客户端过滤。
@@ -481,5 +482,9 @@ Page({
   onScroll() {
     // 滚动时隐藏所有删除按钮
     this.hideAllDeleteButtons();
+  },
+
+  onShareAppMessage() {
+    return createAppShareContent();
   },
 });

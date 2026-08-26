@@ -9,11 +9,11 @@
 
     <view class="form-card">
       <view class="form-label">家庭名称</view>
-      <input class="family-input" value="{{name}}" maxlength="32" placeholder="例如：周末厨房" placeholder-class="family-placeholder" focus="true" bindinput="onNameInput" bindconfirm="onNameConfirm" confirm-type="done" />
+      <input class="family-input" value="{{name}}" maxlength="32" placeholder="例如：周末厨房" placeholder-class="family-placeholder" focus="true" bindinput="onNameInput" bindconfirm="onNameConfirm" cursor-spacing="24" confirm-type="done" />
       <view class="form-hint">名称会显示给所有家庭成员</view>
 
       <view class="form-label timezone-label">时区</view>
-      <input class="family-input" value="{{timezone}}" maxlength="64" placeholder="Asia/Shanghai" placeholder-class="family-placeholder" bindinput="onTimezoneChange" />
+      <input class="family-input" value="{{timezone}}" maxlength="64" placeholder="Asia/Shanghai" placeholder-class="family-placeholder" bindinput="onTimezoneChange" cursor-spacing="24" confirm-type="done" />
       <view class="form-hint">用于安排日期和餐次，默认使用中国标准时间</view>
     </view>
 

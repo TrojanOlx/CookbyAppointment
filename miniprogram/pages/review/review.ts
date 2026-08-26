@@ -1,7 +1,8 @@
 import { AppointmentService } from '../../services/appointmentService';
 import { Review } from '../../models/appointment';
 import { Dish } from '../../models/dish';
-import { showToast, showLoading, hideLoading, showConfirm, formatTime } from '../../utils/util';
+import { FileInfo } from '../../models/file';
+import { showToast, showLoading, hideLoading, formatTime } from '../../utils/util';
 import { FileService } from '../../services/fileService';
 import { ImageCacheService } from '../../utils/imageCache';
 const { FamilyService } = require('../../services/family');
@@ -30,6 +31,14 @@ Page({
     content: '',
     images: [] as string[],
     isSubmitting: false
+  },
+
+  pendingReviewFiles: [] as FileInfo[],
+
+  cleanupPendingReviewFiles() {
+    const files = this.pendingReviewFiles;
+    this.pendingReviewFiles = [];
+    if (files.length) void FileService.cleanupUploadedFiles(files);
   },
 
   // 生命周期：页面加载
@@ -150,6 +159,7 @@ Page({
   onUnload() {
     reviewDetailsRequestId += 1;
     reviewImageUploadRequestId += 1;
+    this.cleanupPendingReviewFiles();
     hideLoading();
   },
 
@@ -194,6 +204,7 @@ Page({
 
     // 如果点击的是当前已选中的菜品，则取消选中
     if (this.data.currentDishIndex === index) {
+      this.cleanupPendingReviewFiles();
       this.setData({
         currentDishIndex: null,
         rating: 0,
@@ -208,6 +219,7 @@ Page({
         });
       } else {
         // 如果菜品未评价，清空评价表单
+        this.cleanupPendingReviewFiles();
         this.setData({
           currentDishIndex: index,
           rating: 0,
@@ -243,8 +255,12 @@ Page({
         const tempFiles = res.tempFiles;
         const tempFilePaths = tempFiles.map(file => file.tempFilePath);
 
-        // 上传图片
-        this.uploadImages(tempFilePaths);
+        void FileService.preflightImages(tempFilePaths).then(({ valid, failures }) => {
+          if (failures.length) {
+            showToast(`已跳过${failures.length}张不符合要求的图片`);
+          }
+          if (valid.length) void this.uploadImages(valid);
+        });
       }
     });
   },
@@ -256,18 +272,17 @@ Page({
     showLoading('上传图片中');
 
     try {
-      const uploadedImages = [...this.data.images];
-
-      for (const filePath of tempFilePaths) {
-        // 上传图片
-        const result = await FileService.uploadFile(filePath);
-
-        if (result && result.success && result.data && result.data.url) {
-          uploadedImages.push(result.data.url);
-        }
+      const uploadResult = await FileService.uploadFiles(tempFilePaths, 'reviews');
+      const uploadedImages = [...this.data.images, ...uploadResult.files.map(file => file.url || file.filePath)];
+      if (uploadResult.failures.length) {
+        showToast(`成功上传${uploadResult.files.length}张，${uploadResult.failures.length}张失败`);
       }
 
-      if (requestId !== reviewImageUploadRequestId || this.data.currentDishIndex !== dishIndex) return;
+      if (requestId !== reviewImageUploadRequestId || this.data.currentDishIndex !== dishIndex) {
+        void FileService.cleanupUploadedFiles(uploadResult.files);
+        return;
+      }
+      this.pendingReviewFiles.push(...uploadResult.files);
       this.setData({
         images: uploadedImages
       });
@@ -282,9 +297,25 @@ Page({
 
   // 删除图片
   deleteImage(e: any) {
-    const index = e.currentTarget.dataset.index;
+    const index = Number(e.currentTarget.dataset.index);
     const images = [...this.data.images];
+    if (!Number.isInteger(index) || index < 0 || index >= images.length) return;
+    const removedImage = images[index];
     images.splice(index, 1);
+
+    // 只有本次评价刚上传且尚未提交的文件可以立即删除，已存在的评价图片不触碰。
+    const fileKey = (value: string): string => {
+      const match = String(value || '').match(/[?&]id=([^&#]+)/i);
+      return match ? decodeURIComponent(match[1]) : String(value || '');
+    };
+    const removedKey = fileKey(removedImage);
+    const removedPending = this.pendingReviewFiles.filter(file =>
+      fileKey(file.url) === removedKey || fileKey(file.filePath) === removedKey
+    );
+    if (removedPending.length) {
+      this.pendingReviewFiles = this.pendingReviewFiles.filter(file => !removedPending.includes(file));
+      void FileService.cleanupUploadedFiles(removedPending);
+    }
 
     this.setData({
       images
@@ -348,6 +379,8 @@ Page({
       // 调用API提交评价
       await AppointmentService.addReview(reviewData);
 
+      this.pendingReviewFiles = [];
+
       hideLoading();
       this.setData({ isSubmitting: false });
       showToast('评价成功');
@@ -368,6 +401,8 @@ Page({
         ? { dishes }
         : { dishes, rating: 0, content: '', images: [] });
     } catch (error) {
+      this.cleanupPendingReviewFiles();
+      this.setData({ images: [] });
       hideLoading();
       this.setData({ isSubmitting: false });
       console.error('提交评价失败:', error);

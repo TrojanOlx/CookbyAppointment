@@ -4,6 +4,7 @@ import { ApiError, json, readJson, requiredString } from '../core/http';
 import { withOperationLock } from '../core/operationLock';
 import { withFamilyInventoryLock } from './inventoryV2Handler';
 import type { Env, FamilyContext } from '../core/types';
+import { strictQuantity, strictText } from '../core/validation';
 
 interface Requirement {
   key: string;
@@ -197,9 +198,11 @@ async function addItem(request: Request, env: Env): Promise<Response> {
   const body = await readJson<Record<string, unknown>>(request);
   const listId = await activeListId(env, context.familyId, context.user.id);
   const id = crypto.randomUUID();
-  const name = requiredString(body.name, '采购项名称', 80);
-  const quantity = typeof body.quantity === 'number' && body.quantity >= 0 ? body.quantity : null;
-  const unit = typeof body.unit === 'string' && body.unit.trim() ? body.unit.trim().slice(0, 20) : null;
+  const name = strictText(body.name, '采购项名称', 30, { required: true, meaningfulName: true });
+  const quantity = body.quantity === undefined || body.quantity === null ? null : strictQuantity(body.quantity, '采购数量');
+  const unit = typeof body.unit === 'string' && body.unit.trim()
+    ? strictText(body.unit, '单位', 10, { required: true })
+    : null;
   if ((quantity === null) !== (unit === null)) throw new ApiError(400, 'INVALID_QUANTITY', 'quantity 和 unit 必须同时提供');
   const now = Date.now();
   await env.DB.prepare(`
@@ -209,7 +212,7 @@ async function addItem(request: Request, env: Env): Promise<Response> {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?)
   `).bind(
     id, listId, typeof body.ingredientId === 'string' ? body.ingredientId : null,
-    name, quantity, unit, typeof body.note === 'string' ? body.note.slice(0, 200) : null,
+    name, quantity, unit, strictText(body.note, '采购备注', 300, { allowNewlines: true }) || null,
     context.user.id, now, now,
   ).run();
   await writeAudit(env, context, 'shopping.item_created', 'shopping_item', id, { name });
@@ -244,8 +247,11 @@ async function updateItem(request: Request, env: Env): Promise<Response> {
     }
     const checked = body.checked === undefined ? Number(current.checked) : body.checked ? 1 : 0;
     const purchasedAt = checked ? Number(current.purchasedAt || Date.now()) : null;
-    const quantity = typeof body.quantity === 'number' && Number.isFinite(body.quantity) && body.quantity >= 0 ? body.quantity : current.quantity;
-    const unit = typeof body.unit === 'string' && body.unit.trim() ? body.unit.trim().slice(0, 20) : current.unit;
+    const quantity = body.quantity === undefined ? current.quantity : strictQuantity(body.quantity, '采购数量');
+    const unit = body.unit === undefined
+      ? current.unit
+      : strictText(body.unit, '单位', 10, { required: true });
+    if ((quantity === null) !== (unit === null)) throw new ApiError(400, 'INVALID_QUANTITY', 'quantity 和 unit 必须同时提供');
     const now = Math.max(Date.now(), Number(current.updatedAt) + 1);
     const updated = await env.DB.prepare(`
       UPDATE shopping_list_items SET quantity = ?, unit = ?, assigneeId = ?, checked = ?, purchasedAt = ?, updatedAt = ?

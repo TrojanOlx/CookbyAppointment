@@ -1,6 +1,7 @@
 import { requireAuth } from '../core/auth';
 import { ApiError, json, readJson } from '../core/http';
 import type { Env } from '../core/types';
+import { strictTextArray } from '../core/validation';
 
 type SpiceLevel = 'none' | 'mild' | 'medium' | 'hot';
 const SPICE_ALIASES: Record<string, SpiceLevel> = {
@@ -10,13 +11,7 @@ const SPICE_ALIASES: Record<string, SpiceLevel> = {
 
 function stringArray(value: unknown, field: string): string[] {
   if (value === undefined) return [];
-  if (!Array.isArray(value)) throw new ApiError(400, 'VALIDATION_ERROR', `${field}必须是数组`);
-  return Array.from(new Set(value.map(item => {
-    if (typeof item !== 'string' || !item.trim() || item.trim().length > 40) {
-      throw new ApiError(400, 'VALIDATION_ERROR', `${field}包含无效标签`);
-    }
-    return item.trim();
-  }))).slice(0, 50);
+  return Array.from(new Set(strictTextArray(value, field, 20, 20)));
 }
 
 async function getPreferences(request: Request, env: Env): Promise<Response> {

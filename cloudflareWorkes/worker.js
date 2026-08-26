@@ -11,6 +11,7 @@ import { handleGetStatistics } from './handlers/statisticsHandler.js';
 import { sendDailyReminders } from './handlers/notificationHandler.js';
 import { sendFamilyDailyReminders } from './handlers/notificationV2Handler.ts';
 import { tryHandleV2 } from './routerV2.ts';
+import { cleanupExpiredUploads } from './core/uploadSecurity.ts';
 
 // 获取access_token
 export async function getAccessToken(env) {
@@ -206,6 +207,7 @@ export default {
   // Cron Trigger 定时任务：每天北京时间 08:00 发送当日预约提醒
   async scheduled(event, env, ctx) {
     const familyMode = !['off', 'false', '0'].includes(String(env.FAMILY_MODE || 'on').toLowerCase());
-    ctx.waitUntil(familyMode ? sendFamilyDailyReminders(env) : sendDailyReminders(env));
+    const reminders = familyMode ? sendFamilyDailyReminders(env) : sendDailyReminders(env);
+    ctx.waitUntil(Promise.all([reminders, cleanupExpiredUploads(env)]));
   }
 };

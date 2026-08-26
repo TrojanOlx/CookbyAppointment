@@ -61,7 +61,7 @@
       <view wx:if="{{detail.status === 'active' && detail.canSuspend}}" class="platform-card">
         <view class="section-title">停用说明</view>
         <view class="section-copy">停用会撤销账号全部登录会话；恢复账号后，用户仍需重新登录。</view>
-        <textarea class="reason-input" maxlength="200" placeholder="填写停用原因（必填）" value="{{reason}}" bindinput="onReasonInput"></textarea>
+        <textarea class="reason-input" maxlength="200" placeholder="填写停用原因（必填）" value="{{reason}}" cursor-spacing="24" confirm-type="done" bindinput="onReasonInput"></textarea>
       </view>
     </block>
     <view class="footer-pad"></view>

@@ -4,6 +4,7 @@ import {
   PlatformTemplateIngredient,
   TemplateWritePayload
 } from '../services/platformCatalogService';
+import { FileService } from '../../../services/fileService';
 
 const typeOptions = ['炒菜', '青菜', '炖汤', '红烧', '蒸菜'];
 const spicyOptions = ['不辣', '微辣', '中辣', '特辣'];
@@ -217,10 +218,19 @@ Page({
         this.setData({ uploadingImage: true });
         const uploadedAssetIds: string[] = [];
         try {
+          const preflight = await FileService.preflightImages(result.tempFilePaths);
+          if (preflight.failures.length) {
+            wx.showToast({ title: `已跳过${preflight.failures.length}张不符合要求的图片`, icon: 'none' });
+          }
+          if (!preflight.valid.length) return;
           const uploaded: string[] = [];
-          for (const path of result.tempFilePaths) {
+          for (const path of preflight.valid) {
             const asset = await PlatformCatalogService.uploadTemplateAsset(path, this.data.template.id || undefined);
             const assetId = asset.id || assetIdFromUrl(asset.url);
+            if ((this as any)._editorUnloaded) {
+              if (assetId) await deleteAssets([assetId]);
+              continue;
+            }
             if (assetId) {
               uploadedAssetIds.push(assetId);
               this.setData({
@@ -230,6 +240,10 @@ Page({
             if (asset.url) {
               uploaded.push(asset.url);
             }
+          }
+          if ((this as any)._editorUnloaded) {
+            await deleteAssets(uploadedAssetIds);
+            return;
           }
           if (!uploaded.length) throw new Error('图片上传失败');
           const images = existingImages.concat(uploaded).slice(0, 6);
@@ -253,7 +267,7 @@ Page({
           }
           wx.showToast({ title: getErrorMessage(error, '图片上传失败'), icon: 'none' });
         } finally {
-          this.setData({ uploadingImage: false });
+          if (!(this as any)._editorUnloaded) this.setData({ uploadingImage: false });
         }
       }
     });
@@ -297,6 +311,10 @@ Page({
 
   addIngredient() {
     const ingredients = (this.data.template.ingredients as PlatformTemplateIngredient[]).slice();
+    if (ingredients.length >= 50) {
+      wx.showToast({ title: '食材最多添加50项', icon: 'none' });
+      return;
+    }
     ingredients.push(emptyIngredient());
     this.setData({ 'template.ingredients': ingredients, dirty: true });
   },
@@ -325,6 +343,10 @@ Page({
 
   addStep() {
     const steps = (this.data.template.steps as string[]).slice();
+    if (steps.length >= 30) {
+      wx.showToast({ title: '步骤最多添加30项', icon: 'none' });
+      return;
+    }
     steps.push('');
     this.setData({ 'template.steps': steps, dirty: true });
   },

@@ -43,6 +43,7 @@
         maxlength="128"
         placeholder="请输入邀请码"
         placeholder-class="join-input-placeholder"
+        cursor-spacing="24"
         confirm-type="done"
         bindinput="onCodeInput"
         bindconfirm="submitCode"

@@ -1,4 +1,5 @@
 import { DishType, Dish, Ingredient, SpicyLevel } from '../../../models/dish';
+import { FileInfo } from '../../../models/file';
 import { DishService } from '../../../services/dishService';
 import { FileService } from '../../../services/fileService';
 import { showSuccess, showError, showLoading, hideLoading, showToast } from '../../../utils/util';
@@ -180,10 +181,14 @@ Page({
       sizeType: ['compressed'],
       sourceType: ['album', 'camera'],
       success: (res) => {
-        // 将选择的图片添加到列表中
-        const images = this.data.dish.images.concat(res.tempFilePaths);
-        this.setData({
-          'dish.images': images
+        void FileService.preflightImages(res.tempFilePaths).then(({ valid, failures }) => {
+          if (failures.length) {
+            showToast(`已跳过${failures.length}张不符合要求的图片`);
+          }
+          if (!valid.length) return;
+          this.setData({
+            'dish.images': this.data.dish.images.concat(valid)
+          });
         });
       }
     });
@@ -211,6 +216,10 @@ Page({
   // 添加食材
   addIngredient() {
     const ingredients = this.data.dish.ingredients;
+    if (ingredients.length >= 50) {
+      showError('食材最多添加50项');
+      return;
+    }
     ingredients.push(this.createEmptyIngredient());
     this.setData({
       'dish.ingredients': ingredients
@@ -252,6 +261,10 @@ Page({
   // 添加步骤
   addStep() {
     const steps = this.data.dish.steps;
+    if (steps.length >= 30) {
+      showError('步骤最多添加30项');
+      return;
+    }
     steps.push('');
     this.setData({
       'dish.steps': steps
@@ -327,6 +340,8 @@ Page({
     const scope = currentDishEditorScope();
     const isCurrentRequest = () => requestId === dishEditorMutationRequestId
       && scope === currentDishEditorScope();
+    const newlyUploadedFiles: FileInfo[] = [];
+    let uploadFailureCount = 0;
     try {
       this.setData({ isSubmitting: true });
       showLoading('处理图片中...');
@@ -353,16 +368,20 @@ Page({
             );
             
             if (result.success && result.data && result.data.filePath) {
+              newlyUploadedFiles.push(result.data);
               // 只存储路径，不存储域名
               return result.data.filePath;
             } else if (result.success && result.data && result.data.url) {
+              if (result.data) newlyUploadedFiles.push(result.data);
               // 如果返回了url但没有filePath，从url中提取路径部分
               return extractPathFromUrl(result.data.url);
             } else {
+              uploadFailureCount += 1;
               console.error('上传图片失败:', result.error || '未知错误');
               return null;
             }
           } catch (error) {
+            uploadFailureCount += 1;
             console.error(`上传图片 ${index + 1} 失败:`, error);
             return null;
           }
@@ -370,7 +389,10 @@ Page({
         
         // 等待所有图片上传完成
         const results = await Promise.all(uploadPromises);
-        if (!isCurrentRequest()) return;
+        if (!isCurrentRequest()) {
+          void FileService.cleanupUploadedFiles(newlyUploadedFiles);
+          return;
+        }
         uploadedImages = results.filter(url => url !== null) as string[];
         
         console.log('成功上传图片数量:', uploadedImages.length);
@@ -378,6 +400,9 @@ Page({
           hideLoading();
           showError('图片上传失败，请重试');
           return;
+        }
+        if (uploadFailureCount > 0) {
+          showToast(`成功上传${uploadedImages.length}张，${uploadFailureCount}张失败`);
         }
       }
       
@@ -435,6 +460,7 @@ Page({
       }, 1500);
     } catch (error) {
       if (!isCurrentRequest()) return;
+      void FileService.cleanupUploadedFiles(newlyUploadedFiles);
       hideLoading();
       console.error(this.data.isEdit ? '更新菜品失败:' : '添加菜品失败:', error);
       showToast(this.data.isEdit ? '更新菜品失败' : '添加菜品失败');

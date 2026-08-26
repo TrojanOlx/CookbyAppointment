@@ -11,10 +11,10 @@
 
     <view class="platform-card">
       <view class="search-row">
-        <input class="search-input" value="{{action}}" placeholder="搜索操作类型，例如 platform.user.suspend" confirm-type="search" bindinput="onActionInput" bindconfirm="onActionConfirm"></input>
+        <input class="search-input" value="{{action}}" placeholder="搜索操作类型，例如 platform.user.suspend" maxlength="80" cursor-spacing="24" confirm-type="search" bindinput="onActionInput" bindconfirm="onActionConfirm"></input>
         <button class="search-button" bindtap="search">搜索</button>
       </view>
-      <input class="audit-actor-input" value="{{actorId}}" placeholder="操作者用户 ID" bindinput="onActorInput"></input>
+      <input class="audit-actor-input" value="{{actorId}}" placeholder="操作者用户 ID" maxlength="80" cursor-spacing="24" confirm-type="done" bindinput="onActorInput"></input>
       <view class="audit-date-row">
         <picker class="audit-date-picker" mode="date" value="{{startDate}}" bindchange="onStartDateChange">
           <view class="audit-date-value">{{startDate || '开始日期'}}</view>

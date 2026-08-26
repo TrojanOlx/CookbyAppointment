@@ -1,15 +1,18 @@
 import { Dish, DishType, SpicyLevel } from '../../../models/dish';
+import { FileInfo } from '../../../models/file';
 import { DishService } from '../../../services/dishService';
 import { showSuccess, showConfirm, showLoading, hideLoading, showToast } from '../../../utils/util';
 import { UserService } from '../../../services/userService';
 import { FileService } from '../../../services/fileService';
 import { SessionCacheService } from '../../../utils/sessionCache';
 import { createUploadFileName } from './uploadFileName';
+import { createDishFavoriteContent, createDishShareContent } from '../../../utils/share';
 const { getFamilyRoleContext } = require('../../../services/familyRole');
 const { FamilyService } = require('../../../services/family');
 
 let detailRequestId = 0;
 let detailRoleRequestId = 0;
+let detailInitRequestId = 0;
 
 const currentDetailScope = () => `${String(wx.getStorageSync('token') || '')}|${String(FamilyService.getActiveFamilyId() || '')}`;
 
@@ -67,32 +70,101 @@ Page({
   },
 
   detailScope: '',
+  detailInitializing: false,
+  detailReady: false,
   navigateBackTimer: null as ReturnType<typeof setTimeout> | null,
 
   /**
    * 生命周期函数--监听页面加载
    */
   onLoad(options) {
-    this.detailScope = currentDetailScope();
-    if (options.id) {
-      this.setData({
-        dishId: options.id
-      });
-      this.loadDish();
-    }
-    
     this.setSafeArea();
+    const dishId = String(options.id || '').trim();
+    let sharedFamilyId = String(options.familyId || '').trim();
+    try {
+      sharedFamilyId = decodeURIComponent(sharedFamilyId);
+    } catch {
+      // Keep the original value; the membership check remains authoritative.
+    }
+
+    if (!dishId) {
+      showToast('菜品信息不完整');
+      return;
+    }
+
+    const needsSharedFamily = sharedFamilyId
+      && sharedFamilyId !== String(FamilyService.getActiveFamilyId() || '');
+    if (needsSharedFamily) {
+      this.detailInitializing = true;
+      void this.initializeSharedDetail(dishId, sharedFamilyId).finally(() => {
+        this.detailInitializing = false;
+      });
+      return;
+    }
+
+    this.detailScope = currentDetailScope();
+    this.detailReady = true;
+    this.setData({ dishId });
+    void this.loadDish();
     if (wx.getStorageSync('token')) {
-      this.checkAdminStatus();
+      void this.checkAdminStatus();
     } else {
       this.setData({ isAdmin: false });
     }
+  },
+
+  async initializeSharedDetail(dishId: string, sharedFamilyId: string) {
+    const requestId = ++detailInitRequestId;
+    this.setData({ dishId });
+    const redirectUrl = `/pages/menu/detail/detail?id=${encodeURIComponent(dishId)}`
+      + `&familyId=${encodeURIComponent(sharedFamilyId)}`;
+
+    if (!wx.getStorageSync('token')) {
+      wx.setStorageSync('redirectUrl', redirectUrl);
+      showToast('登录后即可查看家庭菜谱');
+      this.navigateBackTimer = setTimeout(() => {
+        this.navigateBackTimer = null;
+        if (requestId === detailInitRequestId) wx.switchTab({ url: '/pages/profile/profile' });
+      }, 500);
+      return;
+    }
+
+    try {
+      const families = await FamilyService.list();
+      if (requestId !== detailInitRequestId) return;
+      const canAccessFamily = families.some((family: { id?: string }) => String(family.id || '') === sharedFamilyId);
+      if (!canAccessFamily) {
+        showToast('该菜谱仅家庭成员可查看');
+        this.navigateBackTimer = setTimeout(() => {
+          this.navigateBackTimer = null;
+          if (requestId === detailInitRequestId) wx.switchTab({ url: '/pages/index/index' });
+        }, 800);
+        return;
+      }
+      FamilyService.setActiveFamilyId(sharedFamilyId);
+    } catch (error) {
+      if (requestId !== detailInitRequestId) return;
+      console.error('确认分享菜谱的家庭权限失败:', error);
+      showToast('暂时无法打开分享菜谱');
+      this.navigateBackTimer = setTimeout(() => {
+        this.navigateBackTimer = null;
+        if (requestId === detailInitRequestId) wx.switchTab({ url: '/pages/index/index' });
+      }, 800);
+      return;
+    }
+
+    if (requestId !== detailInitRequestId) return;
+    this.detailScope = currentDetailScope();
+    this.detailReady = true;
+    void this.loadDish();
+    void this.checkAdminStatus();
   },
 
   /**
    * 生命周期函数--监听页面显示
    */
   onShow() {
+    if (this.detailInitializing || !this.detailReady) return;
     const scope = currentDetailScope();
     const scopeChanged = scope !== this.detailScope;
     if (scopeChanged) {
@@ -258,6 +330,8 @@ Page({
     const originalDish = this.data.dish;
     const tempDish = JSON.parse(JSON.stringify(this.data.tempDish)) as Dish;
     const initialEditSignature = JSON.stringify(this.data.tempDish);
+    const newlyUploadedFiles: FileInfo[] = [];
+    let uploadFailureCount = 0;
 
     try {
       // 基本数据校验
@@ -303,16 +377,20 @@ Page({
               );
               
               if (result.success && result.data && result.data.filePath) {
+                newlyUploadedFiles.push(result.data);
                 // 只存储路径，不存储域名
                 return result.data.filePath;
               } else if (result.success && result.data && result.data.url) {
+                if (result.data) newlyUploadedFiles.push(result.data);
                 // 如果返回了url但没有filePath，从url中提取路径部分
                 return extractPathFromUrl(result.data.url);
               } else {
+                uploadFailureCount += 1;
                 console.error('上传图片失败:', result.error || '未知错误');
                 return null;
               }
             } catch (error) {
+              uploadFailureCount += 1;
               console.error(`上传图片 ${index + 1} 失败:`, error);
               return null;
             }
@@ -336,10 +414,13 @@ Page({
           }
           
           if (successfulUploads.length < newImages.length) {
+            uploadFailureCount = Math.max(uploadFailureCount, newImages.length - successfulUploads.length);
             console.warn(`部分图片上传失败，成功: ${successfulUploads.length}/${newImages.length}`);
+            showToast(`成功上传${successfulUploads.length}张，${newImages.length - successfulUploads.length}张失败`);
           }
         } catch (error) {
           console.error('处理图片时出错:', error);
+          void FileService.cleanupUploadedFiles(newlyUploadedFiles);
           hideLoading();
           this.setData({ isSaving: false });
           showToast('图片处理失败，请重试');
@@ -378,6 +459,7 @@ Page({
         this.setData({ isSaving: false });
       }
     } catch (error) {
+      void FileService.cleanupUploadedFiles(newlyUploadedFiles);
       hideLoading();
       this.setData({ isSaving: false });
       console.error('保存菜品失败:', error);
@@ -450,10 +532,14 @@ Page({
       sizeType: ['compressed'], // 只允许压缩图片
       sourceType: ['album', 'camera'], // 允许从相册或相机选择
       success: (res) => {
-        // 将选择的图片添加到列表中
-        const images = this.data.tempDish.images.concat(res.tempFilePaths);
-        this.setData({
-          'tempDish.images': images
+        void FileService.preflightImages(res.tempFilePaths).then(({ valid, failures }) => {
+          if (failures.length) {
+            showToast(`已跳过${failures.length}张不符合要求的图片`);
+          }
+          if (!valid.length) return;
+          this.setData({
+            'tempDish.images': this.data.tempDish.images.concat(valid)
+          });
         });
       }
     });
@@ -487,6 +573,10 @@ Page({
    */
   addIngredient() {
     const ingredients = this.data.tempDish.ingredients || [];
+    if (ingredients.length >= 50) {
+      showToast('食材最多添加50项');
+      return;
+    }
     ingredients.push({
       id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
       name: '',
@@ -538,6 +628,10 @@ Page({
    */
   addStep() {
     const steps = this.data.tempDish.steps || [];
+    if (steps.length >= 30) {
+      showToast('步骤最多添加30项');
+      return;
+    }
     steps.push('');
     this.setData({
       'tempDish.steps': steps
@@ -608,11 +702,23 @@ Page({
   },
 
   onUnload() {
+    detailInitRequestId += 1;
     detailRequestId += 1;
     detailRoleRequestId += 1;
     if (this.navigateBackTimer) {
       clearTimeout(this.navigateBackTimer);
       this.navigateBackTimer = null;
     }
+  },
+
+  onShareAppMessage() {
+    return createDishShareContent(this.data.dish, String(FamilyService.getActiveFamilyId() || ''));
+  },
+
+  onAddToFavorites() {
+    const dish = this.data.dish && this.data.dish.id
+      ? this.data.dish
+      : { id: this.data.dishId, name: '家庭菜谱', images: [] };
+    return createDishFavoriteContent(dish, String(FamilyService.getActiveFamilyId() || ''));
   }
 })

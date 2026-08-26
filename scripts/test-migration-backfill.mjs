@@ -211,4 +211,19 @@ assert(
 const foreignKeyViolations = db.prepare('PRAGMA foreign_key_check').all();
 assert(foreignKeyViolations.length === 0, 'migration introduced foreign key violations', foreignKeyViolations);
 
-console.log('Production-style migration backfill checks passed (10 assertions).');
+const userFileColumns = db.prepare('PRAGMA table_info(user_files)').all().map(column => column.name);
+assert(
+  ['id', 'userId', 'objectKey', 'contentType', 'size', 'purpose', 'deletedAt']
+    .every(column => userFileColumns.includes(column)),
+  'personal avatar file table is incomplete',
+  userFileColumns,
+);
+
+const familyFileColumns = db.prepare('PRAGMA table_info(family_files)').all().map(column => column.name);
+assert(
+  ['targetType', 'targetId', 'attachedAt', 'expiresAt'].every(column => familyFileColumns.includes(column)),
+  'family upload binding columns are incomplete',
+  familyFileColumns,
+);
+
+console.log('Production-style migration backfill checks passed (12 assertions).');

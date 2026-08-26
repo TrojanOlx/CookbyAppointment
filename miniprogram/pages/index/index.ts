@@ -2,6 +2,7 @@
 import { AppointmentService } from '../../services/appointmentService';
 import { InventoryService } from '../../services/inventoryService';
 import { getCurrentDate, dateDiff } from '../../utils/util';
+import { createAppShareContent, createAppTimelineContent } from '../../utils/share';
 const FamilyService = require('../../services/family');
 
 // 获取应用实例
@@ -187,5 +188,13 @@ Page({
   // 跳转到我的页面（未登录引导）
   navigateToProfile() {
     wx.switchTab({ url: '/pages/profile/profile' });
+  },
+
+  onShareAppMessage() {
+    return createAppShareContent();
+  },
+
+  onShareTimeline() {
+    return createAppTimelineContent();
   }
 });

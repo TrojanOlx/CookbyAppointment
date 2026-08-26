@@ -173,10 +173,26 @@ const getFamilyId = (): string => {
 
 const getAppVersion = (): string => {
   try {
-    return wx.getAccountInfoSync().miniProgram.version || '1.0.1-dev';
+    return wx.getAccountInfoSync().miniProgram.version || '1.0.3-dev';
   } catch {
-    return '1.0.1-dev';
+    return '1.0.3-dev';
   }
+};
+
+const getCurrentPageUrl = (): string => {
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1] as (WechatMiniprogram.Page.Instance<
+    Record<string, unknown>,
+    Record<string, unknown>
+  > & { route?: string; options?: Record<string, unknown> }) | undefined;
+  const route = String(currentPage && currentPage.route || '').replace(/^\/+/, '');
+  if (!route) return '/pages/profile/profile';
+
+  const query = Object.entries(currentPage && currentPage.options || {})
+    .filter(([, value]) => value !== undefined && value !== null && String(value) !== '')
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .join('&');
+  return `/${route}${query ? `?${query}` : ''}`;
 };
 
 // ---------- 静默刷新 token ----------
@@ -243,11 +259,9 @@ const handleUnauthorized = (statusCode: number, expectedToken: string): boolean 
   }
   clearLoginInfo();
   const errMsg = statusCode === 401 ? '登录已过期，请重新登录' : '权限不足';
-  const pages = getCurrentPages();
-  const currentPage = pages[pages.length - 1];
-  const currentPath = `/${currentPage.route}`;
-  if (!currentPath.includes('/pages/profile/profile')) {
-    wx.setStorageSync('redirectUrl', currentPath);
+  const currentUrl = getCurrentPageUrl();
+  if (!currentUrl.startsWith('/pages/profile/profile')) {
+    wx.setStorageSync('redirectUrl', currentUrl);
   }
   wx.showModal({
     title: '提示',
@@ -255,7 +269,7 @@ const handleUnauthorized = (statusCode: number, expectedToken: string): boolean 
     showCancel: false,
     success: () => {
       getGlobalApp().globalData.eventBus.emit('initLoginPage');
-      if (!currentPath.includes('/pages/profile/profile')) {
+      if (!currentUrl.startsWith('/pages/profile/profile')) {
         wx.switchTab({ url: '/pages/profile/profile' });
       }
     }

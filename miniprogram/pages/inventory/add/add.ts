@@ -1,4 +1,5 @@
 import { InventoryItem } from '../../../models/inventory';
+import { FileInfo } from '../../../models/file';
 import { InventoryService } from '../../../services/inventoryService';
 import { FileService } from '../../../services/fileService';
 import { getCurrentDate, showError, showSuccess, showLoading, hideLoading } from '../../../utils/util';
@@ -69,10 +70,17 @@ Page({
       sourceType: ['album', 'camera'],
       camera: 'back',
       success: (res) => {
-        const tempFilePath = res.tempFiles[0].tempFilePath;
-        this.setData({
-          localImagePath: tempFilePath,
-          'item.image': tempFilePath
+        const tempFilePath = res.tempFiles[0]?.tempFilePath;
+        if (!tempFilePath) return;
+        void FileService.preflightImages([tempFilePath]).then(({ valid, failures }) => {
+          if (failures.length) {
+            showError(failures[0].error);
+            return;
+          }
+          this.setData({
+            localImagePath: valid[0],
+            'item.image': valid[0]
+          });
         });
       }
     });
@@ -128,17 +136,24 @@ Page({
       && scope === currentInventoryEditorScope();
     this.setData({ isSubmitting: true });
     showLoading('保存中');
+    let newlyUploadedFile: FileInfo | null = null;
     try {
       let imageUrl = item.image || '';
 
       // 如果选择了新图片，先上传到服务器
       if (localImagePath && localImagePath === imageUrl) {
         const uploadResult = await FileService.uploadFile(localImagePath, 'inventory');
-        if (!isCurrentRequest()) return;
+        if (!isCurrentRequest()) {
+          if (uploadResult.data) void FileService.cleanupUploadedFiles([uploadResult.data]);
+          return;
+        }
         if (uploadResult?.data?.url) {
+          newlyUploadedFile = uploadResult.data;
           imageUrl = uploadResult.data.url;
         } else {
-          imageUrl = '';
+          hideLoading();
+          showError(uploadResult?.error || '图片上传失败，请重试');
+          return;
         }
       }
 
@@ -165,6 +180,7 @@ Page({
       }, 1000);
     } catch (error) {
       if (!isCurrentRequest()) return;
+      if (newlyUploadedFile) void FileService.cleanupUploadedFiles([newlyUploadedFile]);
       showError('操作失败：' + (error as Error).message);
     } finally {
       if (isCurrentRequest()) {

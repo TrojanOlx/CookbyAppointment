@@ -59,7 +59,7 @@
             <view class="section-count">已选 {{selectedDishIds.length}} 道</view>
           </view>
           <view class="dish-search-wrap">
-            <input class="dish-search" value="{{searchKeyword}}" placeholder="搜索菜品名称" placeholder-class="input-placeholder" cursor-spacing="16" confirm-type="search" confirm-hold="{{false}}" bindinput="onSearchInput" />
+            <input class="dish-search" value="{{searchKeyword}}" placeholder="搜索菜品名称" placeholder-class="input-placeholder" maxlength="80" cursor-spacing="16" confirm-type="search" confirm-hold="{{false}}" bindinput="onSearchInput" />
             <mp-icon ext-class="search-icon" icon="search" size="18" color="#9f927d"></mp-icon>
           </view>
           <view class="dish-type-selector">
@@ -98,7 +98,7 @@
 
         <view class="booking-section remarks-section">
           <view class="section-label">备注（可选）</view>
-          <textarea class="remarks-input" maxlength="1000" value="{{remarks}}" placeholder="例如：少盐、家人六点半到家" placeholder-class="input-placeholder" cursor-spacing="24" confirm-type="done" confirm-hold="{{false}}" bindinput="onRemarksInput"></textarea>
+          <textarea class="remarks-input" maxlength="300" value="{{remarks}}" placeholder="例如：少盐、家人六点半到家" placeholder-class="input-placeholder" cursor-spacing="24" confirm-type="done" confirm-hold="{{false}}" bindinput="onRemarksInput"></textarea>
           <view class="field-hint">可以写下到家时间、口味或需要提前准备的事项</view>
         </view>
 

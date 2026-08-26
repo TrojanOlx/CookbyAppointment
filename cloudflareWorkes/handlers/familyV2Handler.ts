@@ -3,6 +3,7 @@ import { canManageRole } from '../core/domain';
 import { ApiError, json, readJson, requiredString } from '../core/http';
 import { userLifecycleLockScope, withOperationLock } from '../core/operationLock';
 import type { Env, FamilyRole } from '../core/types';
+import { strictText, strictTimezone } from '../core/validation';
 
 const VALID_ROLES = new Set<FamilyRole>(['owner', 'admin', 'chef', 'member']);
 
@@ -32,10 +33,8 @@ async function createFamily(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   await checkRateLimit(env, `family-create:${auth.user.id}`, 5, 60 * 60 * 1000);
   const data = await readJson<{ name?: unknown; timezone?: unknown }>(request);
-  const name = requiredString(data.name, '家庭名称', 40);
-  const timezone = typeof data.timezone === 'string' && data.timezone.trim()
-    ? data.timezone.trim()
-    : (env.DEFAULT_TIMEZONE || 'Asia/Shanghai');
+  const name = strictText(data.name, '家庭名称', 32, { required: true, meaningfulName: true });
+  const timezone = strictTimezone(data.timezone, env.DEFAULT_TIMEZONE || 'Asia/Shanghai');
   const id = crypto.randomUUID();
   const now = Date.now();
   return withOperationLock(env, userLifecycleLockScope(auth.user.id), async () => {
@@ -77,10 +76,8 @@ async function updateFamily(request: Request, env: Env): Promise<Response> {
   const context = await requireFamilyContext(request, env);
   requireCapability(context, 'family.manage');
   const data = await readJson<{ name?: unknown; timezone?: unknown }>(request);
-  const name = requiredString(data.name, '家庭名称', 40);
-  const timezone = typeof data.timezone === 'string' && data.timezone.trim()
-    ? data.timezone.trim()
-    : context.timezone;
+  const name = strictText(data.name, '家庭名称', 32, { required: true, meaningfulName: true });
+  const timezone = strictTimezone(data.timezone, context.timezone);
   const now = Date.now();
   await env.DB.prepare('UPDATE families SET name = ?, timezone = ?, updatedAt = ? WHERE id = ? AND status = ?')
     .bind(name, timezone, now, context.familyId, 'active').run();
@@ -151,8 +148,7 @@ async function createInvitation(request: Request, env: Env): Promise<Response> {
 
 async function previewInvitation(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
-  const token = new URL(request.url).searchParams.get('token') || '';
-  if (!token) throw new ApiError(400, 'INVITE_TOKEN_REQUIRED', '缺少邀请令牌');
+  const token = strictText(new URL(request.url).searchParams.get('token'), '邀请令牌', 128, { required: true });
   const tokenHash = await sha256Hex(token);
   const invite = await env.DB.prepare(`
     SELECT i.id, i.familyId, i.role, i.expiresAt, i.revokedAt, i.acceptedAt,
@@ -176,7 +172,7 @@ async function acceptInvitation(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   await checkRateLimit(env, `invite-accept:${auth.user.id}`, 30, 60 * 60 * 1000);
   const data = await readJson<{ token?: unknown }>(request);
-  const token = requiredString(data.token, '邀请令牌', 128);
+  const token = strictText(data.token, '邀请令牌', 128, { required: true });
   const tokenHash = await sha256Hex(token);
   const invitation = await env.DB.prepare(`
     SELECT i.familyId FROM family_invitations i JOIN families f ON f.id = i.familyId

@@ -1,6 +1,7 @@
 // 用户服务
-import { get, post, put, del, upload } from './http';
-import { User, LoginInfo, UserPhone } from '../models/user';
+import { get, post, put, upload } from './http';
+import { User, UserPhone } from '../models/user';
+import { FileService } from './fileService';
 
 // 登录接口响应
 interface LoginResponse {
@@ -8,6 +9,9 @@ interface LoginResponse {
   session_key?: string;
   unionid?: string;
   token?: string;
+  user?: Partial<User>;
+  profileComplete?: boolean;
+  missingProfileFields?: Array<'nickName' | 'avatarUrl'>;
 }
 
 // 用户服务类
@@ -59,10 +63,14 @@ export class UserService {
 
   // 上传并更新用户头像
   static async updateAvatar(localPath: string): Promise<{ filePath: string, url: string }> {
+    const preflight = await FileService.preflightImages([localPath]);
+    if (!preflight.valid.length) {
+      throw new Error(preflight.failures[0]?.error || '头像图片不符合上传要求');
+    }
     return upload<{ filePath: string, url: string }>(
       '/api/user/avatar',
-      localPath,
-      { fileName: localPath.split('/').pop() || 'avatar.jpg' }
+      preflight.valid[0],
+      { fileName: await FileService.getSafeImageFileName(preflight.valid[0], 'avatar') }
     );
   }
 }

@@ -67,7 +67,7 @@ const currentSessionScope = () => {
 
 Page<PageData, PageInstance>({
   data: {
-    folders: ['images', 'dishes', 'documents', 'default', 'videos', 'audios', 'files'],
+    folders: ['images', 'dishes', 'documents', 'default', 'files'],
     currentFolder: 'images',
     files: [],
     selectedFiles: [],
@@ -227,23 +227,33 @@ Page<PageData, PageInstance>({
       // 使用try-catch包裹选择图片操作，以便捕获可能的选择取消
       wx.showLoading({ title: '选择图片中...' });
       
-      const images = await FileService.uploadImage(this.data.currentFolder, 9);
+      const uploadFolder = ['images', 'dishes'].includes(this.data.currentFolder)
+        ? this.data.currentFolder
+        : 'images';
+      const result = await FileService.uploadImageWithResult(uploadFolder, 9);
+      const images = result.files;
       console.log('上传图片结果:', images);
       
       wx.hideLoading();
       
       if (images && images.length > 0) {
         wx.showToast({
-          title: `成功上传${images.length}张图片`,
+          title: result.failures.length
+            ? `成功${images.length}张，失败${result.failures.length}张`
+            : `成功上传${images.length}张图片`,
           icon: 'success'
         });
 
-        // 重新加载文件列表
-        this.loadFiles();
+        // 重新加载文件列表；图片只能进入图片类文件夹。
+        if (uploadFolder !== this.data.currentFolder) {
+          this.setData({ currentFolder: uploadFolder }, () => this.loadFiles(uploadFolder));
+        } else {
+          this.loadFiles();
+        }
       } else {
         console.warn('未获取到上传成功的图片信息');
         wx.showToast({
-          title: '未选择图片或上传失败',
+          title: result.failures.length ? result.failures[0].error : '未选择图片或上传失败',
           icon: 'none'
         });
       }
@@ -628,6 +638,7 @@ Page<PageData, PageInstance>({
       'jpg': 'image/jpeg',
       'jpeg': 'image/jpeg',
       'png': 'image/png',
+      'webp': 'image/webp',
       'gif': 'image/gif',
       'pdf': 'application/pdf',
       'doc': 'application/msword',

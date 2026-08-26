@@ -1,4 +1,5 @@
 const { FamilyService } = require('../../../services/family');
+const { createAppShareContent } = require('../../../utils/share');
 
 let familyListRequestId = 0;
 
@@ -100,5 +101,9 @@ Page({
 
   goProfile() {
     wx.switchTab({ url: '/pages/profile/profile' });
+  },
+
+  onShareAppMessage() {
+    return createAppShareContent();
   }
 });

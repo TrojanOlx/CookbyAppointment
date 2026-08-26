@@ -164,7 +164,7 @@
       <view class="form-label">食材名称 <text>*</text></view>
       <input class="form-input" value="{{form.name}}" data-field="name" bindinput="onFormInput" placeholder="例如：西红柿" maxlength="30" cursor-spacing="24" confirm-type="next" />
       <view class="form-inline">
-        <view class="form-half"><view class="form-label">数量</view><input class="form-input" value="{{form.quantity}}" data-field="quantity" bindinput="onFormInput" placeholder="例如：3" type="digit" cursor-spacing="24" confirm-type="next" /></view>
+        <view class="form-half"><view class="form-label">数量</view><input class="form-input" value="{{form.quantity}}" data-field="quantity" bindinput="onFormInput" placeholder="例如：3" type="digit" maxlength="12" cursor-spacing="24" confirm-type="next" /></view>
         <view class="form-half"><view class="form-label">单位</view><input class="form-input" value="{{form.unit}}" data-field="unit" bindinput="onFormInput" placeholder="个 / kg / 袋" maxlength="8" cursor-spacing="24" confirm-type="next" /></view>
       </view>
       <view class="form-label">备注</view>

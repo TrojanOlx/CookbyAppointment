@@ -5,6 +5,7 @@ import { UserService } from '../../services/userService';
 import { ImageCacheService } from '../../utils/imageCache';
 import { clearSessionCache } from '../../services/http';
 import { SESSION_CACHE_TTL, SessionCacheService } from '../../utils/sessionCache';
+import { createAppShareContent } from '../../utils/share';
 const { getFamilyRoleContext } = require('../../services/familyRole');
 const { FamilyService } = require('../../services/family');
 
@@ -422,4 +423,8 @@ Page({
       wx.stopPullDownRefresh();
     });
   },
+
+  onShareAppMessage() {
+    return createAppShareContent();
+  }
 });

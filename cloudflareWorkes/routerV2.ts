@@ -20,7 +20,7 @@ const FAMILY_PREFIXES = [
 const USER_V2_PATHS = new Set([
   '/api/user/login', '/api/user/logout', '/api/user/info', '/api/user/admin',
   '/api/user/list', '/api/user/phone', '/api/user/avatar', '/api/user/export',
-  '/api/user/account',
+  '/api/user/account', '/api/user/avatar/file',
 ]);
 
 function familyModeEnabled(env: Env): boolean {
@@ -46,6 +46,10 @@ function requireSupportedClient(request: Request, env: Env, path: string): void 
   const minimum = env.MINIPROGRAM_MIN_VERSION?.trim();
   if (!minimum || path === '/api/user/login') return;
   if (path === '/api/file/download') {
+    const url = new URL(request.url);
+    if (url.searchParams.has('id') && url.searchParams.has('expires') && url.searchParams.has('signature')) return;
+  }
+  if (path === '/api/user/avatar/file') {
     const url = new URL(request.url);
     if (url.searchParams.has('id') && url.searchParams.has('expires') && url.searchParams.has('signature')) return;
   }

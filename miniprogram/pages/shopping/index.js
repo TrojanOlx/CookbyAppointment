@@ -1,4 +1,5 @@
 const shoppingService = require('../../services/shopping');
+const { createAppShareContent } = require('../../utils/share');
 const shoppingModel = require('../../models/shopping');
 
 let shoppingListRequestId = 0;
@@ -549,5 +550,9 @@ Page({
       wx.hideLoading();
       if (!this._motionDestroyed) this.setData({ recalculating: false });
     }
+  },
+
+  onShareAppMessage() {
+    return createAppShareContent();
   }
 });

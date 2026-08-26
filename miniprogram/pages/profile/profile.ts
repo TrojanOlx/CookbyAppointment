@@ -2,11 +2,11 @@
 import { UserService } from '../../services/userService';
 import { User } from '../../models/user';
 import { showToast, showLoading, hideLoading } from '../../utils/util';
-import { FileService } from '../../services/fileService';
 import { ImageCacheService } from '../../utils/imageCache';
 import { getAuthSessionGeneration, invalidateAuthSession } from '../../utils/auth';
 import { PlatformAdminService } from '../../services/platformAdminService';
 import { clearSessionCache } from '../../services/http';
+import { createAppShareContent } from '../../utils/share';
 const { FamilyService } = require('../../services/family');
 const { canManageFamily } = require('../../services/familyRole');
 let userInfoRequestId = 0;
@@ -52,6 +52,7 @@ interface IPageData {
   familySelectionRequired: boolean;
   familyLoading: boolean;
   canManageFamily: boolean;
+  scrollIntoView: string;
 }
 
 // 页面方法接口
@@ -61,7 +62,8 @@ interface IPageMethods {
   doLogin: () => Promise<void>;
   doLogout: () => void;
   getPhoneNumber: (e: WechatMiniprogram.ButtonGetPhoneNumber) => void;
-  fetchUserInfo: () => Promise<void>;
+  fetchUserInfo: (promptSource?: 'login' | 'cold-start' | 'none') => Promise<void>;
+  promptProfileCompletion: (userInfo: User, source: 'login' | 'cold-start') => void;
   isUserInfoComplete: () => boolean;
   checkAndRedirect: (redirectUrl: string) => void;
   saveNickName: (nickName: string) => void;
@@ -96,7 +98,8 @@ Page<IPageData, IPageMethods & {
     hasFamily: false,
     familySelectionRequired: false,
     familyLoading: false,
-    canManageFamily: false
+    canManageFamily: false,
+    scrollIntoView: ''
   },
 
   onLoad() {
@@ -120,9 +123,10 @@ Page<IPageData, IPageMethods & {
           hasUserInfo: true,
           openid: userInfo.openid
         });
+        this.promptProfileCompletion(userInfo, 'cold-start');
       }
       // 缓存只用于首屏展示，随后以服务端资料为准并刷新短期头像地址。
-      void this.fetchUserInfo();
+      void this.fetchUserInfo('cold-start');
     }
 
     // 监听初始化事件
@@ -177,6 +181,11 @@ Page<IPageData, IPageMethods & {
     const viewGeneration = ++profileViewGeneration;
     const authGeneration = getAuthSessionGeneration();
     const token = String(wx.getStorageSync('token') || '');
+    if (wx.getStorageSync('profile_focus')) {
+      wx.removeStorageSync('profile_focus');
+      this.setData({ scrollIntoView: 'profile-info' });
+      scheduleProfileTimer(this, () => this.setData({ scrollIntoView: '' }), 700);
+    }
     // 更新TabBar选中状态
     if (typeof this.getTabBar === 'function') {
       const tabBar = this.getTabBar();
@@ -190,7 +199,7 @@ Page<IPageData, IPageMethods & {
       // Calling on every tab visit lets the five-minute HTTP TTL decide whether
       // a network request is needed, while an in-progress reconciliation is
       // still shared by onLoad/onShow.
-      void this.fetchUserInfo();
+      void this.fetchUserInfo('none');
     }
     void this.syncFamilyContext().then(() => {
       if (
@@ -198,22 +207,6 @@ Page<IPageData, IPageMethods & {
         || authGeneration !== getAuthSessionGeneration()
         || token !== String(wx.getStorageSync('token') || '')
       ) return;
-      // 头像文件存储在家庭空间；零家庭状态下先完成创建或加入，再提示上传。
-      if (this.data.userInfo && !this.data.userInfo.avatarUrl && this.data.hasFamily) {
-        const familyId = String(FamilyService.getActiveFamilyId() || '');
-        wx.showToast({ title: '请上传头像', icon: 'none' });
-        if ((this as any).avatarPromptTimer) clearTimeout((this as any).avatarPromptTimer);
-        (this as any).avatarPromptTimer = scheduleProfileTimer(this, () => {
-          (this as any).avatarPromptTimer = null;
-          if (
-            viewGeneration !== profileViewGeneration
-            || authGeneration !== getAuthSessionGeneration()
-            || token !== String(wx.getStorageSync('token') || '')
-            || familyId !== String(FamilyService.getActiveFamilyId() || '')
-          ) return;
-          this.onChooseAvatar({});
-        }, 500);
-      }
     });
     void this.syncPlatformAdminStatus();
   },
@@ -282,7 +275,7 @@ Page<IPageData, IPageMethods & {
   },
 
   // 获取用户信息
-  async fetchUserInfo() {
+  async fetchUserInfo(promptSource: 'login' | 'cold-start' | 'none' = 'none') {
     const requestId = ++userInfoRequestId;
     const token = String(wx.getStorageSync('token') || '');
     if (!token) return;
@@ -299,6 +292,7 @@ Page<IPageData, IPageMethods & {
           hasUserInfo: true,
           openid: userInfo.openid
         });
+        if (promptSource !== 'none') this.promptProfileCompletion(userInfo, promptSource);
         this.checkAdminStatus();
       }
     } catch (error) {
@@ -372,7 +366,7 @@ Page<IPageData, IPageMethods & {
       showToast('登录成功');
 
       // 获取用户信息
-      await this.fetchUserInfo();
+      await this.fetchUserInfo('none');
 
       // 登录后立即同步家庭上下文，使零家庭入口无需重新进入“我的”页才出现。
       await this.syncFamilyContext();
@@ -381,10 +375,29 @@ Page<IPageData, IPageMethods & {
       // 获取重定向URL（如果有）
       const redirectUrl = wx.getStorageSync('redirectUrl');
 
-      if (!this.isUserInfoComplete()) {
-        showToast('请完善头像和昵称');
-      }
       this.checkAndRedirect(redirectUrl);
+      const loggedInUser = this.data.userInfo;
+      const loginProfileSnapshot = loginResult.profileComplete === false
+        ? ({
+            ...(loginResult.user || {}),
+            openid: loginResult.openid,
+            nickName: loginResult.user?.nickName || '',
+            avatarUrl: loginResult.user?.avatarUrl || '',
+            profileComplete: loginResult.profileComplete,
+            missingProfileFields: loginResult.missingProfileFields
+          } as User)
+        : null;
+      const profileSnapshot = loggedInUser || loginProfileSnapshot;
+      if (profileSnapshot) {
+        scheduleProfileTimer(this, () => {
+          if (
+            loginGeneration !== profileSessionGeneration
+            || authGeneration !== getAuthSessionGeneration()
+            || String(wx.getStorageSync('token') || '') !== String(loginResult.token)
+          ) return;
+          this.promptProfileCompletion(profileSnapshot, 'login');
+        }, 350);
+      }
     } catch (error) {
       if (
         loginGeneration !== profileSessionGeneration
@@ -418,7 +431,7 @@ Page<IPageData, IPageMethods & {
 
       if (isTabPage) {
         wx.switchTab({
-          url: redirectUrl
+          url: normalizedRedirect
         });
       } else {
         wx.navigateTo({
@@ -436,13 +449,22 @@ Page<IPageData, IPageMethods & {
     const { userInfo } = this.data;
     if (!userInfo) return false;
 
-    // 检查必要的个人信息字段是否存在
-    const hasBasicInfo = Boolean(
-      userInfo.nickName &&
-      userInfo.avatarUrl
+    const nickName = typeof userInfo.nickName === 'string' ? userInfo.nickName.trim() : '';
+    const avatarUrl = typeof userInfo.avatarUrl === 'string' ? userInfo.avatarUrl.trim() : '';
+    return Boolean(
+      nickName &&
+      !['微信用户', '微信昵称', '用户'].includes(nickName) &&
+      avatarUrl &&
+      !avatarUrl.startsWith('/images/') &&
+      userInfo.profileComplete !== false
     );
+  },
 
-    return hasBasicInfo;
+  promptProfileCompletion(userInfo: User, source: 'login' | 'cold-start') {
+    const app = getApp<any>();
+    if (app && typeof app.promptProfileCompletion === 'function') {
+      app.promptProfileCompletion(userInfo, source);
+    }
   },
 
   // 退出登录
@@ -460,7 +482,7 @@ Page<IPageData, IPageMethods & {
     [
       'token', 'user_token', 'session_key', 'openid', 'userInfo', 'phoneNumber',
       'active_family_id', 'active_family', 'active_family_role', 'family_role',
-      'redirectUrl', 'notifyAppointment', 'notifyReview',
+      'redirectUrl', 'profile_focus', 'notifyAppointment', 'notifyReview',
       'dish_list_cache', 'inventory_cache', 'appointment_cache', 'shopping_cache'
     ].forEach(key => wx.removeStorageSync(key));
     void ImageCacheService.clear().catch(error => console.warn('退出后图片缓存清理失败:', error));
@@ -478,6 +500,7 @@ Page<IPageData, IPageMethods & {
       canManageFamily: false,
       editingNickName: false,
       editingNickNameValue: '',
+      scrollIntoView: '',
       nickNameSavePending: false
     });
 
@@ -593,14 +616,23 @@ Page<IPageData, IPageMethods & {
       return;
     }
     // 兜底：手动选择
-    const fileInfo = await FileService.uploadSingleImage('avatars');
-    if (generation !== profileSessionGeneration) return;
-    if (fileInfo && fileInfo.filePath) {
-      try {
-        await (this as any).saveAvatar(fileInfo.filePath);
-      } catch {
-        showToast('头像上传失败');
-      }
+    const localPath = await new Promise<string>((resolve) => {
+      wx.chooseMedia({
+        count: 1,
+        mediaType: ['image'],
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+        success: result => resolve(result.tempFiles[0]?.tempFilePath || ''),
+        fail: () => resolve('')
+      });
+    });
+    if (!localPath || generation !== profileSessionGeneration) return;
+    try {
+      const uploadRes = await UserService.updateAvatar(localPath);
+      if (generation !== profileSessionGeneration) return;
+      await (this as any).saveAvatar(uploadRes.filePath);
+    } catch {
+      showToast('头像上传失败');
     }
     // 新增：同步判断 hasUserInfo
     const nickName = this.data.userInfo?.nickName;
@@ -655,7 +687,11 @@ Page<IPageData, IPageMethods & {
       });
       return;
     }
-    if (normalizedNickName === '微信用户') {
+    if (Array.from(normalizedNickName).length > 20 || /[\u0000-\u001F\u007F]/.test(normalizedNickName)) {
+      showToast('昵称最多20个字，不能包含控制字符');
+      return;
+    }
+    if (['微信用户', '微信昵称', '用户'].includes(normalizedNickName)) {
       showToast('请手动输入昵称');
       return;
     }
@@ -718,7 +754,8 @@ Page<IPageData, IPageMethods & {
    */
   onNickNameInput(e) {
     const nickName = e.detail.value;
-    this.setData({ editingNickNameValue: nickName });
+    const value = typeof nickName === 'string' ? nickName : '';
+    this.setData({ editingNickNameValue: value });
   },
 
   // 清除缓存
@@ -788,5 +825,9 @@ Page<IPageData, IPageMethods & {
         }
       }
     });
+  },
+
+  onShareAppMessage() {
+    return createAppShareContent();
   }
 });

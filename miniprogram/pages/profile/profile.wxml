@@ -4,11 +4,12 @@
   <scroll-view
     class="profile-container"
     scroll-y="true"
+    scroll-into-view="{{scrollIntoView}}"
     enhanced="true"
     show-scrollbar="false"
   >
   <!-- 用户信息区 -->
-  <view class="user-info">
+  <view id="profile-info" class="user-info">
     <block wx:if="{{!userInfo}}">
       <button class="login-btn" bindtap="doLogin" loading="{{isLoggingIn}}" disabled="{{isLoggingIn}}">微信登录</button>
     </block>
@@ -23,6 +24,9 @@
             class="nickname-input"
             placeholder="请输入昵称"
             value="{{editingNickNameValue}}"
+            maxlength="20"
+            cursor-spacing="24"
+            confirm-type="done"
             focus="true"
             bind:input="onNickNameInput"
             bind:blur="onNickNameConfirm"
@@ -35,7 +39,7 @@
       </view>
     </view>
   </view>
-  <view wx:if="{{userInfo && (!userInfo.avatarUrl || !userInfo.nickName)}}" class="user-tip">
+  <view wx:if="{{userInfo && (!userInfo.avatarUrl || !userInfo.nickName || userInfo.nickName === '微信用户' || userInfo.nickName === '微信昵称' || userInfo.nickName === '用户')}}" class="user-tip">
     请点击头像和昵称进行完善
   </view>
   

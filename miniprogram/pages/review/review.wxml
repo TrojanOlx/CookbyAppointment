@@ -56,6 +56,8 @@
                   placeholder="请输入您对这道菜的评价..." 
                   value="{{content}}"
                   bindinput="onContentInput"
+                  cursor-spacing="24"
+                  confirm-type="done"
                   maxlength="200"></textarea>
         <view class="comment-counter">{{content.length}}/200</view>
       </view>

@@ -1,4 +1,3 @@
-import { checkRateLimit } from '../core/auth';
 import { normalizeIngredientName, normalizeQuantity, parseQuantityText } from '../core/domain';
 import { ApiError, json, pagination, parseJsonField, readJson, requiredString } from '../core/http';
 import { userLifecycleLockScope, withOperationLock } from '../core/operationLock';
@@ -15,8 +14,15 @@ import {
   type PlatformAdminContext,
 } from '../core/platformAuth';
 import type { Env } from '../core/types';
+import {
+  assertUserUploadQuota,
+  checkUploadRateLimits,
+  IMAGE_TYPES,
+  MAX_UPLOAD_BYTES,
+  validateUploadFile,
+} from '../core/uploadSecurity';
+import { strictAmountText, strictHttpUrl, strictQuantity, strictText, strictTextArray, validateSearchText } from '../core/validation';
 
-const PLATFORM_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const PLATFORM_IDEMPOTENCY_SCOPE = '__platform__';
 const PLATFORM_ASSET_LOCK = 'platform-template-assets';
 const PLATFORM_INGREDIENT_LOCK = 'platform-ingredient-catalog';
@@ -146,8 +152,7 @@ interface NormalizedTemplateIngredient {
 
 function stringList(value: unknown, field: string, maxItems: number, maxLength: number): string[] {
   if (value === undefined || value === null || value === '') return [];
-  if (!Array.isArray(value)) throw new ApiError(400, 'VALIDATION_ERROR', `${field}格式错误`, { field });
-  return value.slice(0, maxItems).map(item => requiredString(item, field, maxLength));
+  return strictTextArray(value, field, maxItems, maxLength, { allowNewlines: field === '步骤' });
 }
 
 function integer(value: unknown, fallback: number, min = 0, max = 1_000_000): number {
@@ -204,7 +209,7 @@ async function listUsers(request: Request, env: Env): Promise<Response> {
   await requirePlatformAdmin(request, env);
   const url = new URL(request.url);
   const { page, pageSize, offset } = pagination(url);
-  const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, 80);
+  const keyword = validateSearchText(url.searchParams.get('keyword'));
   const status = url.searchParams.get('status');
   const conditions = ['1 = 1'];
   const bindings: unknown[] = [];
@@ -369,7 +374,7 @@ async function listFamilies(request: Request, env: Env): Promise<Response> {
   await requirePlatformAdmin(request, env);
   const url = new URL(request.url);
   const { page, pageSize, offset } = pagination(url);
-  const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, 80);
+  const keyword = validateSearchText(url.searchParams.get('keyword'));
   const status = url.searchParams.get('status');
   const conditions = ['1 = 1'];
   const bindings: unknown[] = [];
@@ -444,15 +449,17 @@ async function resolveCatalog(env: Env, name: string, requestedId?: unknown): Pr
 }
 
 async function normalizeTemplateIngredients(env: Env, value: unknown): Promise<NormalizedTemplateIngredient[]> {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 80) {
-    throw new ApiError(400, 'VALIDATION_ERROR', '模板需要 1 至 80 项食材');
+  if (!Array.isArray(value) || value.length < 1 || value.length > 50) {
+    throw new ApiError(400, 'VALIDATION_ERROR', '模板需要 1 至 50 项食材', { field: '食材', minItems: 1, maxItems: 50 });
   }
   const normalized: NormalizedTemplateIngredient[] = [];
   for (let index = 0; index < value.length; index += 1) {
     const input = value[index] as TemplateIngredientInput;
-    const name = requiredString(input.name, '食材名称', 80);
+    const name = strictText(input.name, '食材名称', 30, { required: true, meaningfulName: true });
     const ingredientId = await resolveCatalog(env, name, input.ingredientId);
-    const amount = typeof input.amount === 'string' ? input.amount.trim().slice(0, 100) : '';
+    const amount = input.amount === undefined || input.amount === null || input.amount === ''
+      ? ''
+      : strictAmountText(input.amount, '食材用量');
     let quantity: number | null = null;
     let unit: string | null = null;
     let legacyAmount: string | null = null;
@@ -462,11 +469,13 @@ async function normalizeTemplateIngredients(env: Env, value: unknown): Promise<N
       unit = parsed?.unit ?? null;
       legacyAmount = parsed ? null : amount;
     } else if (typeof input.quantity === 'number' && typeof input.unit === 'string') {
-      if (!normalizeQuantity(input.quantity, input.unit)) {
+      const structuredQuantity = strictQuantity(input.quantity, '食材数量');
+      const structuredUnit = strictText(input.unit, '单位', 10, { required: true });
+      if (!normalizeQuantity(structuredQuantity, structuredUnit)) {
         throw new ApiError(400, 'INVALID_QUANTITY', `${name}的数量单位无法换算`);
       }
-      quantity = input.quantity;
-      unit = input.unit.trim().slice(0, 20);
+      quantity = structuredQuantity;
+      unit = structuredUnit;
     } else {
       throw new ApiError(400, 'INVALID_QUANTITY', `${name}缺少用量`);
     }
@@ -498,8 +507,8 @@ async function listTemplates(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const { page, pageSize, offset } = pagination(url);
   const status = url.searchParams.get('status');
-  const type = (url.searchParams.get('type') || '').trim().slice(0, 40);
-  const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, 80);
+  const type = strictText(url.searchParams.get('type') || '', '菜品类型', 20);
+  const keyword = validateSearchText(url.searchParams.get('keyword'));
   const conditions = ['1 = 1'];
   const bindings: unknown[] = [];
   if (status === 'active' || status === 'archived') { conditions.push('status = ?'); bindings.push(status); }
@@ -531,9 +540,9 @@ async function getTemplate(request: Request, env: Env, templateId: string): Prom
 
 async function templateValues(env: Env, body: TemplateInput, current?: Record<string, unknown>) {
   const value = (key: keyof TemplateInput, fallback: unknown) => Object.prototype.hasOwnProperty.call(body, key) ? body[key] : fallback;
-  const name = requiredString(value('name', current?.name), '菜名', 80);
-  const type = requiredString(value('type', current?.type), '菜品类型', 40);
-  const spicy = requiredString(value('spicy', current?.spicy || '不辣'), '辣度', 20);
+  const name = strictText(value('name', current?.name), '菜名', 40, { required: true, meaningfulName: true });
+  const type = strictText(value('type', current?.type), '菜品类型', 20, { required: true });
+  const spicy = strictText(value('spicy', current?.spicy || '不辣'), '辣度', 10, { required: true });
   const rawImages = stringList(value('images', parseJsonField(current?.images, [])), '图片', 6, 1000);
   for (const image of rawImages) {
     if (!platformAssetIdFromUrl(image)) {
@@ -550,9 +559,9 @@ async function templateValues(env: Env, body: TemplateInput, current?: Record<st
   const ingredients = await normalizeTemplateIngredients(env, value('ingredients', undefined));
   return {
     name, type, spicy, images, steps, ingredients,
-    notice: typeof value('notice', current?.notice || '') === 'string' ? String(value('notice', current?.notice || '')).trim().slice(0, 1000) : '',
-    remark: typeof value('remark', current?.remark || '') === 'string' ? String(value('remark', current?.remark || '')).trim().slice(0, 1000) : '',
-    reference: typeof value('reference', current?.reference || '') === 'string' ? String(value('reference', current?.reference || '')).trim().slice(0, 1000) : '',
+    notice: strictText(value('notice', current?.notice || ''), '注意事项', 300, { allowNewlines: true }),
+    remark: strictText(value('remark', current?.remark || ''), '备注', 300, { allowNewlines: true }),
+    reference: strictHttpUrl(value('reference', current?.reference || '')),
     sortOrder: integer(value('sortOrder', current?.sortOrder || 0), 0),
   };
 }
@@ -689,15 +698,17 @@ async function setTemplateStatus(request: Request, env: Env, templateId: string,
 async function uploadTemplateAsset(request: Request, env: Env): Promise<Response> {
   const context = await requirePlatformAdmin(request, env);
   return withPlatformIdempotency(request, env, context, 'platform.template_asset.upload', async () => {
-    await checkRateLimit(env, `platform-file-upload:${context.user.id}`, 30, 60 * 60 * 1000);
-    const maxBytes = Math.min(5 * 1024 * 1024, Math.max(1024, Number(env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024)));
+    await checkUploadRateLimits(env, context.user.id);
     const contentLength = Number(request.headers.get('Content-Length') || '0');
-    if (contentLength > maxBytes + 64 * 1024) throw new ApiError(413, 'FILE_TOO_LARGE', '图片过大');
+    if (contentLength > MAX_UPLOAD_BYTES + 64 * 1024) throw new ApiError(413, 'FILE_TOO_LARGE', '图片不能超过5MB');
     const form = await request.formData();
     const file = form.get('file');
     if (!(file instanceof File)) throw new ApiError(400, 'FILE_REQUIRED', '请选择图片');
-    if (file.size > maxBytes) throw new ApiError(413, 'FILE_TOO_LARGE', '模板图片不能超过 5MB');
-    if (!PLATFORM_IMAGE_TYPES.has(file.type)) throw new ApiError(415, 'FILE_TYPE_NOT_ALLOWED', '仅支持 JPG、PNG 或 WebP 图片');
+    const fileNameValue = form.get('fileName');
+    const providedName = typeof fileNameValue === 'string' ? fileNameValue : undefined;
+    const { safeName } = await validateUploadFile(file, IMAGE_TYPES, providedName);
+    return withOperationLock(env, `user:${context.user.id}:upload-storage`, async () => {
+    await assertUserUploadQuota(env, context.user.id, file.size);
     const id = crypto.randomUUID();
     const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
     const objectKey = `platform/recipe-templates/${Date.now()}/${id}.${extension}`;
@@ -708,7 +719,7 @@ async function uploadTemplateAsset(request: Request, env: Env): Promise<Response
         env.DB.prepare(`
           INSERT INTO platform_files (id, objectKey, name, contentType, size, purpose, uploadedBy, createdAt)
           VALUES (?, ?, ?, ?, ?, 'recipe-template', ?, ?)
-        `).bind(id, objectKey, file.name || `${id}.${extension}`, file.type, file.size, context.user.id, now),
+        `).bind(id, objectKey, safeName || `${id}.${extension}`, file.type, file.size, context.user.id, now),
         platformAuditInsert(env, context, 'platform.template_asset.uploaded', 'platform_file', id, {
           size: file.size,
         }, now),
@@ -724,6 +735,7 @@ async function uploadTemplateAsset(request: Request, env: Env): Promise<Response
       contentType: file.type,
       size: file.size,
     }, 201);
+    });
   });
 }
 
@@ -763,8 +775,8 @@ async function listIngredients(request: Request, env: Env): Promise<Response> {
   await requirePlatformAdmin(request, env);
   const url = new URL(request.url);
   const { page, pageSize, offset } = pagination(url);
-  const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, 80);
-  const category = (url.searchParams.get('category') || '').trim().slice(0, 40);
+  const keyword = validateSearchText(url.searchParams.get('keyword'));
+  const category = strictText(url.searchParams.get('category') || '', '分类', 20);
   const conditions = ['1 = 1'];
   const bindings: unknown[] = [];
   if (keyword) {
@@ -806,16 +818,16 @@ async function listIngredients(request: Request, env: Env): Promise<Response> {
 function normalizeAliases(value: unknown, canonicalName: string): string[] {
   if (value === undefined) return [];
   if (!Array.isArray(value)) throw new ApiError(400, 'VALIDATION_ERROR', '食材别名格式错误');
+  if (value.length > 30) throw new ApiError(400, 'VALIDATION_ERROR', '食材别名最多30项', { field: '食材别名', maxItems: 30 });
   const canonical = normalizeIngredientName(canonicalName);
   const seen = new Set<string>([canonical]);
   const aliases: string[] = [];
   for (const item of value) {
-    const alias = requiredString(item, '食材别名', 80);
+    const alias = strictText(item, '食材别名', 30, { required: true, meaningfulName: true });
     const normalized = normalizeIngredientName(alias);
     if (!normalized || seen.has(normalized)) continue;
     seen.add(normalized);
     aliases.push(alias);
-    if (aliases.length >= 30) break;
   }
   return aliases;
 }
@@ -851,7 +863,7 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 function defaultUnit(value: unknown): string | null {
   if (value === undefined || value === null || value === '') return null;
-  const unit = requiredString(value, '默认单位', 20);
+  const unit = strictText(value, '默认单位', 10, { required: true });
   if (!normalizeQuantity(1, unit)) throw new ApiError(400, 'INVALID_QUANTITY', '默认单位不支持换算');
   return unit;
 }
@@ -861,8 +873,8 @@ async function createIngredient(request: Request, env: Env): Promise<Response> {
   return withPlatformIdempotency(request, env, context, 'platform.ingredient.create', () =>
     withOperationLock(env, PLATFORM_INGREDIENT_LOCK, async () => {
       const body = await readJson<{ canonicalName?: unknown; category?: unknown; defaultUnit?: unknown; aliases?: unknown }>(request);
-      const canonicalName = requiredString(body.canonicalName, '标准名称', 80);
-      const category = requiredString(body.category || '其他', '分类', 40);
+      const canonicalName = strictText(body.canonicalName, '标准名称', 30, { required: true, meaningfulName: true });
+      const category = strictText(body.category || '其他', '分类', 20, { required: true });
       const unit = defaultUnit(body.defaultUnit);
       const aliases = normalizeAliases(body.aliases, canonicalName);
       await assertIngredientNamesAvailable(env, canonicalName, aliases);
@@ -903,8 +915,8 @@ async function updateIngredient(request: Request, env: Env, ingredientId: string
     if (!Number.isFinite(expectedUpdatedAt) || expectedUpdatedAt !== Number(current.updatedAt)) {
       throw new ApiError(409, 'INGREDIENT_VERSION_CONFLICT', '食材目录已被更新，请刷新后重试', { currentUpdatedAt: current.updatedAt });
     }
-    const canonicalName = requiredString(body.canonicalName ?? current.canonicalName, '标准名称', 80);
-    const category = requiredString(body.category ?? current.category, '分类', 40);
+    const canonicalName = strictText(body.canonicalName ?? current.canonicalName, '标准名称', 30, { required: true, meaningfulName: true });
+    const category = strictText(body.category ?? current.category, '分类', 20, { required: true });
     const unit = Object.prototype.hasOwnProperty.call(body, 'defaultUnit') ? defaultUnit(body.defaultUnit) : (current.defaultUnit as string | null);
     const existingAliases = await env.DB.prepare('SELECT alias FROM ingredient_aliases WHERE ingredientId = ? ORDER BY alias')
       .bind(ingredientId).all<{ alias: string }>();
@@ -941,8 +953,8 @@ async function listAudit(request: Request, env: Env): Promise<Response> {
   await requirePlatformAdmin(request, env);
   const url = new URL(request.url);
   const { page, pageSize, offset } = pagination(url);
-  const action = (url.searchParams.get('action') || '').trim().slice(0, 100);
-  const actorUserId = (url.searchParams.get('actorUserId') || '').trim().slice(0, 100);
+  const action = strictText(url.searchParams.get('action') || '', '操作类型', 100);
+  const actorUserId = strictText(url.searchParams.get('actorUserId') || '', '操作者ID', 100);
   const from = Number(url.searchParams.get('from'));
   const to = Number(url.searchParams.get('to'));
   const conditions = ["ae.familyId IS NULL", "ae.action LIKE 'platform.%'"];

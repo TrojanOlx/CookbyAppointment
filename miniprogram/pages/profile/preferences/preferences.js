@@ -148,6 +148,10 @@ Page({
     const category = this.data.categories[categoryIndex];
     const tag = category && category.tags[tagIndex];
     if (!tag) return;
+    if (!tag.selected && category.tags.filter((item) => item.selected).length >= 20) {
+      wx.showToast({ title: '每类偏好最多选择20项', icon: 'none' });
+      return;
+    }
     preferencesEditRevision += 1;
     preferencesInputRevision += 1;
 
@@ -180,6 +184,10 @@ Page({
         [`categories[${categoryIndex}].customInput`]: '',
         dirty: true
       });
+      return;
+    }
+    if (category.tags.filter((tag) => tag.selected).length >= 20) {
+      wx.showToast({ title: '每类偏好最多选择20项', icon: 'none' });
       return;
     }
 

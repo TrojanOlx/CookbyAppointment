@@ -20,6 +20,8 @@ describe('miniprogram HTTP session behavior', () => {
       request: vi.fn(options => requests.push(options)),
       removeSavedFile: vi.fn(),
       getFileSystemManager: () => ({ accessSync: vi.fn() }),
+      showModal: vi.fn(),
+      switchTab: vi.fn(),
     });
     vi.stubGlobal('getApp', () => ({ globalData: { eventBus: { emit: vi.fn() } } }));
     vi.stubGlobal('getCurrentPages', () => [{ route: 'pages/index/index' }]);
@@ -105,6 +107,24 @@ describe('miniprogram HTTP session behavior', () => {
     await vi.waitFor(() => expect(requests).toHaveLength(3));
     requests[2].success({ statusCode: 200, data: { list: ['fresh'] }, header: {} });
     await expect(pending).resolves.toEqual({ list: ['fresh'] });
+  });
+
+  it('preserves the complete deep link when an expired session requires login', async () => {
+    vi.stubGlobal('getCurrentPages', () => [{
+      route: 'pages/menu/detail/detail',
+      options: { id: 'dish/1', familyId: 'family A' },
+    }]);
+    const http = await import('../../miniprogram/services/http');
+    const pending = http.get('/api/dish/detail', { id: 'dish/1' }, { cache: false });
+    requests[0].success({ statusCode: 401, data: { code: 'UNAUTHORIZED' }, header: {} });
+
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    requests[1].success({ statusCode: 401, data: { code: 'INVALID_CODE' }, header: {} });
+
+    await expect(pending).rejects.toMatchObject({ status: 401, code: 'UNAUTHORIZED' });
+    expect(storage.get('redirectUrl')).toBe(
+      '/pages/menu/detail/detail?id=dish%2F1&familyId=family%20A'
+    );
   });
 
   it('returns the structured error contract without logging response bodies', async () => {

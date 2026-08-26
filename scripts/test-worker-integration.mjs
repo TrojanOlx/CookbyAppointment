@@ -6,6 +6,10 @@ const config = 'cloudflareWorkes/wrangler.toml';
 const seed = 'cloudflareWorkes/test/fixtures/integration-seed.sql';
 const port = 8791;
 const origin = `http://127.0.0.1:${port}`;
+const validJpeg = Uint8Array.from([
+  0xff, 0xd8, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x00, 0x01, 0x00, 0x01,
+  0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00, 0xff, 0xd9,
+]);
 
 function run(command, args) {
   const result = spawnSync(command, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
@@ -23,11 +27,12 @@ async function api(path, token, familyId, init = {}) {
   return { status: response.status, data };
 }
 
-async function apiForm(path, token, form) {
+async function apiForm(path, token, form, familyId) {
   const headers = new Headers({
     Authorization: `Bearer ${token}`,
     'X-App-Version': '1.0.1-test',
   });
+  if (familyId) headers.set('X-Family-Id', familyId);
   const response = await fetch(`${origin}${path}`, { method: 'POST', headers, body: form });
   const data = await response.json();
   return { status: response.status, data };
@@ -170,6 +175,20 @@ try {
   const ownerFamilies = await api('/api/family/list', 'token-owner-a');
   assert(ownerFamilies.status === 200 && ownerFamilies.data.list.some(item => item.id === 'it-family-a'), 'owner family list failed', ownerFamilies);
 
+  const avatarForm = new FormData();
+  avatarForm.append('file', new File([validJpeg], 'avatar.jpg', { type: 'image/jpeg' }));
+  const zeroFamilyAvatar = await apiForm('/api/user/avatar', 'token-starter-owner', avatarForm);
+  const zeroFamilyProfile = await api('/api/user/info', 'token-starter-owner');
+  assert(
+    zeroFamilyAvatar.status === 200
+      && zeroFamilyAvatar.data.filePath?.startsWith('/api/user/avatar/file')
+      && zeroFamilyProfile.status === 200
+      && zeroFamilyProfile.data.profileComplete === true
+      && zeroFamilyProfile.data.missingProfileFields?.length === 0,
+    'a user without a family could not upload and retain a personal avatar',
+    { zeroFamilyAvatar, zeroFamilyProfile },
+  );
+
   const createdTemplateFamily = await api('/api/family/create', 'token-starter-owner', undefined, {
     method: 'POST', body: JSON.stringify({ name: '模板测试家庭' }),
   });
@@ -240,17 +259,22 @@ try {
   );
 
   const assetForm = new FormData();
-  assetForm.append('file', new File([new Uint8Array([255, 216, 255, 217])], 'template.jpg', { type: 'image/jpeg' }));
+  assetForm.append('file', new File([validJpeg], 'template.jpg', { type: 'image/jpeg' }));
   const uploadedTemplateAsset = await apiForm('/api/platform/template-assets', 'token-platform-admin', assetForm);
   const forbiddenAssetForm = new FormData();
-  forbiddenAssetForm.append('file', new File([new Uint8Array([255, 216, 255, 217])], 'forbidden.jpg', { type: 'image/jpeg' }));
+  forbiddenAssetForm.append('file', new File([validJpeg], 'forbidden.jpg', { type: 'image/jpeg' }));
   const forbiddenTemplateAsset = await apiForm('/api/platform/template-assets', 'token-owner-a', forbiddenAssetForm);
+  const forgedAssetForm = new FormData();
+  forgedAssetForm.append('file', new File([validJpeg], 'forged.png', { type: 'image/png' }));
+  const forgedTemplateAsset = await apiForm('/api/platform/template-assets', 'token-platform-admin', forgedAssetForm);
   assert(
     uploadedTemplateAsset.status === 201
       && uploadedTemplateAsset.data.filePath?.startsWith('/api/platform/template-assets/')
-      && forbiddenTemplateAsset.status === 403,
+      && forbiddenTemplateAsset.status === 403
+      && forgedTemplateAsset.status === 415
+      && forgedTemplateAsset.data.code === 'FILE_CONTENT_INVALID',
     'platform template asset upload permissions failed',
-    { uploadedTemplateAsset, forbiddenTemplateAsset },
+    { uploadedTemplateAsset, forbiddenTemplateAsset, forgedTemplateAsset },
   );
   const externalImageTemplate = await api('/api/platform/recipe-templates', 'token-platform-admin', undefined, {
     method: 'POST',
@@ -547,6 +571,72 @@ try {
 
   const crossDetail = await api('/api/inventory/detail?id=it-stock-b', 'token-owner-a', 'it-family-a');
   assert(crossDetail.status === 404, 'cross-family inventory detail leaked', crossDetail);
+
+  const familyImageForm = new FormData();
+  familyImageForm.append('file', new File([validJpeg], 'family-dish.jpg', { type: 'image/jpeg' }));
+  familyImageForm.append('purpose', 'dishes');
+  const uploadedFamilyImage = await apiForm('/api/file/upload', 'token-owner-b', familyImageForm, 'it-family-b');
+  const dishWithFamilyImage = await api('/api/dish/add', 'token-owner-b', 'it-family-b', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: '图片协作菜品', type: '家常菜', spicy: '不辣', images: [uploadedFamilyImage.data.filePath],
+      ingredients: [{ name: '鸡蛋', amount: '1个' }], steps: [],
+    }),
+  });
+  const retainedByAnotherChef = await api('/api/dish/update', 'token-shared', 'it-family-b', {
+    method: 'PUT',
+    body: JSON.stringify({
+      id: dishWithFamilyImage.data.id,
+      name: '图片协作菜品新版',
+      images: dishWithFamilyImage.data.images,
+      expectedUpdateTime: dishWithFamilyImage.data.updateTime,
+    }),
+  });
+  const deleteBoundImage = await api(
+    `/api/file/delete?id=${encodeURIComponent(uploadedFamilyImage.data.id)}`,
+    'token-owner-b',
+    'it-family-b',
+    { method: 'DELETE' },
+  );
+  const crossFamilyImageReference = await api('/api/dish/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: '跨家庭图片测试', type: '家常菜', spicy: '不辣', images: [uploadedFamilyImage.data.filePath],
+      ingredients: [{ name: '鸡蛋', amount: '1个' }], steps: [],
+    }),
+  });
+  const temporaryImageForm = new FormData();
+  temporaryImageForm.append('file', new File([validJpeg], 'unused.jpg', { type: 'image/jpeg' }));
+  temporaryImageForm.append('purpose', 'dishes');
+  const temporaryImage = await apiForm('/api/file/upload', 'token-owner-b', temporaryImageForm, 'it-family-b');
+  const deletedTemporaryImage = await api(
+    `/api/file/delete?id=${encodeURIComponent(temporaryImage.data.id)}`,
+    'token-owner-b',
+    'it-family-b',
+    { method: 'DELETE' },
+  );
+  assert(
+    uploadedFamilyImage.status === 201
+      && dishWithFamilyImage.status === 200
+      && retainedByAnotherChef.status === 200
+      && retainedByAnotherChef.data.images?.length === 1
+      && deleteBoundImage.status === 409
+      && deleteBoundImage.data.code === 'FILE_IN_USE'
+      && crossFamilyImageReference.status === 400
+      && crossFamilyImageReference.data.code === 'IMAGE_REFERENCE_INVALID'
+      && temporaryImage.status === 201
+      && deletedTemporaryImage.status === 200,
+    'family image ownership, binding, cleanup, or cross-family isolation failed',
+    {
+      uploadedFamilyImage,
+      dishWithFamilyImage,
+      retainedByAnotherChef,
+      deleteBoundImage,
+      crossFamilyImageReference,
+      temporaryImage,
+      deletedTemporaryImage,
+    },
+  );
 
   const concurrentProfileUpdates = await Promise.all([
     api('/api/user/info', 'token-member-a', undefined, {
@@ -1132,6 +1222,22 @@ try {
     'token-owner-a',
     'it-family-a',
   );
+  const emptyIngredientDish = await api('/api/dish/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({ name: '无食材推荐测试', type: '家常菜', spicy: '不辣', ingredients: [] }),
+  });
+  const zeroCoverageDish = await api('/api/dish/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: '零覆盖推荐测试', type: '家常菜', spicy: '不辣',
+      ingredients: [{ name: '推荐测试稀有食材', amount: '1个' }],
+    }),
+  });
+  const filteredRecommendations = await api(
+    '/api/dish/recommend?dinerIds=it-member-a&page=1&pageSize=50',
+    'token-owner-a',
+    'it-family-a',
+  );
   const dishARecommendation = (allRecommendations.data.list || []).find(item => item.id === 'it-dish-a');
   const crossFamilyRecommendations = await api(
     '/api/dish/recommend?page=1&pageSize=20',
@@ -1142,6 +1248,11 @@ try {
     allRecommendations.status === 200
       && dishARecommendation
       && !(dishARecommendation.expiring || []).some(item => !item.expiryDate || item.expiryDate < shanghaiToday)
+      && emptyIngredientDish.status === 200
+      && zeroCoverageDish.status === 200
+      && !(filteredRecommendations.data.list || []).some(item => (
+        item.id === emptyIngredientDish.data.id || item.id === zeroCoverageDish.data.id
+      ))
       && crossFamilyRecommendations.status === 403,
     'recommendation included expired/undated stock or crossed the family boundary',
     { dishARecommendation, crossFamilyRecommendations },
@@ -1155,11 +1266,12 @@ try {
     method: 'PUT', body: JSON.stringify({ name: '集成家庭A', timezone: 'Asia/Shanghai' }),
   });
   assert(
-    invalidTimezoneUpdate.status === 200
+    invalidTimezoneUpdate.status === 400
+      && invalidTimezoneUpdate.data.code === 'VALIDATION_ERROR'
       && invalidTimezoneInventory.status === 200
       && invalidTimezoneRecommendations.status === 200
       && timezoneRestore.status === 200,
-    'invalid family timezone crashed inventory or recommendation instead of using the fallback',
+    'invalid family timezone was accepted or corrupted subsequent reads',
     { invalidTimezoneUpdate, invalidTimezoneInventory, invalidTimezoneRecommendations, timezoneRestore },
   );
 

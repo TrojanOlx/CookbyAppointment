@@ -1,14 +1,21 @@
-import { checkRateLimit, requireFamilyContext, writeAudit } from '../core/auth';
+import { requireFamilyContext, writeAudit } from '../core/auth';
 import { ApiError, json, pagination, readJson } from '../core/http';
 import { withOperationLock } from '../core/operationLock';
 import type { Env, FamilyContext } from '../core/types';
+import {
+  assertFamilyUploadQuota,
+  checkUploadRateLimits,
+  DOCUMENT_TYPES,
+  FAMILY_FILE_PURPOSES,
+  IMAGE_TYPES,
+  MAX_UPLOAD_BYTES,
+  PENDING_IMAGE_PURPOSES,
+  PENDING_UPLOAD_TTL_MS,
+  validateUploadFile,
+} from '../core/uploadSecurity';
+import { createUserAssetUrl, userAssetIdFromUrl } from '../core/userAssets';
 
 const encoder = new TextEncoder();
-const ALLOWED_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-  'application/pdf', 'text/plain',
-]);
-
 function bytesToBase64Url(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
@@ -77,35 +84,50 @@ export async function createAbsoluteFileAccessUrl(
 }
 
 const IMAGE_REFERENCE_KEYS = new Set(['avatarUrl', 'userAvatar', 'dishImage', 'image', 'images']);
+const USER_AVATAR_KEYS = new Set(['avatarUrl', 'userAvatar']);
 
-function collectFileReferences(value: unknown, key: string | null, ids: Set<string>): void {
+function collectFileReferences(value: unknown, key: string | null, ids: Set<string>, userIds: Set<string>): void {
   if (typeof value === 'string') {
     if (key && IMAGE_REFERENCE_KEYS.has(key)) {
       const id = fileIdFromAccessUrl(value);
       if (id) ids.add(id);
+      if (USER_AVATAR_KEYS.has(key)) {
+        const userId = userAssetIdFromUrl(value);
+        if (userId) userIds.add(userId);
+      }
     }
     return;
   }
   if (Array.isArray(value)) {
-    for (const item of value) collectFileReferences(item, key, ids);
+    for (const item of value) collectFileReferences(item, key, ids, userIds);
     return;
   }
   if (!value || typeof value !== 'object') return;
   for (const [childKey, childValue] of Object.entries(value as Record<string, unknown>)) {
-    collectFileReferences(childValue, childKey, ids);
+    collectFileReferences(childValue, childKey, ids, userIds);
   }
 }
 
-function replaceFileReferences(value: unknown, key: string | null, urls: Map<string, string>): unknown {
+function replaceFileReferences(
+  value: unknown,
+  key: string | null,
+  urls: Map<string, string>,
+  userUrls: Map<string, string>,
+): unknown {
   if (typeof value === 'string') {
     if (!key || !IMAGE_REFERENCE_KEYS.has(key)) return value;
     const id = fileIdFromAccessUrl(value);
-    return id ? (urls.get(id) || '') : value;
+    if (id) return urls.get(id) || '';
+    if (USER_AVATAR_KEYS.has(key)) {
+      const userId = userAssetIdFromUrl(value);
+      if (userId) return userUrls.get(userId) || '';
+    }
+    return value;
   }
-  if (Array.isArray(value)) return value.map(item => replaceFileReferences(item, key, urls));
+  if (Array.isArray(value)) return value.map(item => replaceFileReferences(item, key, urls, userUrls));
   if (!value || typeof value !== 'object') return value;
   return Object.fromEntries(Object.entries(value as Record<string, unknown>)
-    .map(([childKey, childValue]) => [childKey, replaceFileReferences(childValue, childKey, urls)]));
+    .map(([childKey, childValue]) => [childKey, replaceFileReferences(childValue, childKey, urls, userUrls)]));
 }
 
 export async function decorateFamilyFileReferences(
@@ -121,8 +143,9 @@ export async function decorateFamilyFileReferences(
     return response;
   }
   const ids = new Set<string>();
-  collectFileReferences(data, null, ids);
-  if (!ids.size) return response;
+  const userIds = new Set<string>();
+  collectFileReferences(data, null, ids, userIds);
+  if (!ids.size && !userIds.size) return response;
 
   const context = await requireFamilyContext(request, env);
   const allowedIds = new Set<string>();
@@ -140,8 +163,19 @@ export async function decorateFamilyFileReferences(
   await Promise.all(Array.from(allowedIds).map(async id => {
     urls.set(id, await createAbsoluteFileAccessUrl(request, env, id, context.familyId));
   }));
+  const userUrls = new Map<string, string>();
+  if (userIds.size) {
+    const values = Array.from(userIds);
+    const placeholders = values.map(() => '?').join(',');
+    const userFiles = await env.DB.prepare(`
+      SELECT id FROM user_files WHERE deletedAt IS NULL AND id IN (${placeholders})
+    `).bind(...values).all<{ id: string }>();
+    await Promise.all(userFiles.results.map(async file => {
+      userUrls.set(file.id, await createUserAssetUrl(request, env, file.id));
+    }));
+  }
   const headers = new Headers(response.headers);
-  return new Response(JSON.stringify(replaceFileReferences(data, null, urls)), {
+  return new Response(JSON.stringify(replaceFileReferences(data, null, urls, userUrls)), {
     status: response.status,
     statusText: response.statusText,
     headers,
@@ -161,32 +195,38 @@ async function findFile(env: Env, context: FamilyContext, url: URL): Promise<Rec
 
 async function uploadFile(request: Request, env: Env): Promise<Response> {
   const context = await requireFamilyContext(request, env);
-  await checkRateLimit(env, `file-upload:${context.user.id}`, 30, 60 * 60 * 1000);
-  const maxBytes = Math.min(20 * 1024 * 1024, Math.max(1024, Number(env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024)));
+  await checkUploadRateLimits(env, context.user.id);
   const contentLength = Number(request.headers.get('Content-Length') || '0');
-  if (contentLength > maxBytes + 64 * 1024) throw new ApiError(413, 'FILE_TOO_LARGE', '文件过大');
+  if (contentLength > MAX_UPLOAD_BYTES + 64 * 1024) throw new ApiError(413, 'FILE_TOO_LARGE', '单个文件不能超过5MB');
   const form = await request.formData();
   const file = form.get('file');
   if (!(file instanceof File)) throw new ApiError(400, 'FILE_REQUIRED', '请选择文件');
-  if (file.size > maxBytes) throw new ApiError(413, 'FILE_TOO_LARGE', `单个文件不能超过${Math.floor(maxBytes / 1024 / 1024)}MB`);
-  if (!ALLOWED_TYPES.has(file.type)) throw new ApiError(415, 'FILE_TYPE_NOT_ALLOWED', '不支持该文件类型');
-  const quota = Math.max(maxBytes, Number(env.FAMILY_STORAGE_QUOTA_BYTES || 200 * 1024 * 1024));
-  return withOperationLock(env, `family:${context.familyId}:storage`, async () => {
-    const used = await env.DB.prepare('SELECT COALESCE(SUM(size), 0) AS used FROM family_files WHERE familyId = ? AND deletedAt IS NULL')
-      .bind(context.familyId).first<number>('used');
-    if ((used || 0) + file.size > quota) throw new ApiError(413, 'FAMILY_STORAGE_QUOTA', '家庭文件空间已用完');
-    const safeName = (file.name || 'file').replace(/[^a-zA-Z0-9._-]/g, '_').slice(-120);
+  const purposeValue = form.get('purpose');
+  const purpose = typeof purposeValue === 'string' ? purposeValue.trim() : 'default';
+  if (!FAMILY_FILE_PURPOSES.has(purpose)) throw new ApiError(400, 'FILE_PURPOSE_INVALID', '文件用途无效');
+  const allowedTypes = ['dishes', 'inventory', 'reviews', 'images'].includes(purpose)
+    ? IMAGE_TYPES
+    : purpose === 'documents' ? DOCUMENT_TYPES : new Set([...IMAGE_TYPES, ...DOCUMENT_TYPES]);
+  const fileNameValue = form.get('fileName');
+  const providedName = typeof fileNameValue === 'string' ? fileNameValue : undefined;
+  const { safeName } = await validateUploadFile(file, allowedTypes, providedName);
+  return withOperationLock(env, `user:${context.user.id}:upload-storage`, () =>
+    withOperationLock(env, `family:${context.familyId}:storage`, async () => {
+    await assertFamilyUploadQuota(env, context, file.size);
     const objectKey = `families/${context.familyId}/${Date.now()}/${crypto.randomUUID()}-${safeName}`;
     await env.FILE_BUCKET.put(objectKey, file.stream(), { httpMetadata: { contentType: file.type } });
     const id = crypto.randomUUID();
     const now = Date.now();
-    const purposeValue = form.get('purpose');
-    const purpose = typeof purposeValue === 'string' ? purposeValue.slice(0, 40) : 'general';
+    const pending = PENDING_IMAGE_PURPOSES.has(purpose);
     try {
       await env.DB.prepare(`
-        INSERT INTO family_files (id, familyId, objectKey, name, contentType, size, purpose, uploadedBy, createdAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(id, context.familyId, objectKey, file.name || safeName, file.type, file.size, purpose, context.user.id, now).run();
+        INSERT INTO family_files (
+          id, familyId, objectKey, name, contentType, size, purpose, uploadedBy, createdAt, attachedAt, expiresAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id, context.familyId, objectKey, safeName, file.type, file.size, purpose, context.user.id, now,
+        pending ? null : now, pending ? now + PENDING_UPLOAD_TTL_MS : null,
+      ).run();
     } catch (error) {
       await env.FILE_BUCKET.delete(objectKey);
       throw error;
@@ -198,7 +238,7 @@ async function uploadFile(request: Request, env: Env): Promise<Response> {
       id, name: file.name || safeName, contentType: file.type, size: file.size, purpose, createdAt: now,
       url: accessUrl, filePath,
     }, 201);
-  });
+    }));
 }
 
 async function fileInfo(request: Request, env: Env): Promise<Response> {
@@ -269,6 +309,9 @@ async function deleteOne(env: Env, context: FamilyContext, id: string): Promise<
   if (!file) return false;
   if (file.uploadedBy !== context.user.id && !['owner', 'admin'].includes(context.role)) {
     throw new ApiError(403, 'FILE_DELETE_FORBIDDEN', '只能删除自己上传的文件');
+  }
+  if (file.targetType || file.targetId) {
+    throw new ApiError(409, 'FILE_IN_USE', '文件正在被业务内容使用，请先从对应内容中移除');
   }
   await env.FILE_BUCKET.delete(String(file.objectKey));
   await env.DB.prepare('UPDATE family_files SET deletedAt = ? WHERE id = ? AND familyId = ?')

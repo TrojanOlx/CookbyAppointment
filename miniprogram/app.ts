@@ -3,13 +3,42 @@ import { hasUserAcceptedPrivacy } from './utils/privacy';
 import { isLoggedIn } from './utils/auth';
 import { eventBus } from './utils/eventBus';
 import { BASE_URL } from './services/http';
+import { UserService } from './services/userService';
 
-const CURRENT_MINIPROGRAM_VERSION = '1.0.1';
+const CURRENT_MINIPROGRAM_VERSION = '1.0.3';
 const VERSION_CHECK_INTERVAL = 5 * 60 * 1000;
+
+type ProfileField = 'nickName' | 'avatarUrl';
+
+const PROFILE_PLACEHOLDER_NAMES = ['微信用户', '微信昵称', '用户'];
+
+const getProfileCompletion = (userInfo: any): {
+  profileComplete: boolean;
+  missingProfileFields: ProfileField[];
+} => {
+  const nickName = typeof userInfo?.nickName === 'string' ? userInfo.nickName.trim() : '';
+  const avatarUrl = typeof userInfo?.avatarUrl === 'string' ? userInfo.avatarUrl.trim() : '';
+  const missingProfileFields: ProfileField[] = [];
+  if (!nickName || PROFILE_PLACEHOLDER_NAMES.includes(nickName)) missingProfileFields.push('nickName');
+  if (!avatarUrl || avatarUrl.startsWith('/images/')) missingProfileFields.push('avatarUrl');
+  return {
+    profileComplete: missingProfileFields.length === 0 && userInfo?.profileComplete !== false,
+    missingProfileFields
+  };
+};
+
+const getRuntimeMiniProgramVersion = (): string => {
+  try {
+    return String(wx.getAccountInfoSync().miniProgram.version || CURRENT_MINIPROGRAM_VERSION);
+  } catch {
+    return CURRENT_MINIPROGRAM_VERSION;
+  }
+};
 
 // 需要登录才能访问的页面路径（必须与 app.json 中注册的页面路径一致）
 const needLoginPages = [
   "pages/menu/add/add",
+  "pages/menu/detail/detail",
   "pages/menu/templates/templates",
   "pages/appointment/appointment",
   "pages/appointment/select/select",
@@ -54,7 +83,9 @@ App({
     eventBus: eventBus,
     updateManagerInitialized: false,
     versionCheckAt: 0,
-    promptedVersion: ''
+    promptedVersion: '',
+    profilePromptedKeys: {} as Record<string, boolean>,
+    profileColdStartCheckStarted: false
   },
   
   onLaunch() {
@@ -78,11 +109,67 @@ App({
     
     // 注册全局页面跳转拦截
     this.registerPageInterceptor();
+
+    // 只在本次小程序运行的首次冷启动检查一次。服务端资料是权威来源，
+    // 即使本地 userInfo 缺失或过期，也不能因此漏掉完善提醒。
+    if (hasUserAcceptedPrivacy() && isLoggedIn()) {
+      setTimeout(() => { void this.checkProfileCompletionOnColdStart(); }, 500);
+    }
   },
 
   onShow() {
     this.checkForAppUpdate();
     this.checkRemoteAppVersion();
+    if (hasUserAcceptedPrivacy() && isLoggedIn()) {
+      void this.checkProfileCompletionOnColdStart();
+    }
+  },
+
+  async checkProfileCompletionOnColdStart() {
+    if (this.globalData.profileColdStartCheckStarted) return;
+    this.globalData.profileColdStartCheckStarted = true;
+    const token = String(wx.getStorageSync('token') || '');
+    if (!token) return;
+    try {
+      const userInfo = await UserService.getUserInfo();
+      if (String(wx.getStorageSync('token') || '') !== token) return;
+      wx.setStorageSync('userInfo', userInfo);
+      this.promptProfileCompletion(userInfo, 'cold-start');
+    } catch (error) {
+      if (String(wx.getStorageSync('token') || '') === token) {
+        console.warn('冷启动校准用户资料失败:', error);
+      }
+    }
+  },
+
+  promptProfileCompletion(userInfo?: any, source: 'login' | 'cold-start' = 'cold-start') {
+    const token = String(wx.getStorageSync('token') || '');
+    if (!token) return;
+    const snapshot = userInfo || wx.getStorageSync('userInfo');
+    if (!snapshot || typeof snapshot !== 'object') return;
+    const completion = getProfileCompletion(snapshot);
+    if (completion.profileComplete) return;
+
+    const promptKey = `${source}:${token}`;
+    if (this.globalData.profilePromptedKeys[promptKey]) return;
+    this.globalData.profilePromptedKeys[promptKey] = true;
+
+    const labels = completion.missingProfileFields.map(field => field === 'avatarUrl' ? '头像' : '昵称');
+    wx.showModal({
+      title: '完善个人资料',
+      content: `请设置${labels.join('和')}，方便家庭成员识别你。`,
+      confirmText: '去完善',
+      cancelText: '稍后',
+      success: (res) => {
+        if (!res.confirm) return;
+        wx.setStorageSync('profile_focus', 'user-info');
+        wx.switchTab({ url: '/pages/profile/profile' });
+      },
+      fail: () => {
+        // 其他系统弹窗正在显示时重试，避免本次冷启动/登录被静默吞掉。
+        delete this.globalData.profilePromptedKeys[promptKey];
+      }
+    });
   },
 
   // 检查正式版小程序更新
@@ -134,9 +221,10 @@ App({
       method: 'GET',
       success: (res: any) => {
         const latestVersion = res.data && res.data.version;
+        const currentVersion = getRuntimeMiniProgramVersion();
         if (
           typeof latestVersion !== 'string' ||
-          !this.isVersionNewer(latestVersion, CURRENT_MINIPROGRAM_VERSION) ||
+          !this.isVersionNewer(latestVersion, currentVersion) ||
           this.globalData.promptedVersion === latestVersion
         ) {
           return;

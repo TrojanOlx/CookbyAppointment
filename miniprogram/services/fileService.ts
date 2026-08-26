@@ -2,24 +2,266 @@
 import { get, post, del, upload } from './http';
 import { FileInfo, FileListResponse, FileUploadResponse, FileOperationResponse, BatchDeleteResponse } from '../models/file';
 
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const MAX_IMAGE_DIMENSION = 8192;
+export const MAX_IMAGE_PIXELS = 25_000_000;
+export const MAX_UPLOAD_CONCURRENCY = 3;
+
+export interface UploadFailure {
+  filePath: string;
+  error: string;
+}
+
+export interface BatchUploadResult {
+  files: FileInfo[];
+  failures: UploadFailure[];
+}
+
+export type ImageKind = 'jpeg' | 'png' | 'webp';
+
+export interface ImagePreflightResult {
+  valid: boolean;
+  error?: string;
+  size?: number;
+  width?: number;
+  height?: number;
+  imageType?: ImageKind;
+}
+
+const IMAGE_PURPOSES = new Set(['dishes', 'inventory', 'reviews', 'images']);
+const DOCUMENT_PURPOSES = new Set(['documents']);
+const FILE_PURPOSES = new Set(['dishes', 'inventory', 'reviews', 'images', 'documents', 'files', 'default']);
+const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+type UploadTask = {
+  run: () => Promise<FileUploadResponse>;
+  resolve: (value: FileUploadResponse) => void;
+  reject: (reason?: unknown) => void;
+};
+
 // 文件服务类
 export class FileService {
+  private static activeUploads = 0;
+  private static uploadQueue: UploadTask[] = [];
+
+  private static enqueueUpload(task: () => Promise<FileUploadResponse>): Promise<FileUploadResponse> {
+    return new Promise<FileUploadResponse>((resolve, reject) => {
+      this.uploadQueue.push({ run: task, resolve, reject });
+      this.drainUploadQueue();
+    });
+  }
+
+  private static drainUploadQueue(): void {
+    while (this.activeUploads < MAX_UPLOAD_CONCURRENCY && this.uploadQueue.length > 0) {
+      const task = this.uploadQueue.shift();
+      if (!task) return;
+      this.activeUploads += 1;
+      task.run().then(
+        value => task.resolve(value),
+        error => task.reject(error)
+      ).then(() => {
+        this.activeUploads -= 1;
+        this.drainUploadQueue();
+      });
+    }
+  }
+
+  private static isRemoteReference(filePath: string): boolean {
+    return /^https?:\/\//i.test(filePath) || filePath.startsWith('/api/file/download');
+  }
+
+  private static fileExtension(filePath: string): string {
+    const path = String(filePath || '').split(/[?#]/, 1)[0];
+    const match = path.match(/\.([a-zA-Z0-9]{1,8})$/);
+    return match ? match[1].toLowerCase() : '';
+  }
+
+  private static imageKindForExtension(extension: string): ImageKind | null {
+    if (extension === 'jpg' || extension === 'jpeg') return 'jpeg';
+    if (extension === 'png') return 'png';
+    if (extension === 'webp') return 'webp';
+    return null;
+  }
+
+  private static imageExtensionForKind(imageType: ImageKind): string {
+    return imageType === 'jpeg' ? 'jpg' : imageType;
+  }
+
+  private static normalizeImageFileName(fileName: string, imageType: ImageKind): string {
+    const name = String(fileName || '').trim() || 'file';
+    const extension = this.imageExtensionForKind(imageType);
+    const existingExtension = this.fileExtension(name);
+    if (!existingExtension) return `${name}.${extension}`;
+    return `${name.slice(0, -(existingExtension.length + 1))}.${extension}`;
+  }
+
+  private static async getLocalFileSize(filePath: string): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+      wx.getFileSystemManager().getFileInfo({
+        filePath,
+        success: result => resolve(Number(result.size || 0)),
+        fail: error => reject(new Error(error.errMsg || '无法读取文件大小'))
+      });
+    });
+  }
+
+  private static async readFilePrefix(filePath: string, length = 64): Promise<Uint8Array> {
+    return new Promise<Uint8Array>((resolve, reject) => {
+      wx.getFileSystemManager().readFile({
+        filePath,
+        position: 0,
+        length,
+        success: result => {
+          if (typeof result.data === 'string') {
+            reject(new Error('无法读取图片二进制内容'));
+            return;
+          }
+          resolve(new Uint8Array(result.data));
+        },
+        fail: error => reject(new Error(error.errMsg || '无法读取图片内容'))
+      });
+    });
+  }
+
+  private static hasBytes(bytes: Uint8Array, expected: number[], offset = 0): boolean {
+    return expected.every((value, index) => bytes[offset + index] === value);
+  }
+
+  private static detectImageMagic(bytes: Uint8Array): 'jpeg' | 'png' | 'webp' | null {
+    if (this.hasBytes(bytes, [0xff, 0xd8, 0xff])) return 'jpeg';
+    if (this.hasBytes(bytes, [137, 80, 78, 71, 13, 10, 26, 10])) return 'png';
+    if (this.hasBytes(bytes, [82, 73, 70, 70]) && this.hasBytes(bytes, [87, 69, 66, 80], 8)) return 'webp';
+    return null;
+  }
+
+  private static async preflightLocalImage(filePath: string): Promise<ImagePreflightResult> {
+    try {
+      const size = await this.getLocalFileSize(filePath);
+      if (!size || size > MAX_UPLOAD_BYTES) {
+        return { valid: false, error: '图片不能超过5MB', size };
+      }
+
+      const magic = this.detectImageMagic(await this.readFilePrefix(filePath, Math.min(64, size)));
+      if (!magic) return { valid: false, error: '图片格式无法识别，仅支持 JPG、PNG 或 WebP 图片', size };
+      const extension = this.fileExtension(filePath);
+      const expectedMagic = this.imageKindForExtension(extension);
+      if (extension && !expectedMagic) return { valid: false, error: '仅支持 JPG、PNG 或 WebP 图片', size };
+      if (expectedMagic && magic !== expectedMagic) return { valid: false, error: '图片格式与文件内容不一致', size };
+
+      const imageInfo = await new Promise<WechatMiniprogram.GetImageInfoSuccessCallbackResult>((resolve, reject) => {
+        wx.getImageInfo({
+          src: filePath,
+          success: resolve,
+          fail: error => reject(new Error(error.errMsg || '无法读取图片尺寸'))
+        });
+      });
+      const width = Number(imageInfo.width || 0);
+      const height = Number(imageInfo.height || 0);
+      if (!width || !height) return { valid: false, error: '无法读取图片尺寸', size };
+      if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION || width * height > MAX_IMAGE_PIXELS) {
+        return {
+          valid: false,
+          error: '图片尺寸过大，最长边不能超过8192像素且总像素不能超过2500万',
+          size,
+          width,
+          height
+        };
+      }
+      return { valid: true, size, width, height, imageType: magic };
+    } catch (error) {
+      return { valid: false, error: error instanceof Error ? error.message : '图片检查失败' };
+    }
+  }
+
+  /** 选择图片后先做本地预检，避免无效临时文件进入页面状态。 */
+  static async preflightImages(filePaths: string[]): Promise<{ valid: string[]; failures: UploadFailure[] }> {
+    const checks = await Promise.all(filePaths.map(async filePath => ({
+      filePath,
+      result: await this.preflightLocalImage(filePath)
+    })));
+    return checks.reduce<{ valid: string[]; failures: UploadFailure[] }>((result, item) => {
+      if (item.result.valid) result.valid.push(item.filePath);
+      else result.failures.push({ filePath: item.filePath, error: item.result.error || '图片检查失败' });
+      return result;
+    }, { valid: [], failures: [] });
+  }
+
+  private static async preflightFile(filePath: string, folder: string): Promise<{ valid: boolean; error?: string; imageType?: ImageKind }> {
+    if (!FILE_PURPOSES.has(folder)) return { valid: false, error: '文件用途无效' };
+    if (!filePath) return { valid: false, error: '请选择文件' };
+    if (this.isRemoteReference(filePath)) return { valid: true };
+
+    if (IMAGE_PURPOSES.has(folder)) {
+      const result = await this.preflightLocalImage(filePath);
+      return { valid: result.valid, error: result.error, imageType: result.imageType };
+    }
+
+    try {
+      const size = await this.getLocalFileSize(filePath);
+      if (!size || size > MAX_UPLOAD_BYTES) return { valid: false, error: '文件不能超过5MB' };
+      const fileType = this.guessFileTypeByName(filePath);
+      const isDocument = DOCUMENT_PURPOSES.has(folder);
+      if (!isDocument && SUPPORTED_IMAGE_TYPES.has(fileType)) {
+        const imageResult = await this.preflightLocalImage(filePath);
+        return { valid: imageResult.valid, error: imageResult.error, imageType: imageResult.imageType };
+      }
+      const allowed = isDocument
+        ? fileType === 'application/pdf' || fileType === 'text/plain'
+        : SUPPORTED_IMAGE_TYPES.has(fileType) || fileType === 'application/pdf' || fileType === 'text/plain';
+      return allowed ? { valid: true } : { valid: false, error: '仅支持 JPG、PNG、WebP、PDF 或纯文本文件' };
+    } catch (error) {
+      return { valid: false, error: error instanceof Error ? error.message : '文件检查失败' };
+    }
+  }
+
   // 上传文件
   static async uploadFile(filePath: string, folder: string = 'default', fileName?: string): Promise<FileUploadResponse> {
     const resolvedName = fileName || filePath.split('/').pop() || 'file';
-    try {
-      const result = await upload<any>('/api/file/upload', filePath, {
-        purpose: folder,
-        fileName: resolvedName
-      });
-      if (!result || result.error) {
-        return { success: false, error: result?.message || result?.error || '上传失败' };
+    const preflight = await this.preflightFile(filePath, folder);
+    if (!preflight.valid) return { success: false, error: preflight.error || '文件检查失败' };
+    const uploadName = preflight.imageType
+      ? this.normalizeImageFileName(resolvedName, preflight.imageType)
+      : resolvedName;
+    return this.enqueueUpload(async () => {
+      try {
+        const result = await upload<any>('/api/file/upload', filePath, {
+          purpose: folder,
+          fileName: uploadName
+        });
+        if (!result || result.error) {
+          return { success: false, error: result?.message || result?.error || '上传失败' };
+        }
+        return { success: true, data: this.normalizeFile(result) };
+      } catch (error) {
+        console.error('上传文件失败:', error);
+        return { success: false, error: error instanceof Error ? error.message : '上传失败' };
       }
-      return { success: true, data: this.normalizeFile(result) };
-    } catch (error) {
-      console.error('上传文件失败:', error);
-      return { success: false, error: error instanceof Error ? error.message : '上传失败' };
-    }
+    });
+  }
+
+  /** 批量上传，统一限制并发为3，并保留每个失败项供页面提示。 */
+  static async uploadFiles(filePaths: string[], folder: string = 'default', fileNames: Array<string | undefined> = []): Promise<BatchUploadResult> {
+    const results = await Promise.all(filePaths.map((filePath, index) => this.uploadFile(filePath, folder, fileNames[index])));
+    return results.reduce<BatchUploadResult>((result, item, index) => {
+      if (item.success && item.data) result.files.push(item.data);
+      else result.failures.push({ filePath: filePaths[index], error: item.error || '上传失败' });
+      return result;
+    }, { files: [], failures: [] });
+  }
+
+  /** 获取与图片实际内容匹配的安全文件名，供非家庭上传接口复用。 */
+  static async getSafeImageFileName(filePath: string, fileName?: string): Promise<string> {
+    const result = await this.preflightLocalImage(filePath);
+    if (!result.valid || !result.imageType) throw new Error(result.error || '图片检查失败');
+    return this.normalizeImageFileName(fileName || filePath.split('/').pop() || 'file', result.imageType);
+  }
+
+  /** 删除本次上传但尚未绑定业务记录的文件，失败时留给服务端定时清理。 */
+  static async cleanupUploadedFiles(files: FileInfo[]): Promise<void> {
+    const ids = Array.from(new Set(files
+      .map(file => this.extractFileId(file.filePath || file.url))
+      .filter((id): id is string => Boolean(id))));
+    await Promise.all(ids.map(id => this.deleteFile(`/api/file/download?id=${encodeURIComponent(id)}`)));
   }
   
   // 获取文件信息
@@ -171,40 +413,39 @@ export class FileService {
   static async uploadImage(folder: string = 'images', count: number = 1, 
                          sizeType: ('original' | 'compressed')[] = ['compressed'], 
                          sourceType: ('album' | 'camera')[] = ['album', 'camera']): Promise<FileInfo[]> {
-    return new Promise<FileInfo[]>((resolve) => {
+    const result = await this.uploadImageWithResult(folder, count, sizeType, sourceType);
+    return result.files;
+  }
+
+  static async uploadImageWithResult(folder: string = 'images', count: number = 1,
+                                     sizeType: ('original' | 'compressed')[] = ['compressed'],
+                                     sourceType: ('album' | 'camera')[] = ['album', 'camera']): Promise<BatchUploadResult> {
+    return new Promise<BatchUploadResult>((resolve) => {
       wx.chooseImage({
         count,
         sizeType,
         sourceType,
         success: async (chooseRes) => {
           try {
-            // 上传图片
-            const uploadPromises = chooseRes.tempFilePaths.map(path => 
-              this.uploadFile(path, folder)
-            );
-            
-            const results = await Promise.all(uploadPromises);
-            
-            // 过滤并返回成功上传的图片信息
-            const successFiles = results
-              .filter(res => res.success && res.data)
-              .map(res => {
-                const fileInfo = res.data as FileInfo;
-                // 确保文件类型存在，图片默认为image/jpeg
-                if (!fileInfo.fileType) {
-                  fileInfo.fileType = this.guessFileTypeByName(fileInfo.fileName);
-                }
-                return fileInfo;
-              });
-              
-            resolve(successFiles);
+            const preflight = await this.preflightImages(chooseRes.tempFilePaths);
+            const uploaded = await this.uploadFiles(preflight.valid, folder);
+            resolve({
+              files: uploaded.files.map(file => ({
+                ...file,
+                fileType: file.fileType || this.guessFileTypeByName(file.fileName)
+              })),
+              failures: preflight.failures.concat(uploaded.failures)
+            });
           } catch (error) {
             console.error('处理上传结果失败:', error);
-            resolve([]);
+            resolve({
+              files: [],
+              failures: chooseRes.tempFilePaths.map(filePath => ({ filePath, error: '图片处理失败' }))
+            });
           }
         },
         fail: () => {
-          resolve([]);
+          resolve({ files: [], failures: [] });
         }
       });
     });
@@ -250,9 +491,9 @@ export class FileService {
     if (fileType.startsWith('image/')) {
       return 'images';
     } else if (fileType.startsWith('video/')) {
-      return 'videos';
+      return 'files';
     } else if (fileType.startsWith('audio/')) {
-      return 'audios';
+      return 'files';
     } else if (fileType.includes('pdf') || fileType.includes('document') || fileType.includes('sheet')) {
       return 'documents';
     } else {

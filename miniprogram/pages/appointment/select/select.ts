@@ -5,6 +5,7 @@ import { DishService } from '../../../services/dishService';
 import { showError, showSuccess, showToast, showLoading, hideLoading } from '../../../utils/util';
 import { requestSubscribeForUser } from '../../../services/notificationService';
 import { ImageCacheService } from '../../../utils/imageCache';
+import { createAppShareContent } from '../../../utils/share';
 const { FamilyService } = require('../../../services/family');
 
 // 每页加载的菜品数量
@@ -620,9 +621,6 @@ Page({
   
   // 页面分享功能
   onShareAppMessage() {
-    return {
-      title: '家庭菜单预约 - 让美食规划更简单',
-      path: '/pages/index/index'
-    };
+    return createAppShareContent();
   }
 }); 

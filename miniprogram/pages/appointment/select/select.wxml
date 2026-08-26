@@ -41,6 +41,7 @@
           class="search-input" 
           placeholder="搜索菜品名称或食材" 
           value="{{searchKeyword}}" 
+          maxlength="80"
           cursor-spacing="16"
           confirm-type="search"
           confirm-hold="{{false}}"

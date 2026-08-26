@@ -5,7 +5,7 @@
       <view class="section-title">基本信息</view>
       <view class="form-item">
         <view class="form-label">菜品名称</view>
-        <input class="form-input" name="name" placeholder="请输入菜品名称" value="{{dish.name}}" />
+        <input class="form-input" name="name" placeholder="请输入菜品名称" value="{{dish.name}}" maxlength="40" cursor-spacing="24" confirm-type="next" />
       </view>
 
       <view class="form-item">
@@ -52,8 +52,8 @@
       <view class="ingredients-list">
         <block wx:for="{{dish.ingredients}}" wx:key="id">
           <view class="ingredient-item">
-            <input class="ingredient-name" placeholder="食材名称" value="{{item.name}}" bindinput="ingredientNameInput" data-index="{{index}}" />
-            <input class="ingredient-amount" placeholder="数量" value="{{item.amount}}" bindinput="ingredientAmountInput" data-index="{{index}}" />
+            <input class="ingredient-name" placeholder="食材名称" value="{{item.name}}" maxlength="30" cursor-spacing="24" confirm-type="next" bindinput="ingredientNameInput" data-index="{{index}}" />
+            <input class="ingredient-amount" placeholder="数量" value="{{item.amount}}" maxlength="20" cursor-spacing="24" confirm-type="done" bindinput="ingredientAmountInput" data-index="{{index}}" />
             <view class="delete-ingredient" bindtap="deleteIngredient" data-index="{{index}}">×</view>
           </view>
         </block>
@@ -71,7 +71,7 @@
         <block wx:for="{{dish.steps}}" wx:key="index">
           <view class="step-item">
             <view class="step-number">{{index + 1}}</view>
-            <textarea class="step-content" placeholder="请输入步骤详情" value="{{item}}" bindinput="stepInput" data-index="{{index}}"></textarea>
+            <textarea class="step-content" placeholder="请输入步骤详情" value="{{item}}" maxlength="500" cursor-spacing="24" confirm-type="done" bindinput="stepInput" data-index="{{index}}"></textarea>
             <view class="delete-step" bindtap="deleteStep" data-index="{{index}}">×</view>
           </view>
         </block>
@@ -87,17 +87,17 @@
       <view class="section-title">额外信息</view>
       <view class="form-item">
         <view class="form-label">注意事项</view>
-        <textarea class="form-textarea" name="notice" placeholder="请输入注意事项" value="{{dish.notice}}"></textarea>
+        <textarea class="form-textarea" name="notice" placeholder="请输入注意事项" value="{{dish.notice}}" maxlength="300" cursor-spacing="24" confirm-type="done"></textarea>
       </view>
 
       <view class="form-item">
         <view class="form-label">备注</view>
-        <textarea class="form-textarea" name="remark" placeholder="请输入备注" value="{{dish.remark}}"></textarea>
+        <textarea class="form-textarea" name="remark" placeholder="请输入备注" value="{{dish.remark}}" maxlength="300" cursor-spacing="24" confirm-type="done"></textarea>
       </view>
 
       <view class="form-item">
         <view class="form-label">参考链接</view>
-        <input class="form-input" name="reference" placeholder="请输入参考链接" value="{{dish.reference}}" />
+        <input class="form-input" name="reference" placeholder="请输入参考链接" value="{{dish.reference}}" maxlength="300" cursor-spacing="24" confirm-type="done" />
       </view>
     </view>
 

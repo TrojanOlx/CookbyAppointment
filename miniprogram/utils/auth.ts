@@ -27,6 +27,8 @@ export interface LoginResult {
   openid: string;
   unionid?: string;
   token: string;
+  profileComplete?: boolean;
+  missingProfileFields?: Array<'nickName' | 'avatarUrl'>;
 }
 
 // 用户信息接口

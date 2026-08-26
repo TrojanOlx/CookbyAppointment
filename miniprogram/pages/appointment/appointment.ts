@@ -4,6 +4,7 @@ import { AppointmentService } from '../../services/appointmentService';
 import { getCurrentDate, showConfirm, showSuccess, showLoading, hideLoading, showToast } from '../../utils/util';
 import { requestSubscribeForUser } from '../../services/notificationService';
 import { ImageCacheService } from '../../utils/imageCache';
+import { createAppShareContent } from '../../utils/share';
 const { FamilyService } = require('../../services/family');
 const { getFamilyRoleContext } = require('../../services/familyRole');
 // 引入wx-calendar和农历插件
@@ -720,5 +721,9 @@ Page({
       if (this.data.pendingActionId === actionId) this.setData({ pendingActionId: '', isLoading: false });
       hideLoading();
     }
+  },
+
+  onShareAppMessage() {
+    return createAppShareContent();
   }
 });

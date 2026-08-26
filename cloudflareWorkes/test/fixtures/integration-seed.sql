@@ -206,5 +206,5 @@ VALUES (
 INSERT OR REPLACE INTO operation_locks (scope, token, expiresAt)
 VALUES (
   'family:it-family-b:shopping', 'it-shopping-lock',
-  CAST(unixepoch('now') AS INTEGER) * 1000 + 60000
+  CAST(unixepoch('now') AS INTEGER) * 1000 + 600000
 );

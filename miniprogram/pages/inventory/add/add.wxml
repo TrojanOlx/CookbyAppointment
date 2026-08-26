@@ -19,12 +19,12 @@
 
       <view class="form-item">
         <view class="form-label required">食材名称</view>
-        <input class="form-input" name="name" placeholder="请输入食材名称" value="{{item.name}}" cursor-spacing="24" confirm-type="next" />
+        <input class="form-input" name="name" placeholder="请输入食材名称" value="{{item.name}}" maxlength="30" cursor-spacing="24" confirm-type="next" />
       </view>
 
       <view class="form-item">
         <view class="form-label required">数量/重量</view>
-        <input class="form-input" name="amount" placeholder="如: 500g、2个" value="{{item.amount}}" cursor-spacing="24" confirm-type="done" />
+        <input class="form-input" name="amount" placeholder="如: 500g、2个" value="{{item.amount}}" maxlength="20" cursor-spacing="24" confirm-type="done" />
       </view>
     </view>
 

@@ -7,6 +7,7 @@ import type { Env, FamilyContext } from '../core/types';
 import { withFamilyInventoryLock } from './inventoryV2Handler';
 import { recalculateFamilyShoppingWithinLock, withFamilyShoppingLock } from './shoppingV2Handler';
 import { notifyFamilyAppointment } from './notificationV2Handler';
+import { strictQuantity, strictText } from '../core/validation';
 
 interface AppointmentInput {
   id?: unknown;
@@ -161,9 +162,9 @@ async function createAppointment(request: Request, env: Env): Promise<Response> 
   }
   const id = crypto.randomUUID();
   const now = Date.now();
-  const date = requiredString(body.date, '用餐日期', 20);
-  const mealType = requiredString(body.mealType, '餐次', 20);
-  const remarks = typeof body.remarks === 'string' ? body.remarks.slice(0, 1000) : '';
+  const date = strictText(body.date, '用餐日期', 10, { required: true });
+  const mealType = strictText(body.mealType, '餐次', 20, { required: true });
+  const remarks = strictText(body.remarks, '预约备注', 300, { allowNewlines: true });
   const relations = await appointmentRelationStatements(env, id, dishIds, dinerIds, now);
   await env.DB.batch([env.DB.prepare(`
     INSERT INTO appointments (
@@ -321,9 +322,9 @@ async function updateAppointment(request: Request, env: Env): Promise<Response> 
         UPDATE appointments SET date = ?, mealType = ?, remarks = ?, preferenceWarnings = ?, warningsAcknowledged = ?, updateTime = ?
         WHERE id = ? AND familyId = ? AND status = ? AND updateTime = ?
       `).bind(
-        body.date === undefined ? current.date : requiredString(body.date, '用餐日期', 20),
-        body.mealType === undefined ? current.mealType : requiredString(body.mealType, '餐次', 20),
-        body.remarks === undefined ? current.remarks : typeof body.remarks === 'string' ? body.remarks.slice(0, 1000) : '',
+        body.date === undefined ? current.date : strictText(body.date, '用餐日期', 10, { required: true }),
+        body.mealType === undefined ? current.mealType : strictText(body.mealType, '餐次', 20, { required: true }),
+        body.remarks === undefined ? current.remarks : strictText(body.remarks, '预约备注', 300, { allowNewlines: true }),
         JSON.stringify(preferencePreview.warnings), preferencePreview.warnings.length ? 1 : 0,
         now, id, context.familyId, current.status, expectedUpdateTime,
       ),
@@ -547,9 +548,7 @@ async function completeAppointment(request: Request, env: Env): Promise<Response
           if (!entry || typeof entry !== 'object') throw new ApiError(400, 'VALIDATION_ERROR', '库存扣减项无效');
           const deduction = entry as { id?: unknown; quantity?: unknown };
           const inventoryId = requiredString(deduction.id, '库存ID');
-          const quantity = typeof deduction.quantity === 'number' && Number.isFinite(deduction.quantity) && deduction.quantity >= 0
-            ? deduction.quantity : null;
-          if (quantity === null) throw new ApiError(400, 'INVALID_QUANTITY', '扣减数量无效');
+          const quantity = strictQuantity(deduction.quantity, '扣减数量');
           requestedById.set(inventoryId, (requestedById.get(inventoryId) || 0) + quantity);
         }
         const requested = Array.from(requestedById, ([inventoryId, quantity]) => ({ id: inventoryId, quantity }));

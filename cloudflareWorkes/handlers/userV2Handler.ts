@@ -1,7 +1,15 @@
-import { checkRateLimit, generateSecret, requireAuth, requireFamilyContext, sha256Hex, writeAudit } from '../core/auth';
+import { checkRateLimit, generateSecret, requireAuth, requireFamilyContext, sha256Hex } from '../core/auth';
 import { ApiError, json, readJson, requiredString } from '../core/http';
 import { userLifecycleLockScope, withOperationLock } from '../core/operationLock';
 import type { Env } from '../core/types';
+import { assertUserUploadQuota, checkUploadRateLimits, IMAGE_TYPES, validateUploadFile } from '../core/uploadSecurity';
+import { profileCompleteness, strictNickname, strictText } from '../core/validation';
+import {
+  createStableUserAssetPath,
+  createUserAssetUrl,
+  downloadUserAsset,
+  userAssetIdFromUrl,
+} from '../core/userAssets';
 import {
   createAbsoluteFileAccessUrl,
   createStableFilePath,
@@ -12,6 +20,12 @@ const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function avatarForResponse(request: Request, env: Env, userId: string, value: unknown): Promise<string> {
   if (typeof value !== 'string' || !value) return '';
+  const userFileId = userAssetIdFromUrl(value);
+  if (userFileId) {
+    const owned = await env.DB.prepare('SELECT id FROM user_files WHERE id = ? AND userId = ? AND deletedAt IS NULL')
+      .bind(userFileId, userId).first<{ id: string }>();
+    return owned ? createUserAssetUrl(request, env, owned.id) : '';
+  }
   const fileId = fileIdFromAccessUrl(value);
   if (!fileId) return value;
   const file = await env.DB.prepare(`
@@ -25,6 +39,13 @@ async function avatarForResponse(request: Request, env: Env, userId: string, val
 async function avatarForStorage(env: Env, userId: string, value: string): Promise<string> {
   const trimmed = value.trim();
   if (!trimmed) return '';
+  const userFileId = userAssetIdFromUrl(trimmed);
+  if (userFileId) {
+    const owned = await env.DB.prepare('SELECT 1 FROM user_files WHERE id = ? AND userId = ? AND deletedAt IS NULL')
+      .bind(userFileId, userId).first();
+    if (!owned) throw new ApiError(403, 'AVATAR_FILE_FORBIDDEN', '头像文件不属于当前用户');
+    return createStableUserAssetPath(userFileId);
+  }
   const fileId = fileIdFromAccessUrl(trimmed);
   if (fileId) {
     const owned = await env.DB.prepare(`
@@ -40,7 +61,7 @@ async function avatarForStorage(env: Env, userId: string, value: string): Promis
     throw new ApiError(400, 'AVATAR_URL_INVALID', '头像地址无效');
   }
   if (parsed.protocol !== 'https:') throw new ApiError(400, 'AVATAR_URL_INVALID', '头像地址必须使用 HTTPS');
-  return trimmed.slice(0, 1000);
+  return strictText(trimmed, '头像地址', 1000, { required: true });
 }
 
 async function login(request: Request, env: Env): Promise<Response> {
@@ -84,7 +105,13 @@ async function login(request: Request, env: Env): Promise<Response> {
       sessionId, user.id, tokenHash, now, expiresAt, now,
       request.headers.get('User-Agent'), request.headers.get('X-App-Version'),
     ).run();
-    return json({ openid: user.openid, token, expiresIn: SESSION_TTL_MS / 1000, user });
+    return json({
+      openid: user.openid,
+      token,
+      expiresIn: SESSION_TTL_MS / 1000,
+      user,
+      ...profileCompleteness(user),
+    });
   });
 }
 
@@ -108,11 +135,8 @@ async function getInfo(request: Request, env: Env): Promise<Response> {
     ORDER BY fm.joinedAt ASC
   `).bind(auth.user.id).all();
   if (!user) throw new ApiError(404, 'USER_NOT_FOUND', '用户不存在');
-  return json({
-    ...user,
-    avatarUrl: await avatarForResponse(request, env, auth.user.id, user.avatarUrl),
-    families: families.results,
-  });
+  const avatarUrl = await avatarForResponse(request, env, auth.user.id, user.avatarUrl);
+  return json({ ...user, avatarUrl, families: families.results, ...profileCompleteness({ ...user, avatarUrl }) });
 }
 
 async function updateInfo(request: Request, env: Env): Promise<Response> {
@@ -130,15 +154,15 @@ async function updateInfo(request: Request, env: Env): Promise<Response> {
   if (!current) throw new ApiError(404, 'USER_NOT_FOUND', '用户不存在');
 
   const next = {
-    nickName: typeof body.nickName === 'string' ? body.nickName.trim().slice(0, 40) : current.nickName,
+    nickName: Object.prototype.hasOwnProperty.call(body, 'nickName') ? strictNickname(body.nickName) : current.nickName,
     avatarUrl: typeof body.avatarUrl === 'string'
       ? await avatarForStorage(env, auth.user.id, body.avatarUrl)
       : current.avatarUrl,
     gender: typeof body.gender === 'number' && [0, 1, 2].includes(body.gender) ? body.gender : current.gender,
-    country: typeof body.country === 'string' ? body.country.trim().slice(0, 40) : current.country,
-    province: typeof body.province === 'string' ? body.province.trim().slice(0, 40) : current.province,
-    city: typeof body.city === 'string' ? body.city.trim().slice(0, 40) : current.city,
-    language: typeof body.language === 'string' ? body.language.trim().slice(0, 20) : current.language,
+    country: Object.prototype.hasOwnProperty.call(body, 'country') ? strictText(body.country, '国家', 40) : current.country,
+    province: Object.prototype.hasOwnProperty.call(body, 'province') ? strictText(body.province, '省份', 40) : current.province,
+    city: Object.prototype.hasOwnProperty.call(body, 'city') ? strictText(body.city, '城市', 40) : current.city,
+    language: Object.prototype.hasOwnProperty.call(body, 'language') ? strictText(body.language, '语言', 20) : current.language,
   };
   const hasField = (field: string) => Object.prototype.hasOwnProperty.call(body, field);
   const updateTime = Date.now();
@@ -168,10 +192,8 @@ async function updateInfo(request: Request, env: Env): Promise<Response> {
     FROM users WHERE id = ?
   `).bind(auth.user.id).first<Record<string, unknown>>();
   if (!updated) throw new ApiError(404, 'USER_NOT_FOUND', '用户不存在');
-  return json({
-    ...updated,
-    avatarUrl: await avatarForResponse(request, env, auth.user.id, updated.avatarUrl),
-  });
+  const avatarUrl = await avatarForResponse(request, env, auth.user.id, updated.avatarUrl);
+  return json({ ...updated, avatarUrl, ...profileCompleteness({ ...updated, avatarUrl }) });
 }
 
 async function exportAccount(request: Request, env: Env): Promise<Response> {
@@ -325,34 +347,54 @@ async function getPhone(request: Request, env: Env): Promise<Response> {
 }
 
 async function updateAvatar(request: Request, env: Env): Promise<Response> {
-  const context = await requireFamilyContext(request, env);
-  await checkRateLimit(env, `avatar:${context.user.id}`, 20, 60 * 60 * 1000);
+  const auth = await requireAuth(request, env);
+  await checkUploadRateLimits(env, auth.user.id);
   const contentLength = Number(request.headers.get('Content-Length') || '0');
-  const maxBytes = Math.min(10 * 1024 * 1024, Number(env.MAX_UPLOAD_BYTES || 5 * 1024 * 1024));
-  if (contentLength > maxBytes) throw new ApiError(413, 'FILE_TOO_LARGE', '头像文件过大');
+  if (contentLength > 5 * 1024 * 1024 + 64 * 1024) throw new ApiError(413, 'FILE_TOO_LARGE', '头像文件不能超过5MB');
   const form = await request.formData();
   const file = form.get('file');
   if (!(file instanceof File)) throw new ApiError(400, 'FILE_REQUIRED', '请选择头像文件');
-  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > maxBytes) {
-    throw new ApiError(415, 'FILE_TYPE_NOT_ALLOWED', '仅支持 JPG、PNG 或 WebP 图片');
-  }
+  const fileNameValue = form.get('fileName');
+  const providedName = typeof fileNameValue === 'string' ? fileNameValue : undefined;
+  const { safeName } = await validateUploadFile(file, IMAGE_TYPES, providedName);
+  return withOperationLock(env, `user:${auth.user.id}:upload-storage`, async () => {
+  await assertUserUploadQuota(env, auth.user.id, file.size);
   const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-  const objectKey = `families/${context.familyId}/avatars/${context.user.id}/${crypto.randomUUID()}.${extension}`;
+  const objectKey = `users/${auth.user.id}/avatars/${crypto.randomUUID()}.${extension}`;
   await env.FILE_BUCKET.put(objectKey, file.stream(), { httpMetadata: { contentType: file.type } });
   const fileId = crypto.randomUUID();
   const now = Date.now();
-  await env.DB.batch([
-    env.DB.prepare(`
-      INSERT INTO family_files (id, familyId, objectKey, name, contentType, size, purpose, uploadedBy, createdAt)
-      VALUES (?, ?, ?, ?, ?, ?, 'avatar', ?, ?)
-    `).bind(fileId, context.familyId, objectKey, file.name || `avatar.${extension}`, file.type, file.size, context.user.id, now),
-    env.DB.prepare('UPDATE users SET avatarUrl = ?, updateTime = ? WHERE id = ?')
-      .bind(`/api/file/download?id=${fileId}`, now, context.user.id),
-  ]);
-  await writeAudit(env, context, 'user.avatar_updated', 'file', fileId);
-  const filePath = createStableFilePath(fileId);
-  const url = await createAbsoluteFileAccessUrl(request, env, fileId, context.familyId);
+  const previous = await env.DB.prepare('SELECT avatarUrl FROM users WHERE id = ?').bind(auth.user.id).first<string>('avatarUrl');
+  try {
+    await env.DB.batch([
+      env.DB.prepare(`
+        INSERT INTO user_files (id, userId, objectKey, name, contentType, size, purpose, createdAt)
+        VALUES (?, ?, ?, ?, ?, ?, 'avatar', ?)
+      `).bind(fileId, auth.user.id, objectKey, safeName || `avatar.${extension}`, file.type, file.size, now),
+      env.DB.prepare('UPDATE users SET avatarUrl = ?, updateTime = ? WHERE id = ?')
+        .bind(createStableUserAssetPath(fileId), now, auth.user.id),
+      env.DB.prepare(`
+        INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, createdAt)
+        VALUES (?, NULL, ?, 'user.avatar_updated', 'user_file', ?, ?)
+      `).bind(crypto.randomUUID(), auth.user.id, fileId, now),
+    ]);
+  } catch (error) {
+    await env.FILE_BUCKET.delete(objectKey);
+    throw error;
+  }
+  const previousId = userAssetIdFromUrl(previous || '');
+  if (previousId && previousId !== fileId) {
+    const previousFile = await env.DB.prepare('SELECT objectKey FROM user_files WHERE id = ? AND userId = ? AND deletedAt IS NULL')
+      .bind(previousId, auth.user.id).first<{ objectKey: string }>();
+    if (previousFile) {
+      await env.FILE_BUCKET.delete(previousFile.objectKey);
+      await env.DB.prepare('UPDATE user_files SET deletedAt = ? WHERE id = ?').bind(now, previousId).run();
+    }
+  }
+  const filePath = createStableUserAssetPath(fileId);
+  const url = await createUserAssetUrl(request, env, fileId);
   return json({ id: fileId, avatarUrl: url, filePath, url });
+  });
 }
 
 export async function handleUserV2(request: Request, env: Env, path: string): Promise<Response> {
@@ -365,6 +407,7 @@ export async function handleUserV2(request: Request, env: Env, path: string): Pr
     case 'GET /api/user/list': return listUsers(request, env);
     case 'POST /api/user/phone': return getPhone(request, env);
     case 'POST /api/user/avatar': return updateAvatar(request, env);
+    case 'GET /api/user/avatar/file': return downloadUserAsset(request, env);
     case 'GET /api/user/export': return exportAccount(request, env);
     case 'DELETE /api/user/account': return deleteAccount(request, env);
     case 'POST /api/user/profile':

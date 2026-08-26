@@ -8,6 +8,7 @@
         class="search-input" 
         placeholder="搜索食材" 
         value="{{searchKeyword}}" 
+        maxlength="80"
         cursor-spacing="16"
         bindinput="onSearchInput" 
         confirm-type="search"

@@ -9,7 +9,7 @@
 
   <scroll-view class="catalog-scroll" scroll-y="true" enhanced="true" show-scrollbar="false" refresher-enabled="true" refresher-triggered="{{refreshing}}" bindrefresherrefresh="refresh" bindscrolltolower="loadMore">
     <view class="search-card">
-      <view class="search-wrap"><mp-icon icon="search" size="17" color="#8c806d"></mp-icon><input class="search-input" placeholder="搜索标准名称或别名" value="{{keyword}}" bindinput="keywordInput" confirm-type="search" bindconfirm="submitSearch" /><view wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">×</view></view>
+      <view class="search-wrap"><mp-icon icon="search" size="17" color="#8c806d"></mp-icon><input class="search-input" placeholder="搜索标准名称或别名" value="{{keyword}}" maxlength="80" cursor-spacing="24" bindinput="keywordInput" confirm-type="search" bindconfirm="submitSearch" /><view wx:if="{{keyword}}" class="search-clear" bindtap="clearSearch">×</view></view>
       <scroll-view class="category-scroll" scroll-x="true" enhanced="true" show-scrollbar="false">
         <view class="category-row"><view wx:for="{{categoryOptions}}" wx:key="*this" class="category-pill {{category === item ? 'active' : ''}}" data-value="{{item}}" bindtap="selectCategory">{{item || '全部分类'}}</view></view>
       </scroll-view>
@@ -36,9 +36,9 @@
   <view wx:if="{{editorVisible}}" class="editor-overlay {{editorActive ? 'is-active' : ''}}" catchtap="closeEditor">
     <view class="editor-sheet" catchtap="stopPropagation">
       <view class="sheet-heading"><view><view class="sheet-kicker">{{editingId ? 'EDIT ITEM' : 'NEW ITEM'}}</view><view class="sheet-title">{{editingId ? '编辑食材' : '添加食材'}}</view></view><button class="sheet-close" bindtap="closeEditor" aria-label="关闭"><mp-icon icon="close" size="19" color="#725d42"></mp-icon></button></view>
-      <view class="sheet-field"><view class="field-label required">标准名称</view><input class="field-input" placeholder="例如：西红柿" value="{{form.canonicalName}}" maxlength="30" bindinput="canonicalNameInput" /></view>
-      <view class="sheet-row"><view class="sheet-field sheet-half"><view class="field-label">分类</view><input class="field-input" placeholder="例如：蔬菜" value="{{form.category}}" maxlength="20" bindinput="categoryInput" /></view><view class="sheet-field sheet-half"><view class="field-label">默认单位</view><input class="field-input" placeholder="例如：g / 个" value="{{form.defaultUnit}}" maxlength="10" bindinput="defaultUnitInput" /></view></view>
-      <view class="sheet-field"><view class="field-label">别名</view><input class="field-input" placeholder="多个别名用逗号分隔" value="{{form.aliasesText}}" maxlength="120" bindinput="aliasesInput" /><view class="field-hint">用于识别菜谱中常见的叫法，不会替换标准名称</view></view>
+      <view class="sheet-field"><view class="field-label required">标准名称</view><input class="field-input" placeholder="例如：西红柿" value="{{form.canonicalName}}" maxlength="30" cursor-spacing="24" confirm-type="next" bindinput="canonicalNameInput" /></view>
+      <view class="sheet-row"><view class="sheet-field sheet-half"><view class="field-label">分类</view><input class="field-input" placeholder="例如：蔬菜" value="{{form.category}}" maxlength="20" cursor-spacing="24" confirm-type="next" bindinput="categoryInput" /></view><view class="sheet-field sheet-half"><view class="field-label">默认单位</view><input class="field-input" placeholder="例如：g / 个" value="{{form.defaultUnit}}" maxlength="10" cursor-spacing="24" confirm-type="done" bindinput="defaultUnitInput" /></view></view>
+      <view class="sheet-field"><view class="field-label">别名</view><input class="field-input" placeholder="多个别名用逗号分隔" value="{{form.aliasesText}}" maxlength="120" cursor-spacing="24" confirm-type="done" bindinput="aliasesInput" /><view class="field-hint">用于识别菜谱中常见的叫法，不会替换标准名称</view></view>
       <view class="sheet-actions"><button class="sheet-cancel" bindtap="closeEditor">取消</button><button class="sheet-save" bindtap="saveIngredient" loading="{{saving}}" disabled="{{saving}}">保存</button></view>
       <view class="sheet-safe-area"></view>
     </view>

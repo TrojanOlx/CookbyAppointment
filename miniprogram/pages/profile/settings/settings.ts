@@ -3,6 +3,7 @@ import { showToast } from '../../../utils/util';
 import { UserService } from '../../../services/userService';
 import { ImageCacheService } from '../../../utils/imageCache';
 import { getAuthSessionGeneration } from '../../../utils/auth';
+import { createAppShareContent } from '../../../utils/share';
 
 let settingsLoginRequestId = 0;
 let phoneBinding = false;
@@ -140,7 +141,7 @@ Page<IPageData, IPageMethods>({
    * 用户点击右上角分享
    */
   onShareAppMessage() {
-
+    return createAppShareContent();
   },
 
   // 获取手机号

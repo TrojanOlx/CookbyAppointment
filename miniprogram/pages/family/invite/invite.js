@@ -1,6 +1,7 @@
 const { FamilyService } = require('../../../services/family');
 const { normalizeInvitation } = require('../../../models/family');
 const { downloadInviteCode, removeLocalInviteCode } = require('./services/inviteCode');
+const { createFamilyInviteShareContent } = require('../../../utils/share');
 
 let invitePreviewRequestId = 0;
 let inviteContextRequestId = 0;
@@ -500,9 +501,10 @@ Page({
 
   onShareAppMessage() {
     const token = this.data.token || (this.data.invite && this.data.invite.token) || '';
-    return {
-      title: '邀请你加入家庭小岛',
-      path: `/pages/family/invite/invite?token=${encodeURIComponent(token)}`
-    };
+    const familyName = (this.data.invite && this.data.invite.familyName)
+      || (this.data.previewFamily && this.data.previewFamily.name)
+      || (this.data.preview && this.data.preview.familyName)
+      || '';
+    return createFamilyInviteShareContent(token, familyName);
   }
 });

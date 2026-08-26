@@ -1,4 +1,5 @@
 import { del, get, post, put, upload } from '../../../services/http';
+import { FileService } from '../../../services/fileService';
 
 export type PlatformTemplateStatus = 'draft' | 'active' | 'archived' | string;
 
@@ -236,7 +237,10 @@ export class PlatformCatalogService {
   }
 
   static async uploadTemplateAsset(filePath: string, templateId?: string): Promise<PlatformTemplateAsset> {
-    const formData: Record<string, string> = { purpose: 'recipe-template' };
+    const formData: Record<string, string> = {
+      purpose: 'recipe-template',
+      fileName: await FileService.getSafeImageFileName(filePath)
+    };
     if (templateId) formData.templateId = templateId;
     const body = await upload<any>('/api/platform/template-assets', filePath, formData);
     return normalizeAsset(unwrapObject<any>(body));

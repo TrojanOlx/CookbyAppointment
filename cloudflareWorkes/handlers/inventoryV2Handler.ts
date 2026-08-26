@@ -1,8 +1,10 @@
 import { requireCapability, requireFamilyContext, writeAudit } from '../core/auth';
 import { normalizeIngredientName, normalizeQuantity, parseQuantityText } from '../core/domain';
-import { ApiError, json, optionalString, pagination, readJson, requiredString } from '../core/http';
+import { ApiError, json, pagination, readJson, requiredString } from '../core/http';
 import { withOperationLock } from '../core/operationLock';
 import type { Env } from '../core/types';
+import { claimFamilyImages, expireDetachedTargetFiles, expireTargetFiles } from '../core/uploadSecurity';
+import { strictAmountText, strictQuantity, strictText, validateSearchText } from '../core/validation';
 
 interface InventoryInput {
   id?: unknown;
@@ -47,14 +49,13 @@ export function withFamilyInventoryLock<T>(env: Env, familyId: string, execute: 
 
 function quantityFields(data: InventoryInput): { quantity: number | null; unit: string | null; legacyAmount: string | null; amount: string } {
   if (Object.prototype.hasOwnProperty.call(data, 'amount')) {
-    const amount = typeof data.amount === 'string' ? data.amount.trim().slice(0, 100) : '';
-    if (!amount) throw new ApiError(400, 'INVALID_QUANTITY', '请填写数量，无法换算时可填写“适量”等说明');
+    const amount = strictAmountText(data.amount);
     const parsed = parseQuantityText(amount);
     if (parsed) return { ...parsed, legacyAmount: null, amount };
     return { quantity: null, unit: null, legacyAmount: amount, amount };
   }
-  const quantity = typeof data.quantity === 'number' && Number.isFinite(data.quantity) && data.quantity >= 0 ? data.quantity : null;
-  const unit = typeof data.unit === 'string' && data.unit.trim() ? data.unit.trim().slice(0, 20) : null;
+  const quantity = typeof data.quantity === 'number' ? strictQuantity(data.quantity) : null;
+  const unit = typeof data.unit === 'string' && data.unit.trim() ? strictText(data.unit, '单位', 10, { required: true }) : null;
   if ((quantity === null) !== (unit === null)) {
     throw new ApiError(400, 'INVALID_QUANTITY', '结构化数量必须同时包含 quantity 和 unit');
   }
@@ -107,7 +108,7 @@ async function listInventory(request: Request, env: Env): Promise<Response> {
   const offset = (page - 1) * pageSize;
   const category = url.searchParams.get('category');
   const status = url.searchParams.get('status');
-  const keyword = (url.searchParams.get('keyword') || '').trim().slice(0, 80);
+  const keyword = validateSearchText(url.searchParams.get('keyword'));
   const expiryState = url.searchParams.get('expiryState');
   if (expiryState && !['normal', 'expiring', 'expired'].includes(expiryState)) {
     throw new ApiError(400, 'VALIDATION_ERROR', '库存过期状态无效');
@@ -185,7 +186,7 @@ async function addInventory(request: Request, env: Env): Promise<Response> {
   const context = await requireFamilyContext(request, env);
   requireCapability(context, 'inventory.write');
   const data = await readJson<InventoryInput>(request);
-  const name = requiredString(data.name, '食材名称', 80);
+  const name = strictText(data.name, '食材名称', 30, { required: true, meaningfulName: true });
   const quantity = quantityFields(data);
   const ingredientId = await resolveIngredientId(env, name, data.ingredientId);
   const id = crypto.randomUUID();
@@ -195,9 +196,10 @@ async function addInventory(request: Request, env: Env): Promise<Response> {
     name, amount: quantity.amount, quantity: quantity.quantity, unit: quantity.unit,
     legacyAmount: quantity.legacyAmount,
     ingredientId,
-    category: optionalString(data.category, 40) || '其他', status: optionalString(data.status, 20) || '正常',
-    putInDate: optionalString(data.putInDate, 20), expiryDate: optionalString(data.expiryDate, 20),
-    image: optionalString(data.image, 1000), remarks: optionalString(data.remarks, 500) || '',
+    category: strictText(data.category || '其他', '分类', 20, { required: true }),
+    status: strictText(data.status || '正常', '状态', 20, { required: true }),
+    putInDate: strictText(data.putInDate, '放入日期', 10), expiryDate: strictText(data.expiryDate, '到期日期', 10),
+    image: strictText(data.image, '图片', 1000), remarks: strictText(data.remarks, '备注', 300, { allowNewlines: true }),
     createTime: now, updateTime: now,
   };
   return withFamilyInventoryLock(env, context.familyId, async () => {
@@ -211,6 +213,12 @@ async function addInventory(request: Request, env: Env): Promise<Response> {
       item.putInDate, item.expiryDate, item.image, item.remarks, now, now, item.familyId,
       item.ingredientId, item.quantity, item.unit, item.legacyAmount,
     ).run();
+    try {
+      if (item.image) await claimFamilyImages(env, context, [item.image], 'inventory', id, 1);
+    } catch (error) {
+      await env.DB.prepare('DELETE FROM inventory_items WHERE id = ? AND familyId = ?').bind(id, context.familyId).run();
+      throw error;
+    }
     await writeAudit(env, context, 'inventory.created', 'inventory', id, { name });
     return json(item, 201);
   });
@@ -249,7 +257,9 @@ async function updateInventory(request: Request, env: Env): Promise<Response> {
           legacyAmount: typeof current.legacyAmount === 'string' && current.legacyAmount ? current.legacyAmount : null,
           amount: typeof current.amount === 'string' ? current.amount : '',
         };
-    const nextName = data.name === undefined ? String(current.name) : requiredString(data.name, '食材名称', 80);
+    const nextName = data.name === undefined
+      ? String(current.name)
+      : strictText(data.name, '食材名称', 30, { required: true, meaningfulName: true });
     const ingredientId = await resolveIngredientId(
       env,
       nextName,
@@ -258,13 +268,16 @@ async function updateInventory(request: Request, env: Env): Promise<Response> {
     const next = {
       name: nextName,
       ingredientId,
-      category: data.category === undefined ? current.category : optionalString(data.category, 40) || '其他',
-      status: data.status === undefined ? current.status : optionalString(data.status, 20) || '正常',
-      putInDate: data.putInDate === undefined ? current.putInDate : optionalString(data.putInDate, 20),
-      expiryDate: data.expiryDate === undefined ? current.expiryDate : optionalString(data.expiryDate, 20),
-      image: data.image === undefined ? current.image : optionalString(data.image, 1000),
-      remarks: data.remarks === undefined ? current.remarks : optionalString(data.remarks, 500) || '',
+      category: data.category === undefined ? current.category : strictText(data.category, '分类', 20, { required: true }),
+      status: data.status === undefined ? current.status : strictText(data.status, '状态', 20, { required: true }),
+      putInDate: data.putInDate === undefined ? current.putInDate : strictText(data.putInDate, '放入日期', 10),
+      expiryDate: data.expiryDate === undefined ? current.expiryDate : strictText(data.expiryDate, '到期日期', 10),
+      image: data.image === undefined ? current.image : strictText(data.image, '图片', 1000),
+      remarks: data.remarks === undefined ? current.remarks : strictText(data.remarks, '备注', 300, { allowNewlines: true }),
     };
+    if (typeof next.image === 'string' && next.image) {
+      await claimFamilyImages(env, context, [next.image], 'inventory', id, 1);
+    }
     const updateTime = Math.max(Date.now(), currentUpdateTime + 1);
     const result = await env.DB.prepare(`
       UPDATE inventory_items SET name = ?, amount = ?, category = ?, status = ?, putInDate = ?, expiryDate = ?,
@@ -276,6 +289,15 @@ async function updateInventory(request: Request, env: Env): Promise<Response> {
       amount.legacyAmount, id, context.familyId, expectedUpdateTime,
     ).run();
     if (!result.meta.changes) throw new ApiError(409, 'INVENTORY_CHANGED', '库存已被其他操作修改，请刷新后重试');
+    if (data.image !== undefined) {
+      await expireDetachedTargetFiles(
+        env,
+        context.familyId,
+        'inventory',
+        id,
+        typeof next.image === 'string' && next.image ? [next.image] : [],
+      );
+    }
     await writeAudit(env, context, 'inventory.updated', 'inventory', id);
     return json({ ...current, ...next, ...amount, id, updateTime });
   });
@@ -290,6 +312,7 @@ async function deleteInventory(request: Request, env: Env): Promise<Response> {
     const result = await env.DB.prepare('DELETE FROM inventory_items WHERE id = ? AND familyId = ?')
       .bind(id, context.familyId).run();
     if (!result.meta.changes) throw new ApiError(404, 'INVENTORY_NOT_FOUND', '库存项不存在');
+    await expireTargetFiles(env, context.familyId, 'inventory', id);
     await writeAudit(env, context, 'inventory.deleted', 'inventory', id);
     return json({ success: true });
   });

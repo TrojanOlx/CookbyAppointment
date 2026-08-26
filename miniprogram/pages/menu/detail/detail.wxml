@@ -70,7 +70,7 @@
     <block wx:else>
       <view class="edit-item">
         <view class="edit-label">菜品名称</view>
-        <input class="edit-input" value="{{tempDish.name}}" bindinput="nameInput" placeholder="请输入菜品名称" />
+        <input class="edit-input" value="{{tempDish.name}}" bindinput="nameInput" placeholder="请输入菜品名称" maxlength="40" cursor-spacing="24" confirm-type="next" />
       </view>
       
       <view class="edit-item">
@@ -112,8 +112,8 @@
     <block wx:else>
       <view class="ingredients-edit-container">
         <view class="ingredient-edit-row" wx:for="{{tempDish.ingredients}}" wx:key="id" wx:for-index="idx">
-          <input class="ingredient-name-input" data-index="{{idx}}" bindinput="ingredientNameInput" value="{{item.name}}" placeholder="食材名称" />
-          <input class="ingredient-amount-input" data-index="{{idx}}" bindinput="ingredientAmountInput" value="{{item.amount}}" placeholder="用量" />
+          <input class="ingredient-name-input" data-index="{{idx}}" bindinput="ingredientNameInput" value="{{item.name}}" placeholder="食材名称" maxlength="30" cursor-spacing="24" confirm-type="next" />
+          <input class="ingredient-amount-input" data-index="{{idx}}" bindinput="ingredientAmountInput" value="{{item.amount}}" placeholder="用量" maxlength="20" cursor-spacing="24" confirm-type="done" />
           <view class="ingredient-delete" data-index="{{idx}}" bindtap="deleteIngredient">×</view>
         </view>
         <view class="add-button" bindtap="addIngredient">
@@ -142,7 +142,7 @@
       <view class="steps-edit-list">
         <view class="step-edit-item" wx:for="{{tempDish.steps}}" wx:key="index" wx:for-index="idx">
           <view class="step-number">{{idx + 1}}</view>
-          <textarea class="step-content-input" data-index="{{idx}}" bindinput="stepInput" value="{{item}}" placeholder="请输入步骤内容" auto-height="true" />
+          <textarea class="step-content-input" data-index="{{idx}}" bindinput="stepInput" value="{{item}}" placeholder="请输入步骤内容" maxlength="500" cursor-spacing="24" confirm-type="done" auto-height="true" />
           <view class="step-delete" data-index="{{idx}}" bindtap="deleteStep">×</view>
         </view>
         <view class="add-button" bindtap="addStep">
@@ -163,7 +163,7 @@
     
     <!-- 编辑模式 -->
     <block wx:else>
-      <textarea class="edit-textarea" bindinput="noticeInput" value="{{tempDish.notice}}" placeholder="请输入注意事项（可选）" auto-height="true" />
+      <textarea class="edit-textarea" bindinput="noticeInput" value="{{tempDish.notice}}" placeholder="请输入注意事项（可选）" maxlength="300" cursor-spacing="24" confirm-type="done" auto-height="true" />
     </block>
   </view>
 
@@ -177,7 +177,7 @@
     
     <!-- 编辑模式 -->
     <block wx:else>
-      <textarea class="edit-textarea" bindinput="remarkInput" value="{{tempDish.remark}}" placeholder="请输入备注（可选）" auto-height="true" />
+      <textarea class="edit-textarea" bindinput="remarkInput" value="{{tempDish.remark}}" placeholder="请输入备注（可选）" maxlength="300" cursor-spacing="24" confirm-type="done" auto-height="true" />
     </block>
   </view>
 
@@ -191,7 +191,7 @@
     
     <!-- 编辑模式 -->
     <block wx:else>
-      <input class="edit-input" bindinput="referenceInput" value="{{tempDish.reference}}" placeholder="请输入参考链接（可选）" />
+      <input class="edit-input" bindinput="referenceInput" value="{{tempDish.reference}}" placeholder="请输入参考链接（可选）" maxlength="300" cursor-spacing="24" confirm-type="done" />
     </block>
   </view>
 
