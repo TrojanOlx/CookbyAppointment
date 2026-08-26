@@ -8,18 +8,11 @@
 //   - 每次弹窗授权对应 1 条推送配额
 //   - 用户拒绝不阻断业务流程，只是收不到对应通知
 
-// 各模板 ID 配置（申请后替换）
-// 模板 ID：bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0（预约订单提醒，字段：time12 + thing9）
-// 所有通知类型复用同一模板，通过 thing9 内容区分通知含义
-export const APPOINTMENT_TEMPLATE_ID = 'bNsydRQbXtouRni5xtLXoJ7zB5Xbp26uZ9CN6nzhHB0';
-
 export const SUBSCRIBE_TEMPLATE_IDS = {
-  NEW_APPT: APPOINTMENT_TEMPLATE_ID,
-  CONFIRMED: APPOINTMENT_TEMPLATE_ID,
-  CANCELLED: APPOINTMENT_TEMPLATE_ID,
-  COMPLETED: APPOINTMENT_TEMPLATE_ID,
-  REMINDER: APPOINTMENT_TEMPLATE_ID,
-};
+  NEW_APPT: 'T1TUgP2VEEzz_3lAAypK1sP4AyJ_YIpSsX_hy1tU2is',
+  STATUS: '7-mOlcEKprjQzibpS0P8q9Buyz4zA0cgm4W3DcWZVqM',
+  REMINDER: '_EAlByNCdkJmmWr-UjT8sSaY5mmbTPcdqmSIAYO3bPQ',
+} as const;
 
 // 判断模板 ID 是否已正式配置（非占位符）
 function isConfigured(id: string): boolean {
@@ -70,16 +63,13 @@ function requestSubscribe(scene: string, tmplIds: string[]): Promise<void> {
 }
 
 /**
- * 用户订阅：在提交新预约前调用，申请订阅 4 个用户侧通知模板
- * （预约确认 / 预约取消 / 预约完成 / 当日提醒）
+ * 用户订阅：在提交或恢复预约前调用，一次申请状态通知和当日提醒。
  *
  * ⚠️ 必须在用户点击事件（tap handler）中调用，否则微信不会弹出授权弹窗
  */
 export function requestSubscribeForUser(): Promise<void> {
   return requestSubscribe('用户侧', [
-    SUBSCRIBE_TEMPLATE_IDS.CONFIRMED,
-    SUBSCRIBE_TEMPLATE_IDS.CANCELLED,
-    SUBSCRIBE_TEMPLATE_IDS.COMPLETED,
+    SUBSCRIBE_TEMPLATE_IDS.STATUS,
     SUBSCRIBE_TEMPLATE_IDS.REMINDER,
   ]);
 }

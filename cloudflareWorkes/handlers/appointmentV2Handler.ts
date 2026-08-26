@@ -433,7 +433,9 @@ async function cancelAppointment(request: Request, env: Env): Promise<Response> 
     if (!cancelled.meta.changes) throw new ApiError(409, 'APPOINTMENT_STATUS_INVALID', '预约状态已变化，请刷新后重试');
     if (['已确认', 'confirmed'].includes(current.status)) await recalculateFamilyShoppingWithinLock(env, context);
     await writeAudit(env, context, 'appointment.cancelled', 'appointment', id);
-    await notifyFamilyAppointment(env, context.familyId, id, 'cancelled');
+    if (current.userId !== context.user.id) {
+      await notifyFamilyAppointment(env, context.familyId, id, 'cancelled');
+    }
     return json({ success: true, id, status: '已取消' });
   });
 }
@@ -628,7 +630,6 @@ async function completeAppointment(request: Request, env: Env): Promise<Response
         }
         await recalculateFamilyShoppingWithinLock(env, context);
         await writeAudit(env, context, 'appointment.completed', 'appointment', id, { deductions: requested, unresolved: estimated.unresolved });
-        await notifyFamilyAppointment(env, context.familyId, id, 'completed');
         return json({ success: true, id, status: '已完成', deductions: requested, unresolved: estimated.unresolved });
       })));
 }
@@ -710,6 +711,7 @@ async function reactivateAppointment(request: Request, env: Env): Promise<Respon
       WHERE id = ? AND familyId = ? AND status = ?
     `).bind(Date.now(), id, context.familyId, appointment.status).run();
     if (!reactivated.meta.changes) throw new ApiError(409, 'APPOINTMENT_STATUS_INVALID', '预约状态已变化，请刷新后重试');
+    await notifyFamilyAppointment(env, context.familyId, id, 'created');
     return json({ success: true, id, status: '待确认' });
   });
 }

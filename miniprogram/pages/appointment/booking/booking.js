@@ -1,6 +1,7 @@
 const { AppointmentService } = require('../../../services/appointmentService');
 const { DishService } = require('../../../services/dishService');
 const { FamilyService } = require('../../../services/family');
+const { requestSubscribeForUser } = require('../../../services/notificationService');
 const http = require('../../../services/http');
 
 const MEAL_TYPES = ['早餐', '午餐', '晚餐'];
@@ -431,6 +432,11 @@ Page({
       if (Number.isFinite(this.data.appointmentUpdateTime)) {
         payload.expectedUpdateTime = this.data.appointmentUpdateTime;
       }
+    }
+
+    if (!this.data.editMode) {
+      // Keep this in the save tap chain so the production client can show WeChat's consent dialog.
+      await requestSubscribeForUser();
     }
 
     this.setData({ saving: true });

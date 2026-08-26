@@ -601,8 +601,6 @@ Page({
     const sessionOwner = currentSessionOwner();
 
     try {
-      // 在 tap 事件中请求订阅，积累推送配额
-      await requestSubscribeForUser();
       const confirmed = await showConfirm('确认取消', '确定要取消这个预约吗？');
       if (!confirmed) return;
       try {
