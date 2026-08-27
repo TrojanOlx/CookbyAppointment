@@ -59,6 +59,7 @@ db.exec(`
 `);
 
 for (const name of migrationFiles.slice(1)) applyMigration(db, name);
+applyMigration(db, '0013_more_recipe_templates.sql');
 
 const counts = db.prepare(`
   SELECT
@@ -78,8 +79,8 @@ assert(
     && counts.shoppingLists === 2
     && counts.dishes === 2
     && counts.ingredients === 2
-    && counts.recipeTemplates === 10
-    && counts.templateIngredients === 31
+    && counts.recipeTemplates === 30
+    && counts.templateIngredients === 91
     && counts.platformAdmins === 1
     && counts.activeUsers === 3,
   'legacy backfill counts are incorrect',
@@ -94,9 +95,29 @@ const templateCoverage = db.prepare(`
   ORDER BY type
 `).all();
 assert(
-  templateCoverage.length === 5 && templateCoverage.every(row => row.count === 2),
+  templateCoverage.length === 5 && templateCoverage.every(row => row.count === 6),
   'public recipe templates do not cover every menu category evenly',
   templateCoverage,
+);
+
+const invalidTemplates = db.prepare(`
+  SELECT rt.id, rt.templateKey, COUNT(rti.id) AS ingredientCount
+  FROM recipe_templates rt
+  LEFT JOIN recipe_template_ingredients rti ON rti.templateId = rt.id
+  WHERE rt.status = 'active'
+  GROUP BY rt.id, rt.templateKey
+  HAVING ingredientCount < 2
+`).all();
+const duplicateTemplateKeys = db.prepare(`
+  SELECT templateKey, COUNT(*) AS count
+  FROM recipe_templates
+  GROUP BY templateKey
+  HAVING count > 1
+`).all();
+assert(
+  invalidTemplates.length === 0 && duplicateTemplateKeys.length === 0,
+  'public recipe templates must have unique keys and structured ingredients',
+  { invalidTemplates, duplicateTemplateKeys },
 );
 
 const sharedMembers = db.prepare(`

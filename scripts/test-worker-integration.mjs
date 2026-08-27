@@ -200,10 +200,10 @@ try {
     createdTemplateFamily,
   );
   const templateFamilyId = createdTemplateFamily.data.id;
-  const recipeTemplates = await api('/api/dish/templates?pageSize=20', 'token-starter-owner', templateFamilyId);
+  const recipeTemplates = await api('/api/dish/templates?pageSize=30', 'token-starter-owner', templateFamilyId);
   assert(
     recipeTemplates.status === 200
-      && recipeTemplates.data.total === 10
+      && recipeTemplates.data.total === 30
       && new Set(recipeTemplates.data.list.map(item => item.type)).size === 5
       && recipeTemplates.data.list.every(item => item.imported === false && item.ingredients.length >= 2),
     'public recipe templates were not listed with complete content',
@@ -235,7 +235,7 @@ try {
       expectedUpdateTime: importedDish.data.updateTime,
     }),
   });
-  const templatesAfterEdit = await api('/api/dish/templates?pageSize=20', 'token-starter-owner', templateFamilyId);
+  const templatesAfterEdit = await api('/api/dish/templates?pageSize=30', 'token-starter-owner', templateFamilyId);
   const sourceTemplateAfterEdit = templatesAfterEdit.data.list.find(item => item.id === selectedTemplateIds[0]);
   assert(
     importedDish.status === 200
@@ -763,15 +763,21 @@ try {
     method: 'POST',
     body: JSON.stringify({
       name: '食材目录编辑测试', type: '家常菜', spicy: '不辣', images: [], steps: ['测试'],
-      ingredients: [{ id: 'it-catalog-dish-ingredient', name: '土豆', amount: '1kg', ingredientId: 'it-ingredient-potato' }],
+      ingredients: [{ id: 'it-catalog-dish-ingredient', name: '土豆', amount: '1kg' }],
     }),
   });
+  const originalCatalogIngredientId = catalogDish.data.ingredients?.[0]?.ingredientId;
   const catalogDishUpdate = await api('/api/dish/update', 'token-owner-a', 'it-family-a', {
     method: 'PUT',
     body: JSON.stringify({
       id: catalogDish.data.id,
       expectedUpdateTime: catalogDish.data.updateTime,
-      ingredients: [{ id: 'it-catalog-dish-ingredient', name: '豆腐', amount: '3kg', ingredientId: 'it-ingredient-potato' }],
+      ingredients: [{
+        id: 'it-catalog-dish-ingredient',
+        name: '豆腐',
+        amount: '3kg',
+        ingredientId: originalCatalogIngredientId,
+      }],
     }),
   });
   const staleCatalogDishUpdate = await api('/api/dish/update', 'token-owner-a', 'it-family-a', {
@@ -786,7 +792,9 @@ try {
   assert(
     catalogDish.status === 200
       && catalogDishUpdate.status === 200
-      && updatedCatalogIngredient?.ingredientId === 'it-ingredient-tofu'
+      && originalCatalogIngredientId
+      && updatedCatalogIngredient?.ingredientId
+      && updatedCatalogIngredient.ingredientId !== originalCatalogIngredientId
       && updatedCatalogIngredient?.quantity === 3
       && updatedCatalogIngredient?.unit === 'kg'
       && staleCatalogDishUpdate.status === 409

@@ -44,8 +44,11 @@ DELETE FROM shopping_lists WHERE id LIKE 'it-%' OR familyId LIKE 'it-%';
 DELETE FROM families WHERE id LIKE 'it-%';
 DELETE FROM user_sessions WHERE id LIKE 'it-%';
 DELETE FROM ingredient_catalog
-WHERE id LIKE 'it-%'
-   OR canonicalName IN ('数量编辑测试', '并发扣减测试');
+WHERE (id LIKE 'it-%'
+   OR canonicalName IN ('数量编辑测试', '并发扣减测试'))
+  AND id NOT IN (
+    SELECT ingredientId FROM recipe_template_ingredients WHERE ingredientId IS NOT NULL
+  );
 DELETE FROM api_rate_limits WHERE scope LIKE '%it-%';
 DELETE FROM users WHERE id LIKE 'it-%';
 
@@ -125,23 +128,18 @@ VALUES
   ('it-dish-b', '家庭B菜品', '家常菜', '不辣', '["/api/file/download?id=it-file-a"]', '[]', '', '', '', 'it-owner-b', 'openid-owner-b', 1700000000000, 1700000000000, 'it-family-b'),
   ('it-dish-mixed', '混合食材菜品', '家常菜', '不辣', '[]', '[]', '', '', '', 'it-limit-owner', 'openid-limit-owner', 1700000000000, 1700000000000, 'it-family-limit');
 
-INSERT OR REPLACE INTO ingredient_catalog (id, canonicalName, category, defaultUnit, createdAt, updatedAt)
-VALUES
-  ('it-ingredient-potato', '土豆', '蔬菜', 'kg', 1700000000000, 1700000000000),
-  ('it-ingredient-tofu', '豆腐', '豆制品', 'kg', 1700000000000, 1700000000000);
-
 INSERT OR REPLACE INTO ingredients (
   id, dishId, name, amount, createTime, updateTime, ingredientId, quantity, unit, legacyAmount
 )
 VALUES (
   'it-dish-a-potato', 'it-dish-a', '土豆', '0.25kg', 1700000000000, 1700000000000,
-  'it-ingredient-potato', 0.25, 'kg', NULL
+  (SELECT id FROM ingredient_catalog WHERE canonicalName = '土豆'), 0.25, 'kg', NULL
 ), (
   'it-dish-a-onion', 'it-dish-a', '洋葱', '0.5kg', 1700000000000, 1700000000000,
   NULL, 0.5, 'kg', NULL
 ), (
   'it-dish-mixed-catalog', 'it-dish-mixed', '豆腐', '1kg', 1700000000000, 1700000000000,
-  'it-ingredient-tofu', 1, 'kg', NULL
+  (SELECT id FROM ingredient_catalog WHERE canonicalName = '豆腐'), 1, 'kg', NULL
 ), (
   'it-dish-mixed-legacy', 'it-dish-mixed', '豆腐', '1kg', 1700000000000, 1700000000000,
   NULL, 1, 'kg', NULL
