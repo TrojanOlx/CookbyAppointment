@@ -14,8 +14,9 @@
       <button class="login-btn" bindtap="doLogin" loading="{{isLoggingIn}}" disabled="{{isLoggingIn}}">微信登录</button>
     </block>
     <view wx:elif="{{userInfo}}" class="user-avatar-info">
-      <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar">
-        <image referrerPolicy="no-referrer" class="avatar" src="{{userInfo.avatarUrl}}"></image>
+      <button class="avatar-btn" open-type="chooseAvatar" bind:chooseavatar="onChooseAvatar" aria-label="更换头像">
+        <image wx:if="{{userInfo.avatarUrl}}" referrerPolicy="no-referrer" class="avatar" src="{{userInfo.avatarUrl}}" mode="aspectFill"></image>
+        <image wx:else class="avatar avatar--placeholder" src="/images/icons/icon-profile.svg" mode="aspectFit"></image>
       </button>
       <view class="user-info-text">
         <block wx:if="{{editingNickName}}">
@@ -34,7 +35,7 @@
           />
         </block>
         <block wx:else>
-          <view class="user-name" bindtap="onNickNameEdit">{{userInfo.nickName || '点击设置昵称'}}</view>
+          <view class="user-name" bindtap="onNickNameEdit" aria-role="button" aria-label="编辑昵称">{{userInfo.nickName || '点击设置昵称'}}</view>
         </block>
       </view>
     </view>

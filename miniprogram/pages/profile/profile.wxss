@@ -27,11 +27,12 @@ page {
 .user-info {
   background: linear-gradient(145deg, var(--primary-light) 0%, var(--card-bg) 100%);
   border-radius: var(--radius-lg);
-  padding: 36rpx 32rpx;
+  padding: 28rpx 30rpx;
   margin-bottom: 20rpx;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
+  box-sizing: border-box;
   box-shadow: var(--shadow-md);
 }
 
@@ -86,27 +87,66 @@ page {
   display: flex;
   flex-direction: row;
   align-items: center;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
 }
 
 .avatar {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 60rpx;
-  margin-right: 30rpx;
+  display: block;
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: var(--radius-full);
+  margin: 0;
   border: 4rpx solid var(--primary-color);
+  box-sizing: border-box;
   box-shadow: var(--shadow-sm);
+}
+
+.avatar--placeholder {
+  padding: 22rpx;
+  background: var(--primary-light);
 }
 
 .user-info-text {
   flex: 1;
+  min-width: 0;
+  padding-left: 16rpx;
+  box-sizing: border-box;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .user-name {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 84rpx;
+  line-height: 84rpx;
   font-size: 34rpx;
   color: var(--text-color);
   font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transform-origin: left center;
   transition: transform var(--motion-press) var(--ease-out);
+}
+
+.nickname-input {
+  width: 100%;
+  min-width: 0;
+  height: 84rpx;
+  padding: 0 18rpx;
+  color: var(--text-color);
+  background: var(--input-bg);
+  border: 3rpx solid rgba(25, 200, 185, 0.48);
+  border-radius: var(--radius-sm);
+  box-sizing: border-box;
+  font-size: 34rpx;
+  font-weight: 800;
+  line-height: 84rpx;
 }
 
 .user-openid {
@@ -201,11 +241,22 @@ page {
 .avatar-btn {
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex: 0 0 128rpx;
+  width: 128rpx;
+  height: 128rpx;
   padding: 0;
   background: transparent;
   border: none;
-  margin-right: 30rpx;
+  border-radius: var(--radius-full);
+  box-sizing: border-box;
+  line-height: 1;
+  margin: 0 28rpx 0 0;
   transition: transform var(--motion-press) var(--ease-out);
+}
+
+.avatar-btn::after {
+  border: 0;
 }
 
 .profile-version {
@@ -222,7 +273,7 @@ page {
 }
 
 .user-info {
-  min-height: 180rpx;
+  min-height: 0;
   justify-content: flex-start;
   background:
     radial-gradient(circle, rgba(247,205,103,0.20) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
@@ -234,9 +285,10 @@ page {
 
 .user-info::before {
   content: '';
-  width: 12rpx;
-  height: 128rpx;
-  margin-right: 24rpx;
+  flex: 0 0 10rpx;
+  width: 10rpx;
+  height: 96rpx;
+  margin-right: 22rpx;
   border-radius: var(--radius-full);
   background: linear-gradient(180deg, var(--primary-color), var(--accent-yellow), var(--accent-coral));
 }
@@ -255,7 +307,7 @@ page {
 }
 
 .user-name {
-  font-size: 38rpx;
+  font-size: 36rpx;
   font-weight: 900;
 }
 
