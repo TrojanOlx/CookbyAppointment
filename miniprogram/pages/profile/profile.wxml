@@ -19,24 +19,44 @@
         <image wx:else class="avatar avatar--placeholder" src="/images/icons/icon-profile.svg" mode="aspectFit"></image>
       </button>
       <view class="user-info-text">
-        <block wx:if="{{editingNickName}}">
-          <input
-            type="nickname"
-            class="nickname-input"
-            placeholder="请输入昵称"
-            value="{{editingNickNameValue}}"
-            maxlength="20"
-            cursor-spacing="24"
-            confirm-type="done"
-            focus="true"
-            bind:input="onNickNameInput"
-            bind:blur="onNickNameConfirm"
-            bind:confirm="onNickNameConfirm"
-          />
-        </block>
-        <block wx:else>
-          <view class="user-name" bindtap="onNickNameEdit" aria-role="button" aria-label="编辑昵称">{{userInfo.nickName || '点击设置昵称'}}</view>
-        </block>
+        <view class="profile-name-row">
+          <image
+            class="profile-achievement-badge {{pinnedAchievementName ? '' : 'is-unpinned'}}"
+            src="{{pinnedAchievementIcon}}"
+            mode="aspectFit"
+            aria-label="{{pinnedAchievementName ? '佩戴成就：' + pinnedAchievementName : '未佩戴成就'}}"
+          ></image>
+          <block wx:if="{{editingNickName}}">
+            <input
+              type="nickname"
+              class="nickname-input"
+              placeholder="请输入昵称"
+              value="{{editingNickNameValue}}"
+              maxlength="20"
+              cursor-spacing="24"
+              confirm-type="done"
+              focus="true"
+              bind:input="onNickNameInput"
+              bind:change="onNickNameConfirm"
+              bind:blur="onNickNameConfirm"
+              bind:confirm="onNickNameConfirm"
+            />
+          </block>
+          <block wx:else>
+            <view class="user-name" bindtap="onNickNameEdit" aria-role="button" aria-label="编辑昵称">{{userInfo.nickName || '点击设置昵称'}}</view>
+          </block>
+        </view>
+      </view>
+      <view
+        class="profile-achievement-link"
+        bindtap="navigateTo"
+        data-url="/pages/profile/achievements/index"
+        aria-role="button"
+        aria-label="查看成就，已解锁 {{achievementUnlockedCount}} 个，共 {{achievementTotalCount}} 个"
+      >
+        <image class="profile-achievement-icon" src="/images/achievements/award.svg" mode="aspectFit"></image>
+        <text class="profile-achievement-count">{{achievementUnlockedCount}}/{{achievementTotalCount}}</text>
+        <image class="profile-achievement-arrow" src="/images/achievements/arrow-right.svg" mode="aspectFit"></image>
       </view>
     </view>
   </view>
@@ -79,6 +99,11 @@
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/appointment/appointment">
         <image class="menu-icon-img" src="/images/island/icon-appointment.svg" mode="aspectFit"></image>
         <text class="menu-text">我的预约</text>
+        <text class="menu-arrow">></text>
+      </view>
+      <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/history/index">
+        <image class="menu-icon-img" src="/images/island/icon-history.svg" mode="aspectFit"></image>
+        <text class="menu-text">餐桌回忆</text>
         <text class="menu-arrow">></text>
       </view>
       <view class="menu-item" bindtap="navigateTo" data-url="/pages/profile/reviews/reviews">

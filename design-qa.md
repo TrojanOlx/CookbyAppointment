@@ -1,5 +1,135 @@
 # Design QA
 
+## Current Pass: Profile Achievement Entry, Option 2 (2026-08-28)
+
+### Comparison Target
+
+- Selected visual target: `/Users/trojan/.codex/generated_images/01a04796-8cb7-7901-b7d0-c1225c63b181/exec-cdb626c0-9d50-44ea-861f-adae34ef07a7.png` (853 x 1844 px).
+- Final implementation: `.tmp-visual-qa/profile-header-achievement-option-2.png` (624 x 1352 px).
+- Additional states: `.tmp-visual-qa/profile-header-achievement-option-2-long-name.png` and `.tmp-visual-qa/profile-header-achievement-option-2-editing.png`.
+- Combined comparison: `.tmp-visual-qa/profile-header-achievement-option-2-comparison.png`, with the selected target on the left and implementation on the right.
+- Viewport: iPhone 12/13 Pro simulator, 390 x 844 logical px, device pixel ratio 3; content window 390 x 753 logical px.
+
+### Full-View Comparison Evidence
+
+The identity card now follows the selected single-row composition: avatar, pinned/default badge and nickname, a vertical divider, then an icon-only progress action. The live page keeps its existing compact vertical rhythm while preserving the target's cream surface, teal ring, brown typography, and restrained shadow. The former multicolor rail and dotted card fill have been removed.
+
+### Focused Region Evidence
+
+The achievement action measures 95 x 45 CSS px and the nickname surface measures 143 x 43 CSS px. The action therefore preserves the 88rpx minimum touch height, while long nicknames truncate without moving the divider or progress count. The edit input stays inside the same card height and does not overlap the badge, divider, or action.
+
+### Findings
+
+- Pass: Visible achievement copy is reduced to the award icon, `unlocked/total` count, and arrow. The word `成就` is absent from the rendered interface; the richer phrase remains only in the accessibility label.
+- Pass: Avatar, badge, nickname, divider, progress, and arrow share one stable vertical axis in normal, long-name, and edit states.
+- Pass: The card uses the existing Animal Island cream, teal, brown, and soft tan tokens without introducing a competing palette or decorative treatment.
+- Pass: The nickname retains one-line ellipsis behavior, and the right action retains a fixed width for `0/12` through `12/12` style values.
+- Pass: Existing choose-avatar, edit-nickname, pinned-badge, and achievement-navigation bindings are unchanged.
+- Pass: No actionable P0, P1, or P2 issue remains.
+
+### Comparison History
+
+- Pass 1: The target was translated into a single-row WXML structure, removing the lower achievement copy row and decorative profile rail.
+- Pass 2: The implementation, long-name state, and edit state were captured at the same viewport. Measured hit targets and truncation passed without a follow-up visual fix.
+
+### Verification
+
+- WeChat Developer Tools automation compile and screenshot capture: passed.
+- WeChat Developer Tools preview compile: passed; total package size 1.3 MB.
+- Simulator console and exception filters for `error|exception|fail`: empty.
+- WXML asset references and `git diff --check`: passed.
+
+Current pass result: passed.
+
+## Current Pass: Avatar-to-Name Spacing (2026-08-28)
+
+### Comparison Target
+
+- Source visual truth: `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-c70cf6a5-f5ce-4c32-8b9b-7ba77e45aeb2.png` (710 x 262 px, default-avatar profile header before this spacing pass).
+- Final implementation: `.tmp-visual-qa/profile-header-spacing-real.png` (624 x 1352 px).
+- Additional states: `.tmp-visual-qa/profile-header-spacing-default-avatar.png`, `.tmp-visual-qa/profile-header-spacing-long-name.png`, and `.tmp-visual-qa/profile-header-spacing-editing.png`.
+- Viewport: iPhone 12/13 Pro simulator, 390 x 844 logical px, device pixel ratio 3; content window 390 x 753 logical px.
+- Density normalization: the source viewport was cropped to 624 x 262 px at x=34; the implementation was cropped to 624 x 262 px at y=119. The equal-pixel crops are combined in `.tmp-visual-qa/profile-header-spacing-comparison.png`.
+- State: authenticated profile with real avatar, matching default-avatar reference, long nickname, and nickname input.
+
+### Full-View Comparison Evidence
+
+The four implementation screenshots preserve the 366 x 96 CSS px profile card, existing navigation and menu positions, and safe-area layout. `.tmp-visual-qa/profile-header-spacing-states.png` places the normal, long-name, and edit states together; no card growth, vertical movement, overlap, or clipping is visible.
+
+### Focused Region Evidence
+
+`.tmp-visual-qa/profile-header-spacing-comparison.png` places the normalized source on the left and implementation on the right. The avatar image measures 58 x 58 CSS px at x=48 and the nickname starts at x=118, producing a 12px image-to-text gap. Before this pass the nickname started at x=110, leaving approximately 4px; the added 16rpx content padding contributes the requested 8px increase.
+
+### Findings
+
+- Pass: Typography is unchanged at 36rpx/900 with zero letter spacing. The 244 x 43 CSS px nickname region remains a one-line ellipsis surface for long names.
+- Pass: Spacing is intentionally widened only between the avatar and name. Avatar, 366 x 96 CSS px card, rail, vertical centering, radii, and shadows are unchanged.
+- Pass: Colors and visual tokens are unchanged; no new palette, gradient, opacity, or contrast treatment was introduced.
+- Pass: Uploaded avatars retain `aspectFill`; the existing profile icon retains `aspectFit` in the default state, with no crop, blur, or masking regression.
+- Pass: Copy and content are unchanged. The profile-completion hint remains visible only for the incomplete-profile state.
+- Pass: The nickname input remains 244 x 43 CSS px and fits without clipping. No actionable P0, P1, or P2 issue remains.
+
+### Comparison History
+
+- Pass 1: The source and current default-avatar header were normalized into one focused comparison. The requested extra spacing is visible, but no unrelated visual drift was found.
+- Pass 2: Real-avatar, long-name, default-avatar, and edit states were captured at the same viewport. Long text truncates, the input remains usable, and the post-fix comparison passes without further changes.
+
+### Verification
+
+- WeChat Developer Tools `compile_wxss`: passed.
+- Current page and device state: `pages/profile/profile`, iPhone 12/13 Pro, 390 x 844 logical px.
+- Simulator console and network filters for `error|exception|fail`: empty.
+- Authenticated state was restored through `fetchUserInfo`; no profile mutation was submitted.
+- `git diff --check`: passed.
+
+Current pass result: passed.
+
+## Previous Pass: Profile Header Layout (2026-08-28)
+
+### Comparison Target
+
+- Source visual truth: `/var/folders/q5/0_x8l22d3cd1sy17l2gnzzkh0000gp/T/codex-clipboard-efa250b0-de0f-4b66-a0e9-cf67f260735c.png` (652 x 1368 px, authenticated profile before the layout pass).
+- Final implementation: `.tmp-visual-qa/profile-header-optimized.png` (624 x 1352 px).
+- Additional final states: `.tmp-visual-qa/profile-header-long-name.png`, `.tmp-visual-qa/profile-header-editing.png`, and `.tmp-visual-qa/profile-header-default-avatar.png`.
+- Viewport: iPhone 12/13 Pro simulator, 390 x 844 logical px, device pixel ratio 3; content window 390 x 753 logical px.
+- Density normalization: the source's 10 px simulator margins were cropped to 632 x 1368, then scaled to 624 x 1352. The implementation capture remained at its native 624 x 1352 output.
+- State: authenticated user on `pages/profile/profile`; normal avatar/name, long name, nickname input, and missing-avatar fallback were checked.
+
+### Full-View Comparison Evidence
+
+`.tmp-visual-qa/profile-header-comparison.png` places the normalized source on the left and final implementation on the right. The implementation intentionally reduces the profile card from the source's oversized header to a measured 366 x 96 CSS px surface. The first menu group moves upward without colliding with the header, persistent tab bar, or safe area.
+
+### Focused Region Evidence
+
+`.tmp-visual-qa/profile-header-comparison-focus.png` compares the profile region at the same crop. The source's large gap between avatar and nickname is removed: the avatar button begins at x=44 CSS px and the nickname begins at x=110 CSS px. Avatar, accent rail, nickname, and edit input share one stable horizontal axis.
+
+### Findings
+
+- Pass: Fonts and typography preserve the existing brown display hierarchy. The nickname uses 36rpx/900, the edit field uses 34rpx/800, letter spacing remains zero, and long names truncate on one line without resizing the card.
+- Pass: Spacing and layout use a fixed 128rpx avatar button, 112rpx image, compact 28rpx vertical padding, and a 10 x 96rpx accent rail. The native button auto margins are explicitly reset, eliminating the reported dead space.
+- Pass: Colors and visual tokens remain within the existing mint, cream, teal, yellow, coral, and brown system. No new palette or decorative treatment was introduced.
+- Pass: Image quality uses `aspectFill` for uploaded avatars and the existing `icon-profile.svg` asset with `aspectFit` for the empty state. The fallback is legible and no image placeholder remains.
+- Pass: Copy is unchanged. Existing profile-completion guidance and all menu labels remain intact.
+- Pass: The nickname display and edit field both measure 252 x 43 CSS px, providing a stable near-44px touch/input target while the overall card remains 366 x 96 CSS px.
+- Pass: No actionable P0, P1, or P2 issue remains in the normal, long-name, edit, or missing-avatar states.
+
+### Comparison History
+
+- Pass 1: The source showed an oversized card and a large avatar-to-name gap caused by the native button's automatic margins.
+- Pass 2: The compact layout rendered correctly in normal, long-name, and edit states, but the first missing-avatar asset rendered as a blank circle. The fallback was switched to the project's verified profile icon.
+- Pass 3: The focused comparison found a 33px nickname hit target. Display and input heights were raised to 84rpx; both now measure 43 CSS px without increasing card height.
+- Pass 4: WXML/WXSS were recompiled, all four states were recaptured, the authenticated state was restored, and the final comparison found no remaining P0/P1/P2 issue.
+
+### Verification
+
+- WeChat Developer Tools `compile_wxml` and `compile_wxss`: passed.
+- Current page and device state: `pages/profile/profile`, iPhone 12/13 Pro, 390 x 844 logical px.
+- Simulator console filter for `error|exception|fail`: empty.
+- Primary visual states tested: normal profile, long nickname truncation, focused nickname input, and default avatar.
+- Avatar selection and nickname-save mutations were not invoked; their existing event bindings and TypeScript methods were left unchanged.
+
+Current pass result: passed.
+
 ## Comparison Target
 
 - Source visual truth:

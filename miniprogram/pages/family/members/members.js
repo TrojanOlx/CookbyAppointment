@@ -7,6 +7,88 @@ let memberMutationRequestId = 0;
 const activeFamilyId = () => String(FamilyService.getActiveFamilyId() || '');
 const authToken = () => String(wx.getStorageSync('token') || '');
 
+// Keep the family view on the same fixed local Lucide assets as the achievement page.
+const PINNED_ACHIEVEMENT_ICONS = Object.freeze({
+  'meal-first': '/images/achievements/meal-first.svg',
+  'meal-ten': '/images/achievements/meal-ten.svg',
+  'meal-thirty': '/images/achievements/meal-thirty.svg',
+  'meal-hundred': '/images/achievements/meal-hundred.svg',
+  'dish-five': '/images/achievements/dish-five.svg',
+  'dish-fifteen': '/images/achievements/dish-fifteen.svg',
+  'dish-thirty': '/images/achievements/dish-thirty.svg',
+  'dish-return-five': '/images/achievements/dish-return.svg',
+  'meal-types-three': '/images/achievements/meal-complete.svg',
+  'months-three': '/images/achievements/time-months.svg',
+  'photo-first': '/images/achievements/memory-photo.svg',
+  'note-five': '/images/achievements/memory-notes.svg',
+  first_meal: '/images/achievements/meal-first.svg',
+  ten_meals: '/images/achievements/meal-ten.svg',
+  thirty_meals: '/images/achievements/meal-thirty.svg',
+  hundred_meals: '/images/achievements/meal-hundred.svg',
+  five_dishes: '/images/achievements/dish-five.svg',
+  fifteen_dishes: '/images/achievements/dish-fifteen.svg',
+  thirty_dishes: '/images/achievements/dish-thirty.svg',
+  favorite_return: '/images/achievements/dish-return.svg',
+  three_meals: '/images/achievements/meal-complete.svg',
+  three_months: '/images/achievements/time-months.svg',
+  first_photo: '/images/achievements/memory-photo.svg',
+  five_notes: '/images/achievements/memory-notes.svg'
+});
+
+const PINNED_ACHIEVEMENT_NAMES = Object.freeze({
+  'meal-first': '第一餐',
+  'meal-ten': '十餐烟火',
+  'meal-thirty': '常伴三十餐',
+  'meal-hundred': '百餐纪念',
+  'dish-five': '五味初尝',
+  'dish-fifteen': '菜单探险家',
+  'dish-thirty': '百味收藏家',
+  'dish-return-five': '最爱返场',
+  'meal-types-three': '三餐集齐',
+  'months-three': '月月有味',
+  'photo-first': '有图有味',
+  'note-five': '滋味成册',
+  first_meal: '第一餐',
+  ten_meals: '十餐烟火',
+  thirty_meals: '常伴三十餐',
+  hundred_meals: '百餐纪念',
+  five_dishes: '五味初尝',
+  fifteen_dishes: '菜单探险家',
+  thirty_dishes: '百味收藏家',
+  favorite_return: '最爱返场',
+  three_meals: '三餐集齐',
+  three_months: '月月有味',
+  first_photo: '有图有味',
+  five_notes: '滋味成册'
+});
+
+const pinnedAchievement = (member) => {
+  if (!member || typeof member !== 'object') return { id: '', icon: '', name: '' };
+  const candidates = [
+    member.pinnedAchievementId,
+    member.pinned_achievement_id,
+    member.pinnedBadgeId,
+    member.pinned_badge_id,
+    member.pinnedAchievement && (member.pinnedAchievement.id || member.pinnedAchievement.key)
+  ];
+  let id = '';
+  for (let index = 0; index < candidates.length; index += 1) {
+    const value = candidates[index];
+    if (typeof value === 'string' || typeof value === 'number') {
+      const candidate = String(value).trim();
+      if (candidate && Object.prototype.hasOwnProperty.call(PINNED_ACHIEVEMENT_ICONS, candidate)) {
+        id = candidate;
+        break;
+      }
+    }
+  }
+  return {
+    id,
+    icon: id ? PINNED_ACHIEVEMENT_ICONS[id] : '',
+    name: id ? PINNED_ACHIEVEMENT_NAMES[id] : ''
+  };
+};
+
 Page({
   data: {
     family: null,
@@ -149,12 +231,16 @@ Page({
 
   decorateMember(member, canManage, isOwner, actorRole) {
     const isCurrent = this.isCurrentMember(member);
+    const pinned = pinnedAchievement(member);
     const roleCanBeManaged = isOwner
       ? member.role !== FamilyRole.OWNER
       : (actorRole === FamilyRole.ADMIN && (member.role === FamilyRole.CHEF || member.role === FamilyRole.MEMBER));
     return {
       ...member,
       isCurrent,
+      pinnedAchievementId: pinned.id,
+      pinnedAchievementIcon: pinned.icon,
+      pinnedAchievementName: pinned.name,
       canEdit: canManage && !isCurrent && roleCanBeManaged,
       canTransfer: isOwner && !isCurrent && member.role !== FamilyRole.OWNER
     };

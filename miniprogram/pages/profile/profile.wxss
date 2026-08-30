@@ -25,9 +25,9 @@ page {
 
 /* 用户信息区域 */
 .user-info {
-  background: linear-gradient(145deg, var(--primary-light) 0%, var(--card-bg) 100%);
+  background: var(--card-bg-light);
   border-radius: var(--radius-lg);
-  padding: 28rpx 30rpx;
+  padding: 28rpx 22rpx;
   margin-bottom: 20rpx;
   display: flex;
   justify-content: flex-start;
@@ -111,11 +111,80 @@ page {
   flex: 1;
   min-width: 0;
   padding-left: 16rpx;
+  padding-right: 16rpx;
   box-sizing: border-box;
-  align-self: stretch;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   justify-content: center;
+}
+
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 84rpx;
+}
+
+.profile-achievement-badge {
+  flex: 0 0 40rpx;
+  width: 40rpx;
+  height: 40rpx;
+  margin-right: 12rpx;
+}
+
+.profile-achievement-badge.is-unpinned {
+  opacity: 0.46;
+  filter: grayscale(1);
+}
+
+.profile-name-row .user-name,
+.profile-name-row .nickname-input {
+  flex: 1;
+  width: auto;
+}
+
+.profile-achievement-link {
+  flex: 0 0 184rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 184rpx;
+  min-height: 88rpx;
+  padding-left: 20rpx;
+  border-left: 2rpx solid rgba(159, 146, 125, 0.30);
+  box-sizing: border-box;
+  color: var(--primary-dark);
+  transition: transform var(--motion-press) var(--ease-out);
+}
+
+.profile-achievement-link:active {
+  transform: translateY(2rpx);
+}
+
+.profile-achievement-icon {
+  flex: 0 0 34rpx;
+  width: 34rpx;
+  height: 34rpx;
+}
+
+.profile-achievement-count {
+  flex: 1;
+  min-width: 76rpx;
+  margin-left: 10rpx;
+  color: var(--primary-dark);
+  font-size: 30rpx;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.profile-achievement-arrow {
+  flex: 0 0 26rpx;
+  width: 26rpx;
+  height: 26rpx;
+  margin-left: 8rpx;
+  opacity: 0.72;
 }
 
 .user-name {
@@ -242,16 +311,16 @@ page {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0 0 128rpx;
-  width: 128rpx;
-  height: 128rpx;
+  flex: 0 0 120rpx;
+  width: 120rpx;
+  height: 120rpx;
   padding: 0;
   background: transparent;
   border: none;
   border-radius: var(--radius-full);
   box-sizing: border-box;
   line-height: 1;
-  margin: 0 28rpx 0 0;
+  margin: 0 20rpx 0 0;
   transition: transform var(--motion-press) var(--ease-out);
 }
 
@@ -275,22 +344,14 @@ page {
 .user-info {
   min-height: 0;
   justify-content: flex-start;
-  background:
-    radial-gradient(circle, rgba(247,205,103,0.20) 2rpx, transparent 3rpx) 0 0/42rpx 42rpx,
-    var(--card-bg);
-  border: 2rpx solid rgba(159,146,125,0.36);
+  background: var(--card-bg-light);
+  border: 3rpx solid rgba(121,79,39,0.16);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 6rpx 0 rgba(121,79,39,0.10), 0 14rpx 26rpx rgba(61,52,40,0.10);
 }
 
 .user-info::before {
-  content: '';
-  flex: 0 0 10rpx;
-  width: 10rpx;
-  height: 96rpx;
-  margin-right: 22rpx;
-  border-radius: var(--radius-full);
-  background: linear-gradient(180deg, var(--primary-color), var(--accent-yellow), var(--accent-coral));
+  display: none;
 }
 
 .login-btn {
@@ -444,6 +505,7 @@ page {
   .userinfo-btn,
   .avatar-btn,
   .user-name,
+  .profile-achievement-link,
   .menu-item,
   .family-action-btn {
     transition: none;
@@ -455,6 +517,7 @@ page {
   .userinfo-btn:active,
   .avatar-btn:active,
   .user-name:active,
+  .profile-achievement-link:active,
   .menu-item:active,
   .family-action-btn:active {
     transform: none !important;

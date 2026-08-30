@@ -1,0 +1,188 @@
+<view class="achievement-page">
+  <view class="fixed-page-bg"></view>
+
+  <view class="achievement-header">
+    <view class="header-copy">
+      <text class="header-kicker">MY TABLE NOTES</text>
+      <text class="header-title">我的成就</text>
+      <text class="header-subtitle">把每一次开火和分享，收进自己的餐桌记忆。</text>
+    </view>
+    <view class="header-mark" aria-hidden="true">
+      <image class="header-mark-icon" src="/images/achievements/meal-hundred.svg" mode="aspectFit"></image>
+    </view>
+  </view>
+
+  <scroll-view
+    class="achievement-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+    refresher-enabled="true"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onPullDownRefresh"
+  >
+    <view class="summary-panel">
+      <view class="summary-copy">
+        <text class="summary-eyebrow">今日的餐桌勋章</text>
+        <view class="summary-count-row">
+          <text class="summary-count">{{unlockedCount}}</text>
+          <text class="summary-count-suffix">/ {{totalCount}} 枚已解锁</text>
+        </view>
+      </view>
+      <view class="summary-progress-wrap">
+        <view class="summary-progress-track">
+          <view class="summary-progress-fill" style="width: {{unlockPercent}}%;"></view>
+        </view>
+        <text class="summary-progress-label">继续记录，下一枚徽章就在路上</text>
+      </view>
+      <view wx:if="{{pinnedAchievement}}" class="pinned-summary">
+        <image class="pinned-summary-icon" src="{{pinnedAchievement.icon}}" mode="aspectFit"></image>
+        <text class="pinned-summary-text">当前佩戴：{{pinnedAchievement.name}}</text>
+      </view>
+      <view wx:else class="pinned-summary is-empty">
+        <image class="pinned-summary-icon" src="/images/achievements/badge-default.svg" mode="aspectFit"></image>
+        <text class="pinned-summary-text">还没有佩戴徽章</text>
+      </view>
+    </view>
+
+    <view class="view-tabs" role="tablist">
+      <view class="view-tab {{activeTab === 'badges' ? 'is-active' : ''}}" data-tab="badges" bindtap="switchTab" role="tab" aria-label="成就徽章">
+        <image class="view-tab-icon" src="/images/achievements/award.svg" mode="aspectFit"></image>
+        <text>成就徽章</text>
+      </view>
+      <view class="view-tab {{activeTab === 'atlas' ? 'is-active' : ''}}" data-tab="atlas" bindtap="switchTab" role="tab" aria-label="菜品图鉴">
+        <image class="view-tab-icon" src="/images/achievements/dish-atlas.svg" mode="aspectFit"></image>
+        <text>菜品图鉴</text>
+      </view>
+    </view>
+
+    <block wx:if="{{activeTab === 'badges'}}">
+      <view wx:if="{{badgeLoading && !badges.length}}" class="state-panel">
+        <image class="state-icon is-spinning" src="/images/achievements/sparkles.svg" mode="aspectFit"></image>
+        <text class="state-title">正在整理你的餐桌成就...</text>
+      </view>
+
+      <view wx:elif="{{badgeError && !badges.length}}" class="state-panel state-panel--error">
+        <image class="state-icon" src="/images/achievements/lock-keyhole.svg" mode="aspectFit"></image>
+        <text class="state-title">成就暂时无法加载</text>
+        <text class="state-copy">{{badgeError}}</text>
+        <button class="state-retry" bindtap="retry">重新加载</button>
+      </view>
+
+      <view wx:else class="badge-section">
+        <view class="section-heading">
+          <view>
+            <text class="section-title">全部徽章</text>
+            <text class="section-subtitle">解锁后可佩戴一枚，和家人一起看见</text>
+          </view>
+          <text class="section-count">{{unlockedCount}}/{{totalCount}}</text>
+        </view>
+
+        <view wx:if="{{badgeLoading && badges.length}}" class="inline-loading">正在更新成就...</view>
+
+        <view class="badge-grid">
+          <view wx:for="{{badges}}" wx:key="id" class="badge-card tone-{{item.tone}} {{item.unlocked ? 'is-unlocked' : 'is-locked'}}">
+            <view class="badge-art">
+              <image class="badge-icon {{item.unlocked ? '' : 'is-muted'}}" src="{{item.icon}}" mode="aspectFit"></image>
+              <image wx:if="{{!item.unlocked}}" class="badge-lock" src="/images/achievements/lock-keyhole.svg" mode="aspectFit"></image>
+              <view wx:if="{{item.unlocked}}" class="unlocked-mark">已解锁</view>
+            </view>
+            <text class="badge-name">{{item.name}}</text>
+            <text class="badge-description">{{item.description}}</text>
+            <view class="badge-progress-track">
+              <view class="badge-progress-fill" style="width: {{item.progressPercent}}%;"></view>
+            </view>
+            <text class="badge-progress-label">{{item.progressLabel}}</text>
+            <button
+              wx:if="{{item.unlocked}}"
+              class="pin-button {{item.pinned ? 'is-pinned' : ''}}"
+              loading="{{pinningId === item.id}}"
+              disabled="{{!!pinningId}}"
+              bindtap="togglePin"
+              data-id="{{item.id}}"
+              aria-label="{{item.pinned ? '取消佩戴' : '佩戴'}}{{item.name}}"
+            >
+              <image class="pin-button-icon" src="{{item.pinned ? '/images/achievements/pin-filled.svg' : '/images/achievements/pin.svg'}}" mode="aspectFit"></image>
+              <text>{{item.pinned ? '佩戴中' : '佩戴'}}</text>
+            </button>
+            <view wx:else class="locked-hint">
+              <image class="locked-hint-icon" src="/images/achievements/lock-keyhole.svg" mode="aspectFit"></image>
+              <text>完成目标解锁</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <block wx:else>
+      <view wx:if="{{atlasLoading && !atlas.length}}" class="state-panel">
+        <image class="state-icon is-spinning" src="/images/achievements/dish-atlas.svg" mode="aspectFit"></image>
+        <text class="state-title">正在翻开菜品图鉴...</text>
+      </view>
+
+      <view wx:elif="{{atlasError && !atlas.length}}" class="state-panel state-panel--error">
+        <image class="state-icon" src="/images/achievements/lock-keyhole.svg" mode="aspectFit"></image>
+        <text class="state-title">菜品图鉴暂时无法加载</text>
+        <text class="state-copy">{{atlasError}}</text>
+        <button class="state-retry" bindtap="retry">重新加载</button>
+      </view>
+
+      <view wx:elif="{{!atlas.length}}" class="state-panel state-panel--empty">
+        <image class="state-icon" src="/images/achievements/dish-atlas.svg" mode="aspectFit"></image>
+        <text class="state-title">还没有菜品图鉴</text>
+        <text class="state-copy">完成一餐后，这里会留下第一笔收藏。</text>
+      </view>
+
+      <view wx:else class="atlas-section">
+        <view class="section-heading">
+          <view>
+            <text class="section-title">菜品图鉴</text>
+            <text class="section-subtitle">每一道菜，都是一段可回看的时间</text>
+          </view>
+          <text class="section-count">{{atlas.length}} 道</text>
+        </view>
+        <view wx:if="{{atlasLoading}}" class="inline-loading">正在更新图鉴...</view>
+        <view wx:if="{{atlasError}}" class="inline-error">
+          <text>{{atlasError}}</text>
+          <button bindtap="retry">重新加载</button>
+        </view>
+        <view class="atlas-list">
+          <view
+            wx:for="{{atlas}}"
+            wx:key="id"
+            class="atlas-row"
+            bindtap="openAtlasItem"
+            data-name="{{item.name}}"
+            data-scope-id="{{item.scopeId}}"
+            data-normalized-name="{{item.normalizedName}}"
+          >
+            <image
+              class="atlas-image"
+              src="{{item.imageUrl}}"
+              mode="aspectFill"
+              lazy-load="true"
+              data-index="{{index}}"
+              binderror="onAtlasImageError"
+            ></image>
+            <view class="atlas-copy">
+              <view class="atlas-title-row">
+                <text class="atlas-name">{{item.name}}</text>
+                <image class="atlas-arrow" src="/images/achievements/arrow-right.svg" mode="aspectFit"></image>
+              </view>
+              <view class="atlas-meta-row">
+                <text class="atlas-scope">{{item.scopeLabel}}</text>
+                <text class="atlas-count">{{item.count}} 次</text>
+              </view>
+              <view class="atlas-date-row">
+                <text wx:if="{{item.firstDate}}">初见 {{item.firstDate}}</text>
+                <text wx:if="{{item.latestDate}}">最近 {{item.latestDate}}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <view class="scroll-spacer" aria-hidden="true"></view>
+  </scroll-view>
+</view>

@@ -1,0 +1,116 @@
+<view class="history-detail-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view
+    class="history-detail-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+    refresher-enabled="true"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onPullDownRefresh"
+  >
+    <view wx:if="{{loading && !record}}" class="detail-state-card">
+      <island-loading text="正在打开这段回忆..."></island-loading>
+    </view>
+
+    <view wx:elif="{{error && !record}}" class="detail-state-card detail-error-state">
+      <image class="detail-state-icon" src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <view class="detail-state-title">回忆暂时无法打开</view>
+      <view class="detail-state-copy">{{error}}</view>
+      <button class="detail-state-button" bindtap="retry">重新加载</button>
+    </view>
+
+    <block wx:elif="{{record}}">
+      <view class="detail-hero">
+        <view class="detail-hero-image-wrap">
+          <image class="detail-hero-image" src="{{record.displayImage}}" mode="aspectFill"></image>
+          <view class="detail-hero-stamp">{{record.mealType || '一餐'}}</view>
+        </view>
+        <view class="detail-hero-copy">
+          <view class="detail-hero-date">{{record.displayDate}}</view>
+          <view class="detail-hero-family">{{record.displayFamily}}</view>
+          <view class="detail-hero-source">{{record.displaySource}}</view>
+        </view>
+      </view>
+
+      <view wx:if="{{record.displaySummary}}" class="detail-summary">{{record.displaySummary}}</view>
+
+      <view class="detail-actions">
+        <button wx:if="{{record.repeatIds.length || record.unavailableNames.length}}" class="detail-action detail-action-primary" bindtap="repeatRecord">再来一次</button>
+        <button wx:if="{{record.canEdit && !record.frozen}}" class="detail-action detail-action-quiet" bindtap="openEditor">编辑回忆</button>
+        <button wx:if="{{record.canExclude}}" class="detail-action detail-action-quiet" loading="{{actionLoading}}" disabled="{{actionLoading}}" bindtap="excludeRecord">从我的回忆移除</button>
+        <button wx:if="{{record.canDelete}}" class="detail-action detail-action-danger" loading="{{actionLoading}}" disabled="{{actionLoading}}" bindtap="deleteRecord">删除记录</button>
+      </view>
+
+      <view class="detail-section">
+        <view class="detail-section-title">这顿饭吃了什么</view>
+        <view wx:if="{{record.detailDishes.length}}" class="detail-dish-list">
+          <view wx:for="{{record.detailDishes}}" wx:key="name" class="detail-dish-row">
+            <image class="detail-dish-image" src="{{item.displayImage}}" mode="aspectFill" data-index="{{index}}" binderror="onDishImageError"></image>
+            <view class="detail-dish-copy">
+              <text class="detail-dish-name">{{item.name}}</text>
+              <text class="detail-dish-type">{{item.displayType}}</text>
+            </view>
+          </view>
+        </view>
+        <view wx:else class="detail-muted">这条回忆没有记录菜品名称</view>
+      </view>
+
+      <view class="detail-section">
+        <view class="detail-section-heading">
+          <view class="detail-section-title">一起吃饭的人</view>
+          <text class="detail-section-count">{{record.detailParticipants.length}} 人</text>
+        </view>
+        <view wx:if="{{record.detailParticipants.length}}" class="participant-list">
+          <view wx:for="{{record.detailParticipants}}" wx:key="participantKey" class="participant-card">
+            <view class="participant-header">
+              <image class="participant-avatar" src="{{item.displayAvatar}}" mode="aspectFill" data-participant-id="{{item.participantKey}}" binderror="onParticipantAvatarError"></image>
+              <view class="participant-copy">
+                <view class="participant-name-row">
+                  <text class="participant-name">{{item.displayName}}</text>
+                  <image wx:if="{{item.displayBadgeIcon}}" class="participant-badge-icon" src="{{item.displayBadgeIcon}}" mode="aspectFit"></image>
+                  <text wx:if="{{item.displayBadgeName && item.displayBadgeIcon}}" class="participant-badge-name">{{item.displayBadgeName}}</text>
+                </view>
+                <text wx:if="{{item.frozenLabel}}" class="participant-frozen">{{item.frozenLabel}}</text>
+              </view>
+              <button wx:if="{{item.canEditContribution && editingParticipantId !== item.participantKey}}" class="participant-edit-button" data-participant-id="{{item.participantKey}}" bindtap="beginContribution">编辑我的贡献</button>
+            </view>
+
+            <view wx:if="{{editingParticipantId === item.participantKey}}" class="contribution-editor">
+              <textarea class="contribution-textarea" value="{{editingNote}}" maxlength="500" placeholder="写下这顿饭让你记住的味道" placeholder-class="contribution-placeholder" bindinput="onContributionInput"></textarea>
+              <view class="contribution-count">{{editingNote.length}}/500</view>
+              <view class="contribution-images">
+                <view wx:for="{{editingImages}}" wx:key="*this" class="contribution-image-wrap">
+                  <image class="contribution-image" src="{{item}}" mode="aspectFill" data-index="{{index}}" bindtap="previewEditingImage"></image>
+                  <button class="contribution-remove" data-index="{{index}}" catchtap="removeContributionImage" aria-label="删除图片">x</button>
+                </view>
+                <button wx:if="{{editingImages.length < 3}}" class="contribution-add" bindtap="chooseContributionImages" loading="{{uploadingImages}}" disabled="{{uploadingImages}}">
+                  <image src="/images/island/icon-dish.svg" mode="aspectFit"></image>
+                  <text>{{uploadingImages ? '上传中' : '添加照片'}}</text>
+                </button>
+              </view>
+              <view class="contribution-actions">
+                <button class="contribution-cancel" bindtap="cancelContribution">取消</button>
+                <button class="contribution-save" bindtap="saveContribution" loading="{{savingContribution}}" disabled="{{savingContribution || uploadingImages}}">保存贡献</button>
+              </view>
+            </view>
+
+            <block wx:else>
+              <view wx:if="{{item.noteText}}" class="participant-note">{{item.noteText}}</view>
+              <view wx:else class="participant-note participant-note-empty">还没有写下感想</view>
+              <view wx:if="{{item.photoUrls.length}}" class="participant-photos">
+                <image wx:for="{{item.photoUrls}}" wx:for-item="photo" wx:key="*this" class="participant-photo" src="{{photo}}" mode="aspectFill" data-participant-id="{{item.participantKey}}" data-index="{{index}}" bindtap="previewParticipantImage" binderror="onMemoryImageError"></image>
+              </view>
+            </block>
+          </view>
+        </view>
+        <view wx:else class="detail-muted">暂时没有参与者贡献</view>
+      </view>
+
+      <view wx:if="{{loading && record}}" class="detail-inline-loading"><island-loading text="正在更新详情..."></island-loading></view>
+      <view wx:if="{{error && record}}" class="detail-inline-error"><text>{{error}}</text><button bindtap="retry">重试</button></view>
+    </block>
+
+    <view class="detail-bottom-spacer" aria-hidden="true"></view>
+  </scroll-view>
+</view>

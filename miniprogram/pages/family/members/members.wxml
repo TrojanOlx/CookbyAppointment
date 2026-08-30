@@ -47,7 +47,11 @@
             <text wx:else>{{item.initial}}</text>
           </view>
           <view class="member-copy">
-            <view class="member-name">{{item.nickName}}<text wx:if="{{item.isCurrent}}" class="member-you">我</text></view>
+            <view class="member-name-row">
+              <image wx:if="{{item.pinnedAchievementIcon}}" class="member-badge-icon" src="{{item.pinnedAchievementIcon}}" mode="aspectFit" aria-label="{{item.pinnedAchievementName || '已佩戴成就徽章'}}"></image>
+              <text class="member-name-text">{{item.nickName}}</text>
+              <text wx:if="{{item.isCurrent}}" class="member-you">我</text>
+            </view>
             <view class="member-meta">{{item.roleLabel}}</view>
           </view>
           <view class="member-item-actions">

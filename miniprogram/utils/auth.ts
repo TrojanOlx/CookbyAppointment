@@ -1,8 +1,8 @@
 // 用户认证相关工具函数
+import { API_BASE_URL } from '../config/environment';
 import { SessionCacheService } from './sessionCache';
 
-// 服务器URL，需要根据实际情况修改
-const BASE_URL = 'https://wx.oulongxing.com';
+const BASE_URL = API_BASE_URL;
 
 // 存储用户登录态的key
 const USER_TOKEN_KEY = 'token';

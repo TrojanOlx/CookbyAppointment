@@ -1,6 +1,11 @@
 import { checkRateLimit, generateSecret, requireAuth, requireFamilyContext, sha256Hex } from '../core/auth';
 import { ApiError, json, readJson, requiredString } from '../core/http';
 import { userLifecycleLockScope, withOperationLock } from '../core/operationLock';
+import {
+  buildAnonymizeMealHistoryForDeletedUserStatements,
+  deletePersonalMealHistoryObjectsForDeletedUser,
+  exportMealHistoryForUser,
+} from '../core/mealHistory';
 import type { Env } from '../core/types';
 import { assertUserUploadQuota, checkUploadRateLimits, IMAGE_TYPES, validateUploadFile } from '../core/uploadSecurity';
 import { profileCompleteness, strictNickname, strictText } from '../core/validation';
@@ -198,6 +203,7 @@ async function updateInfo(request: Request, env: Env): Promise<Response> {
 
 async function exportAccount(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
+  const mealHistory = await exportMealHistoryForUser(env, auth.user.id);
   const [profile, preferences, families, appointments, diners, reviews, inventory, files] = await env.DB.batch([
     env.DB.prepare(`
       SELECT id, nickName, avatarUrl, gender, country, province, city, language, phoneNumber, createTime, updateTime
@@ -239,6 +245,7 @@ async function exportAccount(request: Request, env: Env): Promise<Response> {
     reviews: reviews.results,
     inventoryContributions: inventory.results,
     files: files.results,
+    mealHistory,
   });
 }
 
@@ -268,6 +275,7 @@ async function deleteAccount(request: Request, env: Env): Promise<Response> {
     const now = Date.now();
     const anonymizedOpenid = `deleted:${auth.user.id}:${now}`;
     await env.DB.batch([
+      ...buildAnonymizeMealHistoryForDeletedUserStatements(env, auth.user.id, now),
       env.DB.prepare(`
         INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, details, createdAt)
         VALUES (?, NULL, ?, 'user.account_deleted', 'user', ?, ?, ?)
@@ -290,6 +298,7 @@ async function deleteAccount(request: Request, env: Env): Promise<Response> {
           isAdmin = 0, updateTime = ? WHERE id = ?
       `).bind(anonymizedOpenid, now, auth.user.id),
     ]);
+    await deletePersonalMealHistoryObjectsForDeletedUser(env, auth.user.id, now);
     return json({ success: true, deletedAt: now });
   });
 }

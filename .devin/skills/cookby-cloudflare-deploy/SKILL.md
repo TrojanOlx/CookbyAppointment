@@ -11,8 +11,8 @@ This skill is only for the `CookbyAppointment` project at `/Users/trojan/github/
 
 - Worker source: `cloudflareWorkes/worker.js`
 - Wrangler config: `cloudflareWorkes/wrangler.toml`
-- Worker name: `black-frost-08dc`
-- Production custom domain: `wx.oulongxing.com`
+- Worker name: `cookby-appointment-production`
+- Production custom domain: `homemenu.yunma.oulongxing.com`
 - D1 binding: `env.DB` -> `cookby_appointment`
 - R2 binding: `env.FILE_BUCKET` -> `cookby-appointment`
 - Public R2 URL variable: `R2_PUBLIC_URL=https://images.wx.oulongxing.com`
@@ -22,7 +22,8 @@ This skill is only for the `CookbyAppointment` project at `/Users/trojan/github/
 
 - Always run from the project root: `/Users/trojan/github/CookbyAppointment`.
 - Always run a dry run before a real deploy.
-- A real deploy updates the production Worker behind `https://wx.oulongxing.com`.
+- A real deploy updates the production Worker behind `https://homemenu.yunma.oulongxing.com`.
+- The production deploy must keep the existing `cookby_appointment` D1 database and `cookby-appointment` R2 bucket bindings. Never delete or recreate either resource while renaming or redeploying the Worker.
 - If the user only asks to check, validate, or dry-run, do not deploy.
 - If the user explicitly asks to deploy, run the preflight checks first, then deploy.
 - Never print, request, or commit `WX_SECRET`.
@@ -79,16 +80,16 @@ It is normal that `WX_APPID` and `WX_SECRET` do not appear in dry-run output bec
 Confirm the deploy output includes:
 
 ```text
-Uploaded black-frost-08dc
-Deployed black-frost-08dc triggers
-  wx.oulongxing.com (custom domain)
+Uploaded cookby-appointment-production
+Deployed cookby-appointment-production triggers
+  homemenu.yunma.oulongxing.com (custom domain)
 Current Version ID: <version-id>
 ```
 
 Then verify the Worker responds:
 
 ```bash
-curl -i https://wx.oulongxing.com/api/dish/list
+curl -i https://homemenu.yunma.oulongxing.com/api/dish/list
 ```
 
 A login/auth error, JSON payload, or application-level response means the Worker is reachable. A Cloudflare deployment error, script startup error, or missing route needs troubleshooting.

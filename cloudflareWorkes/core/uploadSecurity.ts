@@ -115,7 +115,13 @@ export async function checkUploadRateLimits(env: Env, userId: string, scope = 'u
 
 export async function assertFamilyUploadQuota(env: Env, context: FamilyContext, incomingBytes: number): Promise<void> {
   const [familyUsed, userUsed] = await env.DB.batch([
-    env.DB.prepare('SELECT COALESCE(SUM(size), 0) AS used FROM family_files WHERE familyId = ? AND deletedAt IS NULL').bind(context.familyId),
+    env.DB.prepare(`
+      SELECT COALESCE(SUM(size), 0) AS used FROM (
+        SELECT size FROM family_files WHERE familyId = ? AND deletedAt IS NULL
+        UNION ALL
+        SELECT size FROM meal_memory_files WHERE familyId = ? AND deletedAt IS NULL
+      )
+    `).bind(context.familyId, context.familyId),
     env.DB.prepare(`
       SELECT COALESCE(SUM(size), 0) AS used FROM (
         SELECT size FROM family_files WHERE uploadedBy = ? AND deletedAt IS NULL
@@ -123,8 +129,10 @@ export async function assertFamilyUploadQuota(env: Env, context: FamilyContext, 
         SELECT size FROM user_files WHERE userId = ? AND deletedAt IS NULL
         UNION ALL
         SELECT size FROM platform_files WHERE uploadedBy = ? AND deletedAt IS NULL
+        UNION ALL
+        SELECT size FROM meal_memory_files WHERE ownerUserId = ? AND deletedAt IS NULL
       )
-    `).bind(context.user.id, context.user.id, context.user.id),
+    `).bind(context.user.id, context.user.id, context.user.id, context.user.id),
   ]);
   const familyBytes = Number((familyUsed.results[0] as { used?: unknown } | undefined)?.used || 0);
   const userBytes = Number((userUsed.results[0] as { used?: unknown } | undefined)?.used || 0);
@@ -132,6 +140,20 @@ export async function assertFamilyUploadQuota(env: Env, context: FamilyContext, 
     throw new ApiError(413, 'USER_STORAGE_QUOTA', '个人上传空间已用完', { max: USER_STORAGE_QUOTA_BYTES });
   }
   if (familyBytes + incomingBytes > FAMILY_STORAGE_QUOTA_BYTES) {
+    throw new ApiError(413, 'FAMILY_STORAGE_QUOTA', '家庭文件空间已用完', { max: FAMILY_STORAGE_QUOTA_BYTES });
+  }
+}
+
+export async function assertFamilyMemoryUploadQuota(env: Env, familyId: string, incomingBytes: number): Promise<void> {
+  if (incomingBytes <= 0) return;
+  const used = await env.DB.prepare(`
+    SELECT COALESCE(SUM(size), 0) AS used FROM (
+      SELECT size FROM family_files WHERE familyId = ? AND deletedAt IS NULL
+      UNION ALL
+      SELECT size FROM meal_memory_files WHERE familyId = ? AND deletedAt IS NULL
+    )
+  `).bind(familyId, familyId).first<number>('used');
+  if (Number(used || 0) + incomingBytes > FAMILY_STORAGE_QUOTA_BYTES) {
     throw new ApiError(413, 'FAMILY_STORAGE_QUOTA', '家庭文件空间已用完', { max: FAMILY_STORAGE_QUOTA_BYTES });
   }
 }
@@ -144,8 +166,10 @@ export async function assertUserUploadQuota(env: Env, userId: string, incomingBy
       SELECT size FROM user_files WHERE userId = ? AND deletedAt IS NULL
       UNION ALL
       SELECT size FROM platform_files WHERE uploadedBy = ? AND deletedAt IS NULL
+      UNION ALL
+      SELECT size FROM meal_memory_files WHERE ownerUserId = ? AND deletedAt IS NULL
     )
-  `).bind(userId, userId, userId).first<number>('used');
+  `).bind(userId, userId, userId, userId).first<number>('used');
   if (Number(used || 0) + incomingBytes > USER_STORAGE_QUOTA_BYTES) {
     throw new ApiError(413, 'USER_STORAGE_QUOTA', '个人上传空间已用完', { max: USER_STORAGE_QUOTA_BYTES });
   }
@@ -241,15 +265,45 @@ export async function expireTargetFiles(
 }
 
 export async function cleanupExpiredUploads(env: Env, limit = 100): Promise<number> {
+  const at = Date.now();
   const expired = await env.DB.prepare(`
-    SELECT id, objectKey FROM family_files
-    WHERE deletedAt IS NULL AND expiresAt IS NOT NULL AND expiresAt <= ?
-    ORDER BY expiresAt ASC LIMIT ?
-  `).bind(Date.now(), limit).all<{ id: string; objectKey: string }>();
+    SELECT id, objectKey, sourceType, deletedAt FROM (
+      SELECT id, objectKey, expiresAt, deletedAt,
+        COALESCE(deletedAt, expiresAt) AS cleanupAt, 'family' AS sourceType
+      FROM family_files
+      WHERE deletedAt IS NOT NULL OR (expiresAt IS NOT NULL AND expiresAt <= ?)
+      UNION ALL
+      SELECT id, objectKey, expiresAt, deletedAt,
+        COALESCE(deletedAt, expiresAt) AS cleanupAt, 'meal_memory' AS sourceType
+      FROM meal_memory_files
+      WHERE deletedAt IS NOT NULL OR (expiresAt IS NOT NULL AND expiresAt <= ?)
+    )
+    ORDER BY cleanupAt ASC, sourceType ASC, id ASC
+    LIMIT ?
+  `).bind(at, at, limit).all<{
+    id: string;
+    objectKey: string;
+    sourceType: 'family' | 'meal_memory';
+    deletedAt: number | null;
+  }>();
+  let cleaned = 0;
   for (const file of expired.results) {
-    await env.FILE_BUCKET.delete(file.objectKey);
-    await env.DB.prepare('UPDATE family_files SET deletedAt = ? WHERE id = ? AND deletedAt IS NULL')
-      .bind(Date.now(), file.id).run();
+    const table = file.sourceType === 'meal_memory' ? 'meal_memory_files' : 'family_files';
+    if (file.deletedAt === null) {
+      const claimed = await env.DB.prepare(`
+        UPDATE ${table} SET deletedAt = ?
+        WHERE id = ? AND deletedAt IS NULL AND expiresAt IS NOT NULL AND expiresAt <= ?
+      `).bind(at, file.id, at).run();
+      if (!claimed.meta.changes) continue;
+    }
+    try {
+      await env.FILE_BUCKET.delete(file.objectKey);
+    } catch {
+      continue;
+    }
+    await env.DB.prepare(`DELETE FROM ${table} WHERE id = ? AND deletedAt IS NOT NULL`)
+      .bind(file.id).run();
+    cleaned += 1;
   }
-  return expired.results.length;
+  return cleaned;
 }

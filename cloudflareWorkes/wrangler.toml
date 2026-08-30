@@ -2,7 +2,7 @@
 # Before deploying, confirm the local worker.js matches the code currently
 # running in Cloudflare's dashboard quick editor.
 
-name = "black-frost-08dc"
+name = "cookby-appointment-production"
 main = "worker.js"
 compatibility_date = "2026-08-17"
 compatibility_flags = ["nodejs_compat"]
@@ -13,7 +13,7 @@ workers_dev = false
 keep_vars = true
 
 routes = [
-  { pattern = "wx.oulongxing.com", custom_domain = true }
+  { pattern = "homemenu.yunma.oulongxing.com", custom_domain = true }
 ]
 
 [[d1_databases]]

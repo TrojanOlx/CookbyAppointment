@@ -1,0 +1,108 @@
+<view class="history-editor-page">
+  <view class="fixed-page-bg"></view>
+  <scroll-view class="history-editor-scroll" scroll-y="true" enhanced="true" show-scrollbar="false">
+    <view class="editor-heading">
+      <view class="editor-kicker">ONE MORE MEMORY</view>
+      <view class="editor-title">{{editMode ? '编辑这段回忆' : '补记一段回忆'}}</view>
+      <view class="editor-subtitle">记录已经发生的好味道，日期和餐次会帮助未来的你找回这一刻。</view>
+    </view>
+
+    <view wx:if="{{error}}" class="editor-error">
+      <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <text>{{error}}</text>
+    </view>
+
+    <view wx:if="{{loading}}" class="editor-state-card"><island-loading text="正在读取回忆..."></island-loading></view>
+
+    <block wx:else>
+      <view class="editor-section">
+        <view class="editor-section-title">什么时候吃的</view>
+        <view class="editor-field-row">
+          <text class="editor-field-label">日期</text>
+          <picker mode="date" value="{{date}}" bindchange="onDateChange">
+            <view class="editor-picker-value">{{date || '选择日期'}} <text>v</text></view>
+          </picker>
+        </view>
+        <view class="editor-field-row">
+          <text class="editor-field-label">餐次</text>
+          <picker mode="selector" range="{{mealTypes}}" value="{{mealTypeIndex}}" bindchange="onMealTypeChange">
+            <view class="editor-picker-value">{{mealType}} <text>v</text></view>
+          </picker>
+        </view>
+      </view>
+
+      <view class="editor-section">
+        <view class="editor-section-title">记在哪里</view>
+        <view class="editor-scope-list">
+          <view wx:for="{{scopeTabs}}" wx:key="value" class="editor-scope-option {{scope === item.value ? 'is-active' : ''}} {{item.value === 'family' && !hasFamily ? 'is-disabled' : ''}}" data-scope="{{item.value}}" bindtap="onScopeChange">
+                  <view class="editor-scope-mark">{{scope === item.value ? 'OK' : ''}}</view>
+            <view class="editor-scope-copy">
+              <text class="editor-scope-title">{{item.label}}</text>
+              <text wx:if="{{item.value === 'family'}}" class="editor-scope-hint">{{hasFamily ? familyName : '没有当前家庭'}}</text>
+              <text wx:else class="editor-scope-hint">跨家庭只影响自己的历史和成就</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="editor-section">
+        <view class="editor-section-heading">
+          <view class="editor-section-title">吃了什么</view>
+          <text class="editor-section-hint">可选菜单菜品，也可自定义</text>
+        </view>
+        <view wx:if="{{loadingDishes}}" class="editor-inline-loading"><island-loading text="正在读取当前菜单..."></island-loading></view>
+        <view wx:if="{{dishError}}" class="editor-dish-hint">{{dishError}}</view>
+        <view wx:if="{{dishOptions.length}}" class="dish-option-grid">
+          <view wx:for="{{dishOptions}}" wx:key="id" class="dish-option {{item.selected ? 'is-selected' : ''}}" data-id="{{item.id}}" bindtap="toggleDish">
+            <image class="dish-option-image" src="{{item.image}}" mode="aspectFill" data-id="{{item.id}}" binderror="onDishImageError"></image>
+            <view class="dish-option-copy">
+              <text class="dish-option-name">{{item.name}}</text>
+              <text wx:if="{{item.type}}" class="dish-option-type">{{item.type}}</text>
+            </view>
+            <view class="dish-option-check">{{item.selected ? 'OK' : ''}}</view>
+          </view>
+        </view>
+        <view class="editor-custom-label">自定义菜名</view>
+        <textarea class="editor-dish-textarea" value="{{dishText}}" maxlength="300" placeholder="例如：外婆的红烧肉、周末煲仔饭（多个菜名用顿号或逗号分隔）" placeholder-class="editor-placeholder" bindinput="onDishTextInput"></textarea>
+      </view>
+
+      <view class="editor-section">
+        <view class="editor-section-heading">
+          <view class="editor-section-title">留一张照片</view>
+          <text class="editor-section-hint">{{images.length}}/3</text>
+        </view>
+        <view class="editor-images">
+          <view wx:for="{{images}}" wx:key="*this" class="editor-image-wrap">
+            <image class="editor-image" src="{{item}}" mode="aspectFill" data-index="{{index}}" bindtap="previewImage"></image>
+            <button class="editor-image-remove" data-index="{{index}}" catchtap="removeImage" aria-label="删除图片">x</button>
+          </view>
+          <button wx:if="{{images.length < 3}}" class="editor-image-add" bindtap="chooseImage" loading="{{uploadingImages}}" disabled="{{uploadingImages}}">
+            <image src="/images/island/icon-dish.svg" mode="aspectFit"></image>
+            <text>{{uploadingImages ? '上传中' : '添加照片'}}</text>
+          </button>
+        </view>
+        <view class="editor-section-caption">照片只会出现在这段回忆和拥有查看权限的人眼前。</view>
+      </view>
+
+      <view class="editor-section">
+        <view class="editor-section-heading">
+          <view class="editor-section-title">写下感想</view>
+          <text class="editor-section-hint">{{note.length}}/500</text>
+        </view>
+        <textarea class="editor-note-textarea" value="{{note}}" maxlength="500" placeholder="这顿饭有什么特别的味道？" placeholder-class="editor-placeholder" bindinput="onNoteInput"></textarea>
+      </view>
+
+      <button wx:if="{{editMode && canDelete}}" class="editor-delete-button" bindtap="deleteRecord" loading="{{deleting}}" disabled="{{deleting || saving}}">删除这段手动回忆</button>
+      <view class="editor-bottom-spacer" aria-hidden="true"></view>
+    </block>
+  </scroll-view>
+
+  <view class="editor-bottom-fixed">
+    <view class="editor-bottom-dock"></view>
+    <view class="editor-actions">
+      <button class="editor-cancel-button" bindtap="cancel" disabled="{{saving || uploadingImages}}">取消</button>
+      <button class="editor-save-button" bindtap="save" loading="{{saving}}" disabled="{{saving || uploadingImages || loading || frozen}}">{{editMode ? '保存修改' : '保存回忆'}}</button>
+    </view>
+    <view class="editor-safe-area"></view>
+  </view>
+</view>

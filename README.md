@@ -6,7 +6,7 @@
 
 - 前端：微信小程序原生框架 + TypeScript，入口在 `miniprogram/`。
 - 后端：Cloudflare Workers，入口在 `cloudflareWorkes/worker.js`。
-- API 地址：前端统一请求地址写在 `miniprogram/services/http.ts`，当前为 `https://wx.oulongxing.com`。
+- API 地址：统一由 `miniprogram/config/environment.ts` 按微信环境选择；`develop` / `trial` 请求 `https://homemenu-staging.yunma.oulongxing.com`，`release` 请求 `https://homemenu.yunma.oulongxing.com`。
 - 小程序 AppID：`project.config.json` 中配置为 `wx5c11e8a22aedd370`。
 - GitNexus：已在本机安装并完成本仓库索引，详见“GitNexus 代码索引”。
 
@@ -217,29 +217,37 @@ npm install
 
 注意：`package.json` 中的 `npm run build` 目前只是占位命令，真正的小程序编译主要依赖微信开发者工具。
 
-### 3. 修改后端地址
+### 3. 后端环境选择
 
-如需切换测试环境或正式环境，编辑：
+无需为测试版和正式版手动修改代码。小程序通过 `wx.getAccountInfoSync().miniProgram.envVersion` 自动选择后端：
 
-```ts
-// miniprogram/services/http.ts
-const BASE_URL = 'https://wx.oulongxing.com';
-```
+| 微信环境 | API 地址 |
+| --- | --- |
+| `develop`（开发者工具 / 开发版） | `https://homemenu-staging.yunma.oulongxing.com` |
+| `trial`（体验版） | `https://homemenu-staging.yunma.oulongxing.com` |
+| `release`（正式版） | `https://homemenu.yunma.oulongxing.com` |
 
-建议后续改成按环境区分，避免把测试地址和正式地址写死在代码里。
+环境映射的唯一配置入口为 `miniprogram/config/environment.ts`；认证请求和业务请求共用该配置。
 
 ## 后端部署说明
 
 Worker 部署配置在 `cloudflareWorkes/wrangler.toml`，已经配置线上正在使用的 Worker、D1、R2 和自定义域名。首次从本地部署前，建议先确认本地 `cloudflareWorkes/worker.js` 与 Cloudflare 快速编辑器里的线上代码一致，避免覆盖线上版本。
 
-已配置资源：
+正式环境资源：
 
-- Worker：`black-frost-08dc`。
-- 自定义域名：`wx.oulongxing.com`。
+- Worker：`cookby-appointment-production`。
+- 自定义域名：`homemenu.yunma.oulongxing.com`。
 - D1 数据库绑定：`env.DB` -> `cookby_appointment`。
 - R2 存储桶绑定：`env.FILE_BUCKET` -> `cookby-appointment`。
 - 环境变量：`R2_PUBLIC_URL=https://images.wx.oulongxing.com`。
 - 密钥：`WX_APPID`、`WX_SECRET` 保留在 Cloudflare 后台，不写入仓库。
+
+测试环境资源：
+
+- Worker：`cookby-appointment-staging`。
+- 自定义域名：`homemenu-staging.yunma.oulongxing.com`。
+- D1 数据库绑定：`env.DB` -> `cookby_appointment_staging`。
+- R2 存储桶绑定：`env.FILE_BUCKET` -> `cookby-appointment-staging`。
 
 本机部署命令：
 
@@ -267,13 +275,11 @@ npx wrangler deploy --dry-run --config wrangler.toml
 npx wrangler deploy --config wrangler.toml
 ```
 
-最近一次已验证部署信息：
+部署目标由配置文件明确区分：
 
-- Wrangler：`4.94.0`。
-- 部署命令：`npx wrangler deploy --config cloudflareWorkes/wrangler.toml`。
-- Worker：`black-frost-08dc`。
-- 触发器：`wx.oulongxing.com` custom domain。
-- 当前版本 ID：`3d042123-b64c-45ee-a6cb-c478fd8579ec`。
+- 正式环境：`cloudflareWorkes/wrangler.toml`。
+- 测试环境：`cloudflareWorkes/wrangler.staging.toml`。
+- 两个环境使用独立 Worker、D1 和 R2；部署正式 Worker 时必须继续绑定既有正式 D1/R2，禁止重建或删除数据资源。
 
 项目本地 Skill：
 

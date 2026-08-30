@@ -1,13 +1,10 @@
 // 基础HTTP请求服务
+import { API_BASE_URL, MINI_PROGRAM_ENVIRONMENT } from '../config/environment';
 import { getAuthSessionGeneration, invalidateAuthSession } from '../utils/auth';
 import { SESSION_CACHE_TTL, SessionCacheService, SessionResource } from '../utils/sessionCache';
 
-// 根据运行环境自动切换 API 地址
-// 开发环境：使用微信开发者工具 → 详情 → 本地设置 → 不校验合法域名
-const envVersion = wx.getAccountInfoSync().miniProgram.envVersion;
-export const BASE_URL = envVersion === 'develop'
-  ? 'https://wx.oulongxing.com'      // 开发环境直连线上 API（无需本地 wrangler dev）
-  : 'https://wx.oulongxing.com';     // 线上生产地址（trial/release）
+const envVersion = MINI_PROGRAM_ENVIRONMENT;
+export const BASE_URL = API_BASE_URL;
 
 // 请求方法类型
 type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';

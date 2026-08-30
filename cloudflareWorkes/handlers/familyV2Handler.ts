@@ -2,6 +2,10 @@ import { checkRateLimit, generateSecret, requireAuth, requireCapability, require
 import { canManageRole } from '../core/domain';
 import { ApiError, json, readJson, requiredString } from '../core/http';
 import { userLifecycleLockScope, withOperationLock } from '../core/operationLock';
+import {
+  buildFreezeMealContributionsForMemberStatements,
+  buildFreezeMealRecordsForFamilyStatements,
+} from '../core/mealHistory';
 import type { Env, FamilyRole } from '../core/types';
 import { strictText, strictTimezone } from '../core/validation';
 
@@ -100,6 +104,7 @@ async function dissolveFamily(request: Request, env: Env): Promise<Response> {
         .bind(now, context.familyId),
       env.DB.prepare(`UPDATE shopping_lists SET status = 'archived', updatedAt = ? WHERE familyId = ? AND status = 'active'`)
         .bind(now, context.familyId),
+      ...buildFreezeMealRecordsForFamilyStatements(env, context.familyId, now),
       env.DB.prepare(`
         INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, createdAt)
         VALUES (?, ?, ?, 'family.dissolved', 'family', ?, ?)
@@ -112,8 +117,10 @@ async function dissolveFamily(request: Request, env: Env): Promise<Response> {
 async function listMembers(request: Request, env: Env): Promise<Response> {
   const context = await requireFamilyContext(request, env);
   const result = await env.DB.prepare(`
-    SELECT u.id AS userId, u.nickName, u.avatarUrl, fm.role, fm.joinedAt
+    SELECT u.id AS userId, u.nickName, u.avatarUrl, fm.role, fm.joinedAt,
+      uas.pinnedAchievementId
     FROM family_members fm JOIN users u ON u.id = fm.userId
+    LEFT JOIN user_achievement_state uas ON uas.userId = u.id
     WHERE fm.familyId = ? AND fm.status = 'active'
     ORDER BY CASE fm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 WHEN 'chef' THEN 2 ELSE 3 END,
       fm.joinedAt ASC
@@ -294,12 +301,19 @@ async function removeMember(request: Request, env: Env): Promise<Response> {
     if (!actor) throw new ApiError(403, 'FAMILY_ACCESS_DENIED', '已不再是该家庭成员');
     if (!target) throw new ApiError(404, 'MEMBER_NOT_FOUND', '家庭成员不存在');
     if (!canManageRole(actor.role, target.role)) throw new ApiError(403, 'ROLE_FORBIDDEN', '不能移除该成员');
-    const removed = await env.DB.prepare(`
-      UPDATE family_members SET status = 'removed', updatedAt = ?
-      WHERE familyId = ? AND userId = ? AND status = 'active' AND role = ?
-    `).bind(Date.now(), context.familyId, userId, target.role).run();
-    if (!removed.meta.changes) throw new ApiError(409, 'MEMBERSHIP_CHANGED', '成员状态已变化，请刷新后重试');
-    await writeAudit(env, context, 'member.removed', 'user', userId, { role: target.role });
+    const now = Date.now();
+    const results = await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE family_members SET status = 'removed', updatedAt = ?
+        WHERE familyId = ? AND userId = ? AND status = 'active' AND role = ?
+      `).bind(now, context.familyId, userId, target.role),
+      ...buildFreezeMealContributionsForMemberStatements(env, context.familyId, userId, now),
+      env.DB.prepare(`
+        INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, details, createdAt)
+        VALUES (?, ?, ?, 'member.removed', 'user', ?, ?, ?)
+      `).bind(crypto.randomUUID(), context.familyId, context.user.id, userId, JSON.stringify({ role: target.role }), now),
+    ]);
+    if (!results[0]?.meta.changes) throw new ApiError(409, 'MEMBERSHIP_CHANGED', '成员状态已变化，请刷新后重试');
     return json({ success: true });
   });
 }
@@ -312,12 +326,19 @@ async function leaveFamily(request: Request, env: Env): Promise<Response> {
     `).bind(context.familyId, context.user.id).first<{ role: FamilyRole }>();
     if (!member) throw new ApiError(403, 'FAMILY_ACCESS_DENIED', '已不再是该家庭成员');
     if (member.role === 'owner') throw new ApiError(409, 'OWNER_TRANSFER_REQUIRED', '家庭主需先转让家庭主身份');
-    const left = await env.DB.prepare(`
-      UPDATE family_members SET status = 'left', updatedAt = ?
-      WHERE familyId = ? AND userId = ? AND status = 'active' AND role <> 'owner'
-    `).bind(Date.now(), context.familyId, context.user.id).run();
-    if (!left.meta.changes) throw new ApiError(409, 'MEMBERSHIP_CHANGED', '成员状态已变化，请刷新后重试');
-    await writeAudit(env, context, 'member.left', 'user', context.user.id);
+    const now = Date.now();
+    const results = await env.DB.batch([
+      env.DB.prepare(`
+        UPDATE family_members SET status = 'left', updatedAt = ?
+        WHERE familyId = ? AND userId = ? AND status = 'active' AND role <> 'owner'
+      `).bind(now, context.familyId, context.user.id),
+      ...buildFreezeMealContributionsForMemberStatements(env, context.familyId, context.user.id, now),
+      env.DB.prepare(`
+        INSERT INTO audit_events (id, familyId, actorUserId, action, targetType, targetId, createdAt)
+        VALUES (?, ?, ?, 'member.left', 'user', ?, ?)
+      `).bind(crypto.randomUUID(), context.familyId, context.user.id, context.user.id, now),
+    ]);
+    if (!results[0]?.meta.changes) throw new ApiError(409, 'MEMBERSHIP_CHANGED', '成员状态已变化，请刷新后重试');
     return json({ success: true });
   });
 }

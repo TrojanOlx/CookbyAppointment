@@ -1,9 +1,16 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 
 const cwd = new URL('..', import.meta.url).pathname;
 const config = 'cloudflareWorkes/wrangler.toml';
 const seed = 'cloudflareWorkes/test/fixtures/integration-seed.sql';
+const recipeTemplateAssetsDirectory = new URL('../cloudflareWorkes/assets/recipe-templates/v1/', import.meta.url);
+const recipeTemplateAssetManifest = JSON.parse(
+  readFileSync(new URL('manifest.json', recipeTemplateAssetsDirectory), 'utf8'),
+);
+const wranglerCli = fileURLToPath(new URL('../node_modules/wrangler/wrangler-dist/cli.js', import.meta.url));
 const port = 8791;
 const origin = `http://127.0.0.1:${port}`;
 const validJpeg = Uint8Array.from([
@@ -11,9 +18,57 @@ const validJpeg = Uint8Array.from([
   0x03, 0x01, 0x11, 0x00, 0x02, 0x11, 0x00, 0x03, 0x11, 0x00, 0xff, 0xd9,
 ]);
 
-function run(command, args) {
-  const result = spawnSync(command, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-  if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed\n${result.stdout}\n${result.stderr}`);
+async function run(command, args) {
+  const usesWrangler = command === 'npx' && args[0] === 'wrangler';
+  const executable = usesWrangler ? process.execPath : command;
+  const executableArgs = usesWrangler ? [wranglerCli, ...args.slice(1)] : args;
+  const successPattern = /No migrations to apply|Migrations applied|command executed successfully|Upload complete|"success":\s*true/;
+
+  await new Promise((resolve, reject) => {
+    const child = spawn(executable, executableArgs, {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, CI: '1', WRANGLER_SEND_METRICS: 'false' },
+    });
+    let stdout = '';
+    let stderr = '';
+    let completionTimer;
+    let settled = false;
+
+    const outputShowsSuccess = () => successPattern.test(`${stdout}\n${stderr}`);
+    const scheduleWranglerExit = () => {
+      if (!usesWrangler || completionTimer || !outputShowsSuccess()) return;
+      completionTimer = setTimeout(() => child.kill('SIGTERM'), 100);
+    };
+    child.stdout.on('data', chunk => {
+      stdout += String(chunk);
+      scheduleWranglerExit();
+    });
+    child.stderr.on('data', chunk => {
+      stderr += String(chunk);
+      scheduleWranglerExit();
+    });
+
+    const hardTimeout = setTimeout(() => child.kill('SIGTERM'), 60000);
+    child.on('error', error => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(hardTimeout);
+      clearTimeout(completionTimer);
+      reject(error);
+    });
+    child.on('exit', (code, signal) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(hardTimeout);
+      clearTimeout(completionTimer);
+      if (code === 0 || (usesWrangler && signal === 'SIGTERM' && outputShowsSuccess())) {
+        resolve();
+        return;
+      }
+      reject(new Error(`${command} ${args.join(' ')} failed\n${stdout}\n${stderr}`));
+    });
+  });
 }
 
 async function api(path, token, familyId, init = {}) {
@@ -51,14 +106,61 @@ function dateInTimezone(date, timezone) {
   return `${values.year}-${values.month}-${values.day}`;
 }
 
-run('npx', ['wrangler', 'd1', 'migrations', 'apply', 'cookby_appointment', '--local', '--config', config]);
-run('npx', ['wrangler', 'd1', 'execute', 'cookby_appointment', '--local', '--file', seed, '--config', config]);
+await run('npx', ['wrangler', 'd1', 'migrations', 'apply', 'cookby_appointment', '--local', '--config', config]);
+await run('npx', ['wrangler', 'd1', 'execute', 'cookby_appointment', '--local', '--file', seed, '--config', config]);
+await run('npx', [
+  'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+  '--file', 'cloudflareWorkes/migrations/0014_recipe_template_images.sql', '--config', config,
+]);
+// 0015 history rows are intentionally not part of the legacy fixture seed.
+// Clear only integration-owned records so repeated local runs stay deterministic.
+await run('npx', [
+  'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+  '--command', "DELETE FROM meal_memory_files WHERE mealRecordId IN (SELECT id FROM meal_records WHERE appointmentId LIKE 'it-%');",
+  '--config', config,
+]);
+await run('npx', [
+  'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+  '--command', "DELETE FROM meal_records WHERE appointmentId LIKE 'it-%';",
+  '--config', config,
+]);
+await run('npx', [
+  'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+  '--command', "DELETE FROM meal_memory_files WHERE ownerUserId IN ('it-owner-a', 'it-member-a') OR participantUserId IN ('it-owner-a', 'it-member-a') OR mealRecordId IN (SELECT mr.id FROM meal_records mr WHERE mr.ownerUserId IN ('it-owner-a', 'it-member-a') OR mr.createdBy IN ('it-owner-a', 'it-member-a') OR EXISTS (SELECT 1 FROM meal_record_participants p WHERE p.mealRecordId = mr.id AND p.userId IN ('it-owner-a', 'it-member-a')));",
+  '--config', config,
+]);
+await run('npx', [
+  'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+  '--command', "DELETE FROM meal_records WHERE ownerUserId IN ('it-owner-a', 'it-member-a') OR createdBy IN ('it-owner-a', 'it-member-a') OR EXISTS (SELECT 1 FROM meal_record_participants p WHERE p.mealRecordId = meal_records.id AND p.userId IN ('it-owner-a', 'it-member-a'));",
+  '--config', config,
+]);
+await run('npx', [
+  'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+  '--command', "DELETE FROM user_achievements WHERE userId IN ('it-owner-a', 'it-member-a');",
+  '--config', config,
+]);
+await run('npx', [
+  'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+  '--command', "DELETE FROM user_achievement_state WHERE userId IN ('it-owner-a', 'it-member-a');",
+  '--config', config,
+]);
+for (const asset of recipeTemplateAssetManifest.assets) {
+  await run('npx', [
+    'wrangler', 'r2', 'object', 'put', `cookby-appointment/${asset.objectKey}`,
+    '--local', '--file', new URL(asset.fileName, recipeTemplateAssetsDirectory).pathname,
+    '--content-type', asset.contentType, '--config', config,
+  ]);
+}
 
-const worker = spawn('npx', [
-  'wrangler', 'dev', '--local', '--port', String(port), '--config', config,
+const worker = spawn(process.execPath, [
+  wranglerCli, 'dev', '--local', '--port', String(port), '--config', config,
   '--var', 'FAMILY_MODE:on', '--var', 'MINIPROGRAM_MIN_VERSION:1.0.1',
   '--var', 'WX_APPID:test', '--var', 'WX_SECRET:test',
-], { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+], {
+  cwd,
+  stdio: ['ignore', 'pipe', 'pipe'],
+  env: { ...process.env, WRANGLER_SEND_METRICS: 'false' },
+});
 
 let logs = '';
 worker.stdout.on('data', chunk => { logs += String(chunk); });
@@ -1103,6 +1205,326 @@ try {
     inventoryAfterCompletion,
   );
 
+  const atomicCompletionInventory = await api('/api/inventory/add', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({ name: '历史批次失败库存', quantity: 1, unit: 'kg', category: '其他' }),
+  });
+  assert(
+    atomicCompletionInventory.status === 201 && atomicCompletionInventory.data.id,
+    'atomic completion inventory setup failed',
+    atomicCompletionInventory,
+  );
+  await run('npx', [
+    'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+    '--command', "CREATE TRIGGER it_abort_history_completion BEFORE INSERT ON meal_records WHEN NEW.appointmentId = 'it-appointment-stale-complete' BEGIN SELECT RAISE(ABORT, 'integration history failure'); END;",
+    '--config', config,
+  ]);
+  let failedAtomicCompletion;
+  let appointmentAfterAtomicFailure;
+  let inventoryAfterAtomicFailure;
+  let historyAfterAtomicFailure;
+  try {
+    failedAtomicCompletion = await api('/api/appointment/complete', 'token-owner-a', 'it-family-a', {
+      method: 'PUT',
+      headers: { 'Idempotency-Key': 'it-history-batch-failure' },
+      body: JSON.stringify({
+        id: 'it-appointment-stale-complete',
+        confirmDeduction: true,
+        deductions: [{ id: atomicCompletionInventory.data.id, quantity: 0.25 }],
+      }),
+    });
+    appointmentAfterAtomicFailure = await api(
+      '/api/appointment/detail?id=it-appointment-stale-complete',
+      'token-owner-a',
+      'it-family-a',
+    );
+    inventoryAfterAtomicFailure = await api(
+      `/api/inventory/detail?id=${encodeURIComponent(atomicCompletionInventory.data.id)}`,
+      'token-owner-a',
+      'it-family-a',
+    );
+    historyAfterAtomicFailure = await api(
+      '/api/history/detail?id=appointment%3Ait-appointment-stale-complete',
+      'token-owner-a',
+      'it-family-a',
+    );
+  } finally {
+    await run('npx', [
+      'wrangler', 'd1', 'execute', 'cookby_appointment', '--local',
+      '--command', 'DROP TRIGGER IF EXISTS it_abort_history_completion;',
+      '--config', config,
+    ]);
+  }
+  assert(
+    failedAtomicCompletion.status >= 400
+      && appointmentAfterAtomicFailure.status === 200
+      && ['已确认', 'confirmed'].includes(appointmentAfterAtomicFailure.data.status)
+      && inventoryAfterAtomicFailure.status === 200
+      && inventoryAfterAtomicFailure.data.quantity === 1
+      && historyAfterAtomicFailure.status === 404,
+    'history batch failure did not roll back appointment completion and inventory deduction',
+    {
+      failedAtomicCompletion,
+      appointmentAfterAtomicFailure,
+      inventoryAfterAtomicFailure,
+      historyAfterAtomicFailure,
+    },
+  );
+
+  const ownerPersonalHistory = await api('/api/history/list?view=personal&page=1', 'token-owner-a');
+  const ownerFamilyHistory = await api('/api/history/list?view=family&page=1', 'token-owner-a', 'it-family-a');
+  const crossFamilyHistory = await api('/api/history/list?view=family&page=1', 'token-owner-a', 'it-family-b');
+  const automaticHistoryDetail = await api(
+    `/api/history/detail?id=${encodeURIComponent('appointment:it-appointment-a')}`,
+    'token-owner-a',
+    'it-family-a',
+  );
+  const ownerAchievementSummary = await api('/api/achievement/summary', 'token-owner-a');
+  const ownerAchievementList = await api('/api/achievement/list', 'token-owner-a');
+  const ownerDishAtlas = await api('/api/achievement/atlas', 'token-owner-a');
+  const ownerAchievementItems = ownerAchievementSummary.data.achievements || ownerAchievementSummary.data.list || [];
+  const ownerAtlasItem = (ownerDishAtlas.data.list || []).find(item => item.name === '家庭A菜品');
+  assert(
+    ownerPersonalHistory.status === 200
+      && ownerPersonalHistory.data.list.some(item => item.id === 'appointment:it-appointment-a')
+      && ownerPersonalHistory.data.list.find(item => item.id === 'appointment:it-appointment-a')
+        ?.repeatFamilyId === 'it-family-a'
+      && ownerPersonalHistory.data.list.find(item => item.id === 'appointment:it-appointment-a')
+        ?.repeatDishIds?.includes('it-dish-a')
+      && ownerFamilyHistory.status === 200
+      && ownerFamilyHistory.data.list.some(item => item.id === 'appointment:it-appointment-a')
+      && typeof ownerPersonalHistory.data.hasMore === 'boolean'
+      && crossFamilyHistory.status === 403
+      && crossFamilyHistory.data.code === 'FAMILY_ACCESS_DENIED'
+      && automaticHistoryDetail.status === 200
+      && automaticHistoryDetail.data.source === 'automatic'
+      && automaticHistoryDetail.data.scope === 'family'
+      && automaticHistoryDetail.data.canExclude === true
+      && ownerAchievementSummary.status === 200
+      && ownerAchievementSummary.data.total === 12
+      && ownerAchievementItems.length === 12
+      && Number(ownerAchievementSummary.data.metrics?.mealCount || 0) >= 1
+      && ownerAchievementList.status === 200
+      && ownerAchievementList.data.total === 12
+      && (ownerAchievementList.data.list || []).length === 12
+      && ownerDishAtlas.status === 200
+      && ownerAtlasItem
+      && ownerAtlasItem.count >= 1,
+    'automatic history, family authorization, achievement catalog, or dish atlas contract failed',
+    {
+      ownerPersonalHistory,
+      ownerFamilyHistory,
+      crossFamilyHistory,
+      automaticHistoryDetail,
+      ownerAchievementSummary,
+      ownerAchievementList,
+      ownerDishAtlas,
+    },
+  );
+
+  const excludedAutomaticHistory = await api('/api/history/exclude', 'token-owner-a', 'it-family-a', {
+    method: 'PUT',
+    body: JSON.stringify({ id: automaticHistoryDetail.data.id }),
+  });
+  const ownerPersonalAfterExclude = await api('/api/history/list?view=personal&page=1', 'token-owner-a');
+  const ownerFamilyAfterExclude = await api('/api/history/list?view=family&page=1', 'token-owner-a', 'it-family-a');
+  assert(
+    excludedAutomaticHistory.status === 200
+      && ownerPersonalAfterExclude.status === 200
+      && !ownerPersonalAfterExclude.data.list.some(item => item.id === automaticHistoryDetail.data.id)
+      && ownerFamilyAfterExclude.status === 200
+      && ownerFamilyAfterExclude.data.list.some(item => item.id === automaticHistoryDetail.data.id),
+    'excluding an automatic record changed the family timeline or left it in personal history',
+    { excludedAutomaticHistory, ownerPersonalAfterExclude, ownerFamilyAfterExclude },
+  );
+
+  const duplicateAtlasHistory = await api('/api/history/create', 'token-owner-a', undefined, {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: 'personal',
+      date: '2099-07-10',
+      mealType: '晚餐',
+      dishes: [
+        { name: '重复图鉴菜', type: '其他', images: [] },
+        { name: '重复图鉴菜', type: '其他', images: [] },
+      ],
+    }),
+  });
+  const atlasWithDuplicateSnapshotRows = await api('/api/achievement/atlas', 'token-owner-a');
+  const duplicateAtlasItem = (atlasWithDuplicateSnapshotRows.data.list || [])
+    .find(item => item.name === '重复图鉴菜');
+  const excludedDuplicateAtlasHistory = await api('/api/history/exclude', 'token-owner-a', undefined, {
+    method: 'PUT',
+    body: JSON.stringify({ id: duplicateAtlasHistory.data.id }),
+  });
+  assert(
+    duplicateAtlasHistory.status === 201
+      && atlasWithDuplicateSnapshotRows.status === 200
+      && duplicateAtlasItem?.count === 1
+      && duplicateAtlasItem?.recordIds?.length === 1
+      && excludedDuplicateAtlasHistory.status === 200,
+    'duplicate dish snapshots were counted more than once in the dish atlas',
+    { duplicateAtlasHistory, atlasWithDuplicateSnapshotRows, duplicateAtlasItem, excludedDuplicateAtlasHistory },
+  );
+
+  const memoryFileForm = new FormData();
+  memoryFileForm.append('file', new File([validJpeg], 'memory.jpg', { type: 'image/jpeg' }));
+  memoryFileForm.append('familyId', 'it-family-a');
+  const uploadedMemoryFile = await apiForm('/api/history/file/upload', 'token-owner-a', memoryFileForm, 'it-family-a');
+  const memoryFileUrl = uploadedMemoryFile.data.url || '';
+  const memoryFileAddress = memoryFileUrl ? new URL(memoryFileUrl) : null;
+  const downloadedMemoryFile = memoryFileUrl
+    ? await fetch(`${origin}${memoryFileAddress.pathname}${memoryFileAddress.search}`)
+    : null;
+  const downloadedMemoryBody = downloadedMemoryFile ? new Uint8Array(await downloadedMemoryFile.arrayBuffer()) : new Uint8Array();
+  const familyHistoryCreate = await api('/api/history/create', 'token-owner-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: 'family',
+      familyId: 'it-family-a',
+      date: '2099-07-16',
+      mealType: '午餐',
+      dishIds: ['it-dish-a'],
+      images: uploadedMemoryFile.data.id ? [uploadedMemoryFile.data.id] : [],
+      note: '家庭共同回忆',
+    }),
+  });
+  const familyHistoryId = familyHistoryCreate.data.id;
+  const memberFamilyHistory = await api('/api/history/list?view=family&page=1', 'token-member-a', 'it-family-a');
+  const otherFamilyHistoryDetail = await api(
+    `/api/history/detail?id=${encodeURIComponent(familyHistoryId || '')}`,
+    'token-owner-b',
+    'it-family-b',
+  );
+  const familyHistoryDetail = await api(
+    `/api/history/detail?id=${encodeURIComponent(familyHistoryId || '')}`,
+    'token-member-a',
+    'it-family-a',
+  );
+  assert(
+    uploadedMemoryFile.status === 201
+      && uploadedMemoryFile.data.id
+      && memoryFileUrl
+      && downloadedMemoryFile?.status === 200
+      && downloadedMemoryBody.length === validJpeg.length
+      && familyHistoryCreate.status === 201
+      && familyHistoryId
+      && memberFamilyHistory.status === 200
+      && memberFamilyHistory.data.list.some(item => item.id === familyHistoryId)
+      && otherFamilyHistoryDetail.status === 403
+      && otherFamilyHistoryDetail.data.code === 'HISTORY_ACCESS_DENIED'
+      && familyHistoryDetail.status === 200
+      && familyHistoryDetail.data.participants?.length === 1
+      && familyHistoryDetail.data.participants[0]?.userId === 'it-owner-a',
+    'manual family history, participant visibility, or signed memory file access failed',
+    {
+      uploadedMemoryFile,
+      downloadedMemoryStatus: downloadedMemoryFile?.status,
+      familyHistoryCreate,
+      memberFamilyHistory,
+      otherFamilyHistoryDetail,
+      familyHistoryDetail,
+    },
+  );
+
+  const memberAchievementBeforeCreate = await api('/api/achievement/summary', 'token-member-a');
+  const memberMealCountBeforeCreate = Number(memberAchievementBeforeCreate.data.metrics?.mealCount || 0);
+  const memberUnlockedCountBeforeCreate = Number(memberAchievementBeforeCreate.data.unlockedCount || 0);
+  const memberFirstAchievementBeforeCreate = (memberAchievementBeforeCreate.data.achievements || []).find(item => item.id === 'meal-first');
+  const personalHistoryCreate = await api('/api/history/create', 'token-member-a', undefined, {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: 'personal',
+      date: '2099-08-17',
+      mealType: '早餐',
+      dishes: [{ name: '集成私人菜', type: '其他', images: [] }],
+      note: '私人补记',
+    }),
+  });
+  const duplicatePersonalHistory = await api('/api/history/create', 'token-member-a', undefined, {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: 'personal',
+      date: '2099-08-17',
+      mealType: '早餐',
+      dishes: [{ name: '集成私人菜', type: '其他', images: [] }],
+      note: '私人补记重复',
+    }),
+  });
+  const confirmedDuplicateHistory = await api('/api/history/create', 'token-member-a', undefined, {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: 'personal',
+      date: '2099-08-17',
+      mealType: '早餐',
+      dishes: [{ name: '集成私人菜', type: '其他', images: [] }],
+      note: '私人补记重复确认',
+      confirmDuplicate: true,
+    }),
+  });
+  const memberPersonalHistory = await api('/api/history/list?view=personal&page=1', 'token-member-a');
+  const privateHistoryAsOtherUser = await api(
+    `/api/history/detail?id=${encodeURIComponent(personalHistoryCreate.data.id || '')}`,
+    'token-owner-a',
+  );
+  assert(
+    personalHistoryCreate.status === 201
+      && personalHistoryCreate.data.source === 'manual'
+      && duplicatePersonalHistory.status === 409
+      && duplicatePersonalHistory.data.code === 'HISTORY_DUPLICATE_CONFIRM_REQUIRED'
+      && Array.isArray(duplicatePersonalHistory.data.details?.candidates)
+      && confirmedDuplicateHistory.status === 201
+      && memberPersonalHistory.status === 200
+      && memberPersonalHistory.data.list.some(item => item.id === personalHistoryCreate.data.id)
+      && privateHistoryAsOtherUser.status === 403
+      && privateHistoryAsOtherUser.data.code === 'HISTORY_ACCESS_DENIED',
+    'personal history creation, duplicate confirmation, or private authorization failed',
+    { personalHistoryCreate, duplicatePersonalHistory, confirmedDuplicateHistory, memberPersonalHistory, privateHistoryAsOtherUser },
+  );
+
+  const memberAchievementAfterCreate = await api('/api/achievement/summary', 'token-member-a');
+  const memberFirstAchievement = (memberAchievementAfterCreate.data.achievements || []).find(item => item.id === 'meal-first');
+  const memberPinnedAchievement = await api('/api/achievement/pin', 'token-member-a', undefined, {
+    method: 'PUT', body: JSON.stringify({ achievementId: 'meal-first' }),
+  });
+  const membersWithPinnedAchievement = await api('/api/family/members', 'token-owner-a', 'it-family-a');
+  const pinnedMember = (membersWithPinnedAchievement.data.list || []).find(member => member.userId === 'it-member-a');
+  assert(
+    memberPinnedAchievement.status === 200
+      && memberPinnedAchievement.data.pinnedAchievementId === 'meal-first'
+      && membersWithPinnedAchievement.status === 200
+      && pinnedMember?.pinnedAchievementId === 'meal-first',
+    'pinned achievement was not exposed beside the current family member',
+    { memberPinnedAchievement, membersWithPinnedAchievement },
+  );
+  const excludedPersonalHistory = await api('/api/history/exclude', 'token-member-a', undefined, {
+    method: 'PUT', body: JSON.stringify({ id: personalHistoryCreate.data.id }),
+  });
+  const excludedConfirmedDuplicate = await api('/api/history/exclude', 'token-member-a', undefined, {
+    method: 'PUT', body: JSON.stringify({ id: confirmedDuplicateHistory.data.id }),
+  });
+  const memberAchievementAfterExclude = await api('/api/achievement/summary', 'token-member-a');
+  const memberFirstAchievementAfterExclude = (memberAchievementAfterExclude.data.achievements || []).find(item => item.id === 'meal-first');
+  assert(
+    memberAchievementAfterCreate.status === 200
+      && Number(memberAchievementAfterCreate.data.metrics?.mealCount || 0) === memberMealCountBeforeCreate + 2
+      && memberFirstAchievement?.unlocked === true
+      && excludedPersonalHistory.status === 200
+      && excludedConfirmedDuplicate.status === 200
+      && memberAchievementAfterExclude.status === 200
+      && Number(memberAchievementAfterExclude.data.metrics?.mealCount || 0) === memberMealCountBeforeCreate
+      && memberFirstAchievementAfterExclude?.unlocked === Boolean(memberFirstAchievementBeforeCreate?.unlocked)
+      && memberAchievementAfterExclude.data.unlockedCount === memberUnlockedCountBeforeCreate,
+    'achievement metrics did not dynamically recalculate after personal history exclusion',
+    {
+      memberAchievementAfterCreate,
+      memberAchievementBeforeCreate,
+      excludedPersonalHistory,
+      excludedConfirmedDuplicate,
+      memberAchievementAfterExclude,
+    },
+  );
+
   const finalAppointmentAdd = await api('/api/appointment/dish/add', 'token-owner-a', 'it-family-a', {
     method: 'POST', body: JSON.stringify({ appointmentId: 'it-appointment-a', dishId: 'it-dish-a' }),
   });
@@ -1367,6 +1789,55 @@ try {
     accountExport,
   );
 
+  const memberFamilyHistoryCreate = await api('/api/history/create', 'token-member-a', 'it-family-a', {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: 'family',
+      familyId: 'it-family-a',
+      date: '2099-09-18',
+      mealType: '晚餐',
+      dishIds: ['it-dish-a'],
+      note: '成员家庭回忆',
+    }),
+  });
+  const memberHistoryBeforeRemoval = await api('/api/history/list?view=personal&page=1', 'token-member-a');
+  const memberFamilyRecord = (memberHistoryBeforeRemoval.data.list || [])
+    .find(record => record.id === memberFamilyHistoryCreate.data.id);
+  const removedMember = await api('/api/family/member?userId=it-member-a', 'token-owner-a', 'it-family-a', {
+    method: 'DELETE',
+  });
+  const removedMemberHistory = await api(
+    `/api/history/detail?id=${encodeURIComponent(memberFamilyRecord?.id || '')}`,
+    'token-member-a',
+  );
+  const removedMemberDelete = await api(
+    `/api/history/delete?id=${encodeURIComponent(memberFamilyRecord?.id || '')}`,
+    'token-member-a',
+    undefined,
+    { method: 'DELETE' },
+  );
+  const frozenMemberContribution = (removedMemberHistory.data.participants || [])
+    .find(participant => participant.userId === 'it-member-a');
+  assert(
+    memberFamilyHistoryCreate.status === 201
+      && memberHistoryBeforeRemoval.status === 200
+      && memberFamilyRecord
+      && removedMember.status === 200
+      && removedMemberHistory.status === 200
+      && frozenMemberContribution?.frozen === true
+      && removedMemberDelete.status === 403
+      && removedMemberDelete.data.code === 'FAMILY_ACCESS_DENIED',
+    'member removal did not atomically freeze the retained history contribution',
+    {
+      memberFamilyHistoryCreate,
+      memberHistoryBeforeRemoval,
+      memberFamilyRecord,
+      removedMember,
+      removedMemberHistory,
+      removedMemberDelete,
+    },
+  );
+
   const ownerDeletion = await api('/api/user/account', 'token-owner-a', undefined, {
     method: 'DELETE', body: JSON.stringify({ confirm: true }),
   });
@@ -1421,7 +1892,7 @@ try {
   const revokedSession = await api('/api/user/export', 'token-member-a');
   assert(revokedSession.status === 401, 'deleted account session remained active', revokedSession);
 
-  console.log('Worker+D1 integration checks passed (72 assertions).');
+  console.log('Worker+D1 integration checks passed (91 assertions).');
 } finally {
   worker.kill('SIGTERM');
   await delay(200);

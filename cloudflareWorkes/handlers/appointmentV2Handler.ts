@@ -2,6 +2,7 @@ import { requireCapability, requireFamilyContext, writeAudit } from '../core/aut
 import { collectPreferenceWarnings, normalizeIngredientName, normalizeQuantity } from '../core/domain';
 import { ApiError, json, pagination, parseJsonField, readJson, requiredString } from '../core/http';
 import { normalizeImageList } from '../core/media';
+import { APPOINTMENT_RECORD_PREFIX, buildAppointmentMealRecordStatements } from '../core/mealHistory';
 import { withOperationLock } from '../core/operationLock';
 import type { Env, FamilyContext } from '../core/types';
 import { withFamilyInventoryLock } from './inventoryV2Handler';
@@ -562,12 +563,16 @@ async function completeAppointment(request: Request, env: Env): Promise<Response
         if (!claimed.meta.changes) throw new ApiError(409, 'APPOINTMENT_OPERATION_IN_PROGRESS', '预约已被其他请求处理，请刷新后重试');
 
         try {
+          const completedAt = Math.max(Date.now(), claimTime + 1);
+          const completionStatements: D1PreparedStatement[] = [];
+          const inventoryById = new Map<string, number | null>();
+          let inventoryResultIndex = -1;
           if (requested.length) {
             const placeholders = requested.map(() => '?').join(',');
             const inventoryRows = await env.DB.prepare(`
               SELECT id, quantity FROM inventory_items WHERE familyId = ? AND id IN (${placeholders})
             `).bind(context.familyId, ...requested.map(item => item.id)).all<{ id: string; quantity: number | null }>();
-            const inventoryById = new Map(inventoryRows.results.map(item => [item.id, item.quantity]));
+            for (const item of inventoryRows.results) inventoryById.set(item.id, item.quantity);
             for (const deduction of requested) {
               if (!inventoryById.has(deduction.id) || inventoryById.get(deduction.id) === null) {
                 throw new ApiError(409, 'INVENTORY_NOT_DEDUCTIBLE', '库存不存在或数量不可换算', { inventoryId: deduction.id });
@@ -588,8 +593,8 @@ async function completeAppointment(request: Request, env: Env): Promise<Response
               inventoryById.get(item.id) as number,
               item.quantity,
             ]);
-            const deductionTime = Math.max(Date.now(), claimTime + 1);
-            const deducted = await env.DB.prepare(`
+            inventoryResultIndex = completionStatements.length;
+            completionStatements.push(env.DB.prepare(`
               UPDATE inventory_items
               SET quantity = quantity - CASE ${caseSql} ELSE 0 END,
                 amount = CAST(quantity - CASE ${caseSql} ELSE 0 END AS TEXT) || COALESCE(unit, ''),
@@ -605,20 +610,53 @@ async function completeAppointment(request: Request, env: Env): Promise<Response
                 )
               RETURNING id
             `).bind(
-              ...caseBindings, ...caseBindings, deductionTime, context.familyId,
+              ...caseBindings, ...caseBindings, completedAt, context.familyId,
               ...requested.map(item => item.id), context.familyId, ...eligibleBindings, requested.length,
               id, context.familyId, claimTime,
-            ).all<{ id: string }>();
-            if (deducted.results.length !== requested.length) {
-              throw new ApiError(409, 'INVENTORY_CHANGED', '库存已发生变化，请重新确认扣减');
-            }
+            ));
           }
 
-          const completed = await env.DB.prepare(`
-            UPDATE appointments SET status = '已完成', updateTime = ?
-            WHERE id = ? AND familyId = ? AND status = '完成中' AND updateTime = ?
-          `).bind(Math.max(Date.now(), claimTime + 1), id, context.familyId, claimTime).run();
-          if (!completed.meta.changes) {
+          const inventoryPostconditionSql = requested
+            .map(() => '(eligible.id = ? AND eligible.quantity = ? AND eligible.updateTime = ?)')
+            .join(' OR ');
+          const inventoryPostconditionBindings = requested.flatMap(item => [
+            item.id,
+            (inventoryById.get(item.id) as number) - item.quantity,
+            completedAt,
+          ]);
+          const completionResultIndex = completionStatements.length;
+          completionStatements.push(
+            env.DB.prepare(`
+              UPDATE appointments SET status = '已完成', updateTime = ?
+              WHERE id = ? AND familyId = ? AND status = '完成中' AND updateTime = ?
+                ${requested.length ? `AND (
+                  SELECT COUNT(*) FROM inventory_items eligible
+                  WHERE eligible.familyId = ? AND (${inventoryPostconditionSql})
+                ) = ?` : ''}
+            `).bind(
+              completedAt, id, context.familyId, claimTime,
+              ...(requested.length
+                ? [context.familyId, ...inventoryPostconditionBindings, requested.length]
+                : []),
+            ),
+            ...buildAppointmentMealRecordStatements(env, id, context.familyId, completedAt),
+          );
+          // A failed post-condition deliberately violates appointments.mealType NOT NULL,
+          // causing D1 to roll back the inventory, completion, and snapshot together.
+          completionStatements.push(env.DB.prepare(`
+            UPDATE appointments SET mealType = NULL
+            WHERE id = ? AND familyId = ? AND (
+              status <> '已完成' OR updateTime <> ? OR NOT EXISTS (
+                SELECT 1 FROM meal_records mr
+                WHERE mr.id = ? AND mr.appointmentId = appointments.id AND mr.deletedAt IS NULL
+              )
+            )
+          `).bind(id, context.familyId, completedAt, `${APPOINTMENT_RECORD_PREFIX}${id}`));
+
+          const completionResults = await env.DB.batch(completionStatements);
+          const inventoryChanged = inventoryResultIndex < 0
+            || completionResults[inventoryResultIndex]?.results?.length === requested.length;
+          if (!inventoryChanged || !completionResults[completionResultIndex]?.meta.changes) {
             throw new ApiError(409, 'APPOINTMENT_STATUS_INVALID', '预约已被其他请求处理，请刷新后重试');
           }
         } catch (error) {
@@ -626,6 +664,9 @@ async function completeAppointment(request: Request, env: Env): Promise<Response
             UPDATE appointments SET status = '已确认', updateTime = ?
             WHERE id = ? AND familyId = ? AND status = '完成中' AND updateTime = ?
           `).bind(Math.max(Date.now(), claimTime + 1), id, context.familyId, claimTime).run();
+          if (error instanceof Error && error.message.includes('appointments.mealType')) {
+            throw new ApiError(409, 'APPOINTMENT_COMPLETION_CONFLICT', '预约或库存已发生变化，请重新确认');
+          }
           throw error;
         }
         await recalculateFamilyShoppingWithinLock(env, context);

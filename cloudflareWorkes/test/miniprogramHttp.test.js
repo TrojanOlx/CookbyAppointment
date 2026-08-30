@@ -31,6 +31,18 @@ describe('miniprogram HTTP session behavior', () => {
     vi.unstubAllGlobals();
   });
 
+  it('uses the production API only for release builds', async () => {
+    const http = await import('../../miniprogram/services/http');
+    expect(http.BASE_URL).toBe('https://homemenu.yunma.oulongxing.com');
+  });
+
+  it.each(['develop', 'trial'])('uses the staging API for %s builds', async envVersion => {
+    wx.getAccountInfoSync = () => ({ miniProgram: { envVersion, version: '1.0.3-test' } });
+    vi.resetModules();
+    const http = await import('../../miniprogram/services/http');
+    expect(http.BASE_URL).toBe('https://homemenu-staging.yunma.oulongxing.com');
+  });
+
   it('deduplicates identical GETs and reuses the TTL cache', async () => {
     const http = await import('../../miniprogram/services/http');
     const options = { resource: 'inventory', ttlMs: 30_000 };

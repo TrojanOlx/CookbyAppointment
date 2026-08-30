@@ -1,0 +1,176 @@
+<view class="history-page">
+  <view class="fixed-page-bg"></view>
+
+  <view class="history-header">
+    <view class="history-heading-row">
+      <view class="history-heading">
+        <view class="history-kicker">TABLE MEMORIES</view>
+        <view class="history-title">餐桌回忆</view>
+        <view class="history-subtitle">把每一次一起吃饭，留成以后想起会微笑的片段</view>
+      </view>
+      <button class="history-add-button" bindtap="createMemory" aria-label="补记一段回忆">
+        <image src="/images/island/icon-calendar.svg" mode="aspectFit"></image>
+        <text>补记</text>
+      </button>
+    </view>
+
+    <view class="scope-tabs" role="tablist">
+      <view
+        wx:for="{{scopeTabs}}"
+        wx:key="value"
+        class="scope-tab {{scope === item.value ? 'is-active' : ''}}"
+        data-scope="{{item.value}}"
+        bindtap="onScopeChange"
+        role="tab"
+        aria-selected="{{scope === item.value}}"
+      >{{item.label}}</view>
+    </view>
+  </view>
+
+  <scroll-view
+    class="history-scroll"
+    scroll-y="true"
+    enhanced="true"
+    show-scrollbar="false"
+    lower-threshold="100"
+    bindscrolltolower="onScrollToLower"
+    refresher-enabled="true"
+    refresher-triggered="{{refreshing}}"
+    bindrefresherrefresh="onPullDownRefresh"
+  >
+    <view class="history-tools">
+      <view class="history-search">
+        <image class="history-search-icon" src="/images/island/icon-dish.svg" mode="aspectFit"></image>
+        <input
+          class="history-search-input"
+          value="{{searchDraft}}"
+          placeholder="搜索菜名"
+          placeholder-class="history-search-placeholder"
+          confirm-type="search"
+          maxlength="40"
+          bindinput="onSearchInput"
+          bindconfirm="onSearchConfirm"
+        />
+        <button wx:if="{{searchDraft || search}}" class="history-clear-button" bindtap="clearSearch" aria-label="清除搜索">x</button>
+        <button wx:else class="history-search-button" bindtap="onSearchConfirm" aria-label="搜索">
+          <image src="/images/island/icon-info.svg" mode="aspectFit"></image>
+        </button>
+      </view>
+
+      <view class="filter-row">
+        <picker wx:if="{{scope === 'personal'}}" mode="selector" range="{{familyFilterLabels}}" value="{{familyFilterIndex}}" bindchange="onFamilyFilterChange">
+          <view class="filter-picker {{familyFilterIndex > 0 ? 'is-selected' : ''}}">
+            <text class="filter-picker-label">{{familyFilterLabels[familyFilterIndex]}}</text>
+            <text class="filter-picker-arrow">v</text>
+          </view>
+        </picker>
+        <picker mode="selector" range="{{yearFilterLabels}}" value="{{yearFilterIndex}}" bindchange="onYearFilterChange">
+          <view class="filter-picker {{yearFilterIndex > 0 ? 'is-selected' : ''}}">
+            <text class="filter-picker-label">{{yearFilterLabels[yearFilterIndex]}}</text>
+            <text class="filter-picker-arrow">v</text>
+          </view>
+        </picker>
+        <picker mode="selector" range="{{mealFilterLabels}}" value="{{mealFilterIndex}}" bindchange="onMealFilterChange">
+          <view class="filter-picker {{mealFilterIndex > 0 ? 'is-selected' : ''}}">
+            <text class="filter-picker-label">{{mealFilterLabels[mealFilterIndex]}}</text>
+            <text class="filter-picker-arrow">v</text>
+          </view>
+        </picker>
+        <picker mode="selector" range="{{sourceFilterLabels}}" value="{{sourceFilterIndex}}" bindchange="onSourceFilterChange">
+          <view class="filter-picker {{sourceFilterIndex > 0 ? 'is-selected' : ''}}">
+            <text class="filter-picker-label">{{sourceFilterLabels[sourceFilterIndex]}}</text>
+            <text class="filter-picker-arrow">v</text>
+          </view>
+        </picker>
+      </view>
+    </view>
+
+    <view class="history-summary">
+      <view class="history-summary-copy">
+        <text class="history-summary-title">{{scope === 'family' ? currentFamilyName : '我的全部回忆'}}</text>
+        <text class="history-summary-count">{{total}} 条记录</text>
+      </view>
+      <text class="history-summary-caption" wx:if="{{search || familyId || year || mealType || source}}">已应用筛选</text>
+    </view>
+
+    <view wx:if="{{loading && !groups.length}}" class="history-state-card">
+      <island-loading text="正在整理回忆..."></island-loading>
+    </view>
+
+    <view wx:elif="{{error && !groups.length}}" class="history-state-card history-error-state">
+      <image class="history-state-icon" src="/images/island/icon-info.svg" mode="aspectFit"></image>
+      <view class="history-state-title">回忆暂时无法加载</view>
+      <view class="history-state-copy">{{error}}</view>
+      <button class="history-retry-button" bindtap="retry">重新加载</button>
+    </view>
+
+    <view wx:elif="{{!loading && !error && !groups.length}}" class="history-state-card history-empty-state">
+      <image class="history-state-icon history-empty-icon" src="/images/island/empty-bowl.svg" mode="aspectFit"></image>
+      <view class="history-state-title">还没有餐桌回忆</view>
+      <view class="history-state-copy">完成预约会自动留下记录，也可以现在补记一段已经发生的好味道。</view>
+      <button class="history-retry-button history-empty-action" bindtap="createMemory">补记回忆</button>
+    </view>
+
+    <view wx:else class="history-timeline">
+      <view wx:if="{{loading && groups.length}}" class="history-inline-loading">
+        <island-loading text="正在更新回忆..."></island-loading>
+      </view>
+      <view wx:if="{{error}}" class="history-inline-error">
+        <text>{{error}}</text>
+        <button bindtap="retry">重试</button>
+      </view>
+
+      <view wx:for="{{groups}}" wx:key="month" class="history-month">
+        <view class="history-month-title">{{item.month}}</view>
+        <view wx:for="{{item.items}}" wx:key="id" class="history-timeline-item" data-id="{{item.id}}" bindtap="openRecord">
+          <view class="history-date-rail">
+            <text class="history-date-day">{{item.displayDate}}</text>
+            <text class="history-date-weekday">{{item.displayWeekday}}</text>
+            <view class="history-date-line"></view>
+          </view>
+          <view class="history-memory-card">
+            <view class="history-memory-head">
+              <view class="history-memory-meta">
+                <view class="history-meal-pill">{{item.mealType || '一餐'}}</view>
+                <text class="history-source-label">{{item.displaySource}}</text>
+              </view>
+              <text class="history-family-label">{{item.displayFamily}}</text>
+            </view>
+            <view class="history-memory-main">
+              <image
+                class="history-memory-image"
+                src="{{item.displayImage}}"
+                mode="aspectFill"
+                lazy-load="true"
+                data-id="{{item.id}}"
+                binderror="onImageError"
+              ></image>
+              <view class="history-memory-copy">
+                <text class="history-dish-names">{{item.displayDishes}}</text>
+                <text class="history-memory-summary">{{item.displaySummary}}</text>
+                <view class="history-memory-footer">
+                  <text>{{item.displayParticipantCount}}</text>
+                  <text wx:if="{{item.photoCount}}">{{item.photoCount}} 张照片</text>
+                </view>
+              </view>
+            </view>
+            <view class="history-memory-actions" catchtap="noop">
+              <button wx:if="{{item.repeatIds.length || item.unavailableNames.length}}" class="history-repeat-button" data-id="{{item.id}}" catchtap="repeatRecord">再来一次</button>
+              <view class="history-open-hint">
+                <text>查看详情</text>
+                <image class="history-open-icon" src="/images/achievements/arrow-right.svg" mode="aspectFit"></image>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view wx:if="{{loadingMore}}" class="history-list-footer">
+        <island-loading text="正在加载更多..."></island-loading>
+      </view>
+      <view wx:elif="{{!hasMore}}" class="history-list-footer history-list-end">已经看到全部回忆了</view>
+    </view>
+
+    <view class="history-bottom-spacer" aria-hidden="true"></view>
+  </scroll-view>
+</view>

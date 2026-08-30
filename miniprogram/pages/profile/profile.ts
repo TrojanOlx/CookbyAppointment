@@ -5,6 +5,7 @@ import { showToast, showLoading, hideLoading } from '../../utils/util';
 import { ImageCacheService } from '../../utils/imageCache';
 import { getAuthSessionGeneration, invalidateAuthSession } from '../../utils/auth';
 import { PlatformAdminService } from '../../services/platformAdminService';
+import { AchievementService } from '../../services/achievementService';
 import { clearSessionCache } from '../../services/http';
 import { createAppShareContent } from '../../utils/share';
 const { FamilyService } = require('../../services/family');
@@ -12,6 +13,7 @@ const { canManageFamily } = require('../../services/familyRole');
 let userInfoRequestId = 0;
 let familyContextRequestId = 0;
 let platformStatusRequestId = 0;
+let achievementSummaryRequestId = 0;
 let profileSessionGeneration = 0;
 let profileViewGeneration = 0;
 
@@ -53,6 +55,10 @@ interface IPageData {
   familyLoading: boolean;
   canManageFamily: boolean;
   scrollIntoView: string;
+  achievementUnlockedCount: number;
+  achievementTotalCount: number;
+  pinnedAchievementIcon: string;
+  pinnedAchievementName: string;
 }
 
 // 页面方法接口
@@ -71,6 +77,7 @@ interface IPageMethods {
   clearCache: () => void;
   syncFamilyContext: () => Promise<void>;
   syncPlatformAdminStatus: () => Promise<void>;
+  syncAchievementSummary: () => Promise<void>;
   openCreateFamily: () => void;
   openJoinFamily: () => void;
 }
@@ -99,7 +106,11 @@ Page<IPageData, IPageMethods & {
     familySelectionRequired: false,
     familyLoading: false,
     canManageFamily: false,
-    scrollIntoView: ''
+    scrollIntoView: '',
+    achievementUnlockedCount: 0,
+    achievementTotalCount: 12,
+    pinnedAchievementIcon: '/images/achievements/badge-default.svg',
+    pinnedAchievementName: ''
   },
 
   onLoad() {
@@ -209,6 +220,41 @@ Page<IPageData, IPageMethods & {
       ) return;
     });
     void this.syncPlatformAdminStatus();
+    void this.syncAchievementSummary();
+  },
+
+  async syncAchievementSummary() {
+    const requestId = ++achievementSummaryRequestId;
+    const token = String(wx.getStorageSync('token') || '');
+    if (!token) {
+      this.setData({
+        achievementUnlockedCount: 0,
+        achievementTotalCount: 12,
+        pinnedAchievementIcon: '/images/achievements/badge-default.svg',
+        pinnedAchievementName: ''
+      });
+      return;
+    }
+    try {
+      const summary = await AchievementService.getSummary();
+      if (requestId !== achievementSummaryRequestId || token !== String(wx.getStorageSync('token') || '')) return;
+      this.setData({
+        achievementUnlockedCount: summary.unlockedCount,
+        achievementTotalCount: summary.totalCount || 12,
+        pinnedAchievementIcon: summary.pinnedAchievement?.icon || '/images/achievements/badge-default.svg',
+        pinnedAchievementName: summary.pinnedAchievement?.name || ''
+      });
+      if (summary.unacknowledged.length) {
+        const title = summary.unacknowledged.length === 1
+          ? `解锁「${summary.unacknowledged[0].name}」`
+          : `解锁 ${summary.unacknowledged.length} 枚成就`;
+        wx.showToast({ title, icon: 'none', duration: 2200 });
+        await AchievementService.ackUnlocks(summary.unacknowledged.map(item => item.id));
+      }
+    } catch (error) {
+      if (requestId !== achievementSummaryRequestId || token !== String(wx.getStorageSync('token') || '')) return;
+      console.warn('同步成就摘要失败:', error);
+    }
   },
 
   async syncPlatformAdminStatus() {
@@ -371,6 +417,7 @@ Page<IPageData, IPageMethods & {
       // 登录后立即同步家庭上下文，使零家庭入口无需重新进入“我的”页才出现。
       await this.syncFamilyContext();
       await this.syncPlatformAdminStatus();
+      await this.syncAchievementSummary();
 
       // 获取重定向URL（如果有）
       const redirectUrl = wx.getStorageSync('redirectUrl');
@@ -472,6 +519,7 @@ Page<IPageData, IPageMethods & {
     userInfoRequestId += 1;
     familyContextRequestId += 1;
     platformStatusRequestId += 1;
+    achievementSummaryRequestId += 1;
     profileSessionGeneration += 1;
     invalidateAuthSession();
     clearSessionCache();
@@ -501,7 +549,11 @@ Page<IPageData, IPageMethods & {
       editingNickName: false,
       editingNickNameValue: '',
       scrollIntoView: '',
-      nickNameSavePending: false
+      nickNameSavePending: false,
+      achievementUnlockedCount: 0,
+      achievementTotalCount: 12,
+      pinnedAchievementIcon: '/images/achievements/badge-default.svg',
+      pinnedAchievementName: ''
     });
 
     showToast('已退出登录');
@@ -736,9 +788,22 @@ Page<IPageData, IPageMethods & {
    * 昵称输入完成（失焦或回车）
    */
   onNickNameConfirm(e) {
-    const nickName = typeof e.detail?.value === 'string'
-      ? e.detail.value
-      : this.data.editingNickNameValue;
+    const eventValue = typeof e.detail?.value === 'string' ? e.detail.value : '';
+
+    // 微信昵称快捷选择在部分客户端会先触发 blur，再通过 change 提交新值。
+    // 稍后处理 blur，给 change/input 事件时间更新受控输入值，避免保存旧昵称。
+    if (e.type === 'blur') {
+      scheduleProfileTimer(this, () => {
+        if (!this.data.editingNickName || this.data.nickNameSavePending) return;
+        (this as any).saveNickName(this.data.editingNickNameValue);
+      }, 120);
+      return;
+    }
+
+    const nickName = eventValue || this.data.editingNickNameValue;
+    if (eventValue !== this.data.editingNickNameValue) {
+      this.setData({ editingNickNameValue: eventValue });
+    }
     if (!nickName) {
       this.setData({
         editingNickName: false,

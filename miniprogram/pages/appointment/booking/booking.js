@@ -99,6 +99,7 @@ Page({
     selectedDishType: '',
     selectedDishIds: [],
     selectedDishMap: {},
+    prefillDishIds: [],
     searchKeyword: '',
     remarks: '',
     loading: true,
@@ -118,12 +119,19 @@ Page({
   onLoad(options = {}) {
     const appointmentId = asId(options.id);
     const date = String(options.date || todayString());
+    const prefillDishIds = appointmentId
+      ? []
+      : uniqueIds(String(options.prefillDishIds || '').split(','));
+    const prefillMealType = MEAL_TYPES.indexOf(options.mealType) >= 0
+      ? options.mealType
+      : '午餐';
     this.setData({
       date,
       appointmentId,
       familyId: String(FamilyService.getActiveFamilyId() || ''),
       editMode: !!appointmentId,
-      selectedMealType: '午餐',
+      selectedMealType: prefillMealType,
+      prefillDishIds,
       loading: true
     });
     wx.setNavigationBarTitle({ title: appointmentId ? '编辑预约' : '创建预约' });
@@ -183,7 +191,7 @@ Page({
         .map(normalizeMember)
         .filter(item => item.userId);
       let dishes = extractDishList(dishResult).map(normalizeDish).filter(item => item.id);
-      const selectedDishIds = extractDishIds(appointment);
+      const requestedDishIds = appointment ? extractDishIds(appointment) : this.data.prefillDishIds;
 
       // 编辑时把详情中已选但不在当前列表页的菜品补入，避免保存时意外丢失。
       if (appointment && Array.isArray(appointment.dishes)) {
@@ -203,6 +211,9 @@ Page({
         ? appointment.mealType
         : this.data.selectedMealType;
       const dishTypes = extractDishTypes(dishes);
+      const availableDishIds = new Set(dishes.map(item => item.id));
+      const selectedDishIds = requestedDishIds.filter(id => availableDishIds.has(id));
+      const unavailablePrefillCount = appointment ? 0 : requestedDishIds.length - selectedDishIds.length;
 
       this.setData({
         date: appointment && appointment.date ? appointment.date : this.data.date,
@@ -226,6 +237,9 @@ Page({
         loadingDishes: false,
         loadError: members.length ? '' : '当前家庭还没有可选的用餐成员'
       });
+      if (unavailablePrefillCount > 0) {
+        wx.showToast({ title: `${unavailablePrefillCount} 道原菜品已不可用`, icon: 'none' });
+      }
     } catch (error) {
       if (requestId !== bookingLoadRequestId || familyId !== String(FamilyService.getActiveFamilyId() || '') || familyId !== this.data.familyId) return;
       console.error('加载预约编辑数据失败:', error);

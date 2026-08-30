@@ -63,6 +63,14 @@
       "pages": ["reviews"]
     },
     {
+      "root": "pages/profile/achievements",
+      "pages": ["index"]
+    },
+    {
+      "root": "pages/profile/history",
+      "pages": ["index", "detail", "editor"]
+    },
+    {
       "root": "pages/profile/admin",
       "pages": [
         "appointments/appointments",
